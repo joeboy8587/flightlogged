@@ -75,11 +75,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "The Architecture of Never — Civilian Airspace Accountability" },
       { name: "description", content: "The first civilian-led, AI-assisted watchdog institution for airspace accountability. The machine watches. The math chooses. The record stands." },
       { name: "author", content: "The Architecture of Never" },
-      { property: "og:title", content: "The Architecture of Never" },
-      { property: "og:description", content: "Civilian-led AI watchdog. 137,000+ detections. 3,995 aircraft. Zero cherry-picking." },
+      { property: "og:title", content: "The Architecture of Never — Civilian Airspace Accountability" },
+      { property: "og:description", content: "The first civilian-led, AI-assisted watchdog institution for airspace accountability. The machine watches. The math chooses. The record stands." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "The Architecture of Never — Civilian Airspace Accountability" },
+      { name: "twitter:description", content: "The first civilian-led, AI-assisted watchdog institution for airspace accountability. The machine watches. The math chooses. The record stands." },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/e0dad3bb-dc19-470e-bdeb-f620067004e8" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/e0dad3bb-dc19-470e-bdeb-f620067004e8" },
     ],
     links: [
       {
