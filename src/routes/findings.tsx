@@ -143,6 +143,30 @@ function Findings() {
         </div>
       </section>
 
+      <section className="border-t-4 border-ink bg-paper">
+        <div className="max-w-[1400px] mx-auto px-4 py-12">
+          <div className="label-stamp bg-ink text-paper inline-block px-2 py-1 mb-4">See also · Public datasets</div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <Link to="/violations" className="brutal-border p-4 bg-paper hover:bg-warning/40">
+              <div className="font-display text-2xl mb-1">Violations Log</div>
+              <p className="text-xs font-mono opacity-70">Hashed airspace violations w/ severity & coordinates.</p>
+            </Link>
+            <Link to="/threat-index" className="brutal-border p-4 bg-paper hover:bg-warning/40">
+              <div className="font-display text-2xl mb-1">Threat Index</div>
+              <p className="text-xs font-mono opacity-70">WTI tier breakdown + top scoring events.</p>
+            </Link>
+            <Link to="/operators" className="brutal-border p-4 bg-paper hover:bg-warning/40">
+              <div className="font-display text-2xl mb-1">Operators</div>
+              <p className="text-xs font-mono opacity-70">Resolved operators with shell-company links.</p>
+            </Link>
+            <Link to="/ml-detections" className="brutal-border p-4 bg-paper hover:bg-warning/40">
+              <div className="font-display text-2xl mb-1">ML Detections</div>
+              <p className="text-xs font-mono opacity-70">Model-flagged anomalies w/ disclosed lineage.</p>
+            </Link>
+          </div>
+        </div>
+      </section>
+
       <SiteFooter />
     </div>
   );
