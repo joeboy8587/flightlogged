@@ -14,8 +14,9 @@ export const Route = createFileRoute("/")({
     meta: [
       { title: "The Architecture of Never — Civilian Airspace Watchdog" },
       { name: "description", content: "The first civilian-led, AI-assisted airspace accountability organization. Population-scale. Anti-bias. Court-ready." },
-      { property: "og:title", content: "The Architecture of Never" },
+      { property: "og:title", content: "The Architecture of Never — Civilian Airspace Watchdog" },
       { property: "og:description", content: "The machine watches. The math chooses. The record stands." },
+      { property: "og:url", content: "https://flightlogged.lovable.app/" },
     ],
   }),
   loader: ({ context }) => context.queryClient.ensureQueryData(snapshotQO),
@@ -105,7 +106,7 @@ function Home() {
             ].map((p, i) => (
               <div key={p.num} className={`p-8 ${i < 2 ? "lg:border-r-4 border-b-4 lg:border-b-0 border-ink" : ""} bg-paper`}>
                 <div className="font-mono text-6xl font-bold opacity-20 mb-2">{p.num}</div>
-                <h3 className="text-4xl mb-3">{p.title}</h3>
+                <h2 className="text-4xl mb-3">{p.title}</h2>
                 <p className="mb-4">{p.desc}</p>
                 <span className="label-stamp bg-ink text-paper px-2 py-1">{p.tag}</span>
               </div>

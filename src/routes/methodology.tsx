@@ -8,6 +8,7 @@ export const Route = createFileRoute("/methodology")({
     { name: "description", content: "How Watchtower 2.0 learns baselines, scores anomalies, and produces court-ready evidence with zero cherry-picking." },
     { property: "og:title", content: "Methodology — Architecture of Never" },
     { property: "og:description", content: "Baseline learning, statistical anomaly detection, Bradford Hill scoring, SHA-256 chain of custody." },
+    { property: "og:url", content: "https://flightlogged.lovable.app/methodology" },
   ]}),
   component: Methodology,
 });
@@ -40,7 +41,7 @@ function Methodology() {
           ].map((s, i, arr) => (
             <div key={s.n} className={`p-8 bg-paper ${i % 2 === 0 ? "lg:border-r-4 border-ink" : ""} ${i < arr.length - 2 ? "border-b-4 border-ink" : ""} ${i === arr.length - 2 ? "lg:border-b-0 border-b-4 border-ink" : ""}`}>
               <div className="font-mono text-5xl font-bold opacity-20">{s.n}</div>
-              <h3 className="text-2xl mt-2 mb-3">{s.t}</h3>
+              <h2 className="text-2xl mt-2 mb-3">{s.t}</h2>
               <p>{s.d}</p>
             </div>
           ))}
