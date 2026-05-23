@@ -2,20 +2,28 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
+import { breadcrumbScript } from "@/lib/breadcrumbs";
 import { getRegulatoryBaselines, getRegulations, getAirspaceSummary } from "@/lib/watchtower.functions";
 
 const baselinesQO = queryOptions({ queryKey: ["baselines"], queryFn: () => getRegulatoryBaselines() });
 const regsQO = queryOptions({ queryKey: ["regs"], queryFn: () => getRegulations() });
 const airspaceQO = queryOptions({ queryKey: ["airspace"], queryFn: () => getAirspaceSummary() });
 
+const crumbs = [{ label: "Home", href: "/" }, { label: "Rules" }];
+
 export const Route = createFileRoute("/rules")({
-  head: () => ({ meta: [
+  head: () => ({
+    meta: [
     { title: "Rules & Airspace — The Architecture of Never" },
     { name: "description", content: "The active regulatory baselines, 14 CFR citations, and FAA airspace geofence applied to every detection." },
     { property: "og:title", content: "Rules & Airspace" },
     { property: "og:description", content: "The rules the machine measures against — pulled live from our Neon-backed FAA baseline." },
     { property: "og:url", content: "https://flightlogged.lovable.app/rules" },
-  ]}),
+    ],
+    links: [{ rel: "canonical", href: "https://flightlogged.lovable.app/rules" }],
+    scripts: [breadcrumbScript(crumbs)],
+  }),
   loader: ({ context }) => Promise.all([
     context.queryClient.ensureQueryData(baselinesQO),
     context.queryClient.ensureQueryData(regsQO),
@@ -40,6 +48,7 @@ function Rules() {
   return (
     <div className="min-h-screen bg-paper text-ink">
       <SiteHeader />
+      <SiteBreadcrumbs items={crumbs} />
 
       <section className="border-b-4 border-ink bg-ink text-paper">
         <div className="max-w-[1400px] mx-auto px-4 py-12">

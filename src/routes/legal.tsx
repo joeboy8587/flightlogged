@@ -1,15 +1,23 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
+import { breadcrumbScript } from "@/lib/breadcrumbs";
+
+const crumbs = [{ label: "Home", href: "/" }, { label: "Legal" }];
 
 export const Route = createFileRoute("/legal")({
-  head: () => ({ meta: [
+  head: () => ({
+    meta: [
     { title: "Legal Protections — The Architecture of Never" },
     { name: "description", content: "Your rights, our protections, and the legal framework that makes Watchtower evidence admissible." },
     { property: "og:title", content: "Legal Protections" },
     { property: "og:description", content: "Civil rights, FAA regulations, § 1983, FOIA, and chain of custody." },
     { property: "og:url", content: "https://flightlogged.lovable.app/legal" },
-  ]}),
+    ],
+    links: [{ rel: "canonical", href: "https://flightlogged.lovable.app/legal" }],
+    scripts: [breadcrumbScript(crumbs)],
+  }),
   component: Legal,
 });
 
@@ -17,6 +25,7 @@ function Legal() {
   return (
     <div className="min-h-screen bg-paper text-ink">
       <SiteHeader />
+      <SiteBreadcrumbs items={crumbs} />
       <section className="border-b-4 border-ink">
         <div className="max-w-[1400px] mx-auto px-4 py-16">
           <div className="label-stamp bg-alert text-paper inline-block px-2 py-1 mb-3">Legal Protections</div>

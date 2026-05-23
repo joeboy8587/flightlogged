@@ -6,7 +6,6 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
 import { breadcrumbScript } from "@/lib/breadcrumbs";
 import { getAnomalies, getCorrelations } from "@/lib/watchtower.functions";
-import { Link } from "@tanstack/react-router";
 
 const anomQO = queryOptions({ queryKey: ["anomalies"], queryFn: () => getAnomalies() });
 const corrQO = queryOptions({ queryKey: ["correlations"], queryFn: () => getCorrelations() });

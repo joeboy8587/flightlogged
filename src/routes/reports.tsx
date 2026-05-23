@@ -1,6 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
+import { breadcrumbScript } from "@/lib/breadcrumbs";
+
+const crumbs = [{ label: "Home", href: "/" }, { label: "Reports" }];
 
 export const Route = createFileRoute("/reports")({
   head: () => ({
@@ -11,7 +15,10 @@ export const Route = createFileRoute("/reports")({
       { property: "og:description", content: "Five years. $57.8M paid. Zero admissions. Read the receipts." },
       { property: "og:url", content: "https://flightlogged.lovable.app/reports" },
     ],
-    scripts: [{
+    links: [{ rel: "canonical", href: "https://flightlogged.lovable.app/reports" }],
+    scripts: [
+      breadcrumbScript(crumbs),
+      {
       type: "application/ld+json",
       children: JSON.stringify({
         "@context": "https://schema.org",
@@ -25,7 +32,8 @@ export const Route = createFileRoute("/reports")({
           publisher: { "@type": "Organization", name: "The Architecture of Never", url: "https://flightlogged.lovable.app" },
         })),
       }),
-    }],
+      },
+    ],
   }),
   component: Reports,
 });
@@ -155,7 +163,7 @@ function Reports() {
   return (
     <div className="min-h-screen bg-paper text-ink">
       <SiteHeader />
-
+      <SiteBreadcrumbs items={crumbs} />
       <section className="border-b-4 border-ink">
         <div className="max-w-[1400px] mx-auto px-4 py-16">
           <div className="label-stamp bg-alert text-paper inline-block px-2 py-1 mb-3">Reports · The Receipts</div>
