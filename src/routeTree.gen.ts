@@ -9,9 +9,13 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ViolationsRouteImport } from './routes/violations'
+import { Route as ThreatIndexRouteImport } from './routes/threat-index'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as RulesRouteImport } from './routes/rules'
 import { Route as ReportsRouteImport } from './routes/reports'
+import { Route as OperatorsRouteImport } from './routes/operators'
+import { Route as MlDetectionsRouteImport } from './routes/ml-detections'
 import { Route as MethodologyRouteImport } from './routes/methodology'
 import { Route as LiveRouteImport } from './routes/live'
 import { Route as LegalRouteImport } from './routes/legal'
@@ -20,6 +24,16 @@ import { Route as ActRouteImport } from './routes/act'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 
+const ViolationsRoute = ViolationsRouteImport.update({
+  id: '/violations',
+  path: '/violations',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ThreatIndexRoute = ThreatIndexRouteImport.update({
+  id: '/threat-index',
+  path: '/threat-index',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
   path: '/sitemap.xml',
@@ -33,6 +47,16 @@ const RulesRoute = RulesRouteImport.update({
 const ReportsRoute = ReportsRouteImport.update({
   id: '/reports',
   path: '/reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OperatorsRoute = OperatorsRouteImport.update({
+  id: '/operators',
+  path: '/operators',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MlDetectionsRoute = MlDetectionsRouteImport.update({
+  id: '/ml-detections',
+  path: '/ml-detections',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MethodologyRoute = MethodologyRouteImport.update({
@@ -79,9 +103,13 @@ export interface FileRoutesByFullPath {
   '/legal': typeof LegalRoute
   '/live': typeof LiveRoute
   '/methodology': typeof MethodologyRoute
+  '/ml-detections': typeof MlDetectionsRoute
+  '/operators': typeof OperatorsRoute
   '/reports': typeof ReportsRoute
   '/rules': typeof RulesRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/threat-index': typeof ThreatIndexRoute
+  '/violations': typeof ViolationsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -91,9 +119,13 @@ export interface FileRoutesByTo {
   '/legal': typeof LegalRoute
   '/live': typeof LiveRoute
   '/methodology': typeof MethodologyRoute
+  '/ml-detections': typeof MlDetectionsRoute
+  '/operators': typeof OperatorsRoute
   '/reports': typeof ReportsRoute
   '/rules': typeof RulesRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/threat-index': typeof ThreatIndexRoute
+  '/violations': typeof ViolationsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -104,9 +136,13 @@ export interface FileRoutesById {
   '/legal': typeof LegalRoute
   '/live': typeof LiveRoute
   '/methodology': typeof MethodologyRoute
+  '/ml-detections': typeof MlDetectionsRoute
+  '/operators': typeof OperatorsRoute
   '/reports': typeof ReportsRoute
   '/rules': typeof RulesRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/threat-index': typeof ThreatIndexRoute
+  '/violations': typeof ViolationsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -118,9 +154,13 @@ export interface FileRouteTypes {
     | '/legal'
     | '/live'
     | '/methodology'
+    | '/ml-detections'
+    | '/operators'
     | '/reports'
     | '/rules'
     | '/sitemap.xml'
+    | '/threat-index'
+    | '/violations'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -130,9 +170,13 @@ export interface FileRouteTypes {
     | '/legal'
     | '/live'
     | '/methodology'
+    | '/ml-detections'
+    | '/operators'
     | '/reports'
     | '/rules'
     | '/sitemap.xml'
+    | '/threat-index'
+    | '/violations'
   id:
     | '__root__'
     | '/'
@@ -142,9 +186,13 @@ export interface FileRouteTypes {
     | '/legal'
     | '/live'
     | '/methodology'
+    | '/ml-detections'
+    | '/operators'
     | '/reports'
     | '/rules'
     | '/sitemap.xml'
+    | '/threat-index'
+    | '/violations'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -155,13 +203,31 @@ export interface RootRouteChildren {
   LegalRoute: typeof LegalRoute
   LiveRoute: typeof LiveRoute
   MethodologyRoute: typeof MethodologyRoute
+  MlDetectionsRoute: typeof MlDetectionsRoute
+  OperatorsRoute: typeof OperatorsRoute
   ReportsRoute: typeof ReportsRoute
   RulesRoute: typeof RulesRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  ThreatIndexRoute: typeof ThreatIndexRoute
+  ViolationsRoute: typeof ViolationsRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/violations': {
+      id: '/violations'
+      path: '/violations'
+      fullPath: '/violations'
+      preLoaderRoute: typeof ViolationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/threat-index': {
+      id: '/threat-index'
+      path: '/threat-index'
+      fullPath: '/threat-index'
+      preLoaderRoute: typeof ThreatIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sitemap.xml': {
       id: '/sitemap.xml'
       path: '/sitemap.xml'
@@ -181,6 +247,20 @@ declare module '@tanstack/react-router' {
       path: '/reports'
       fullPath: '/reports'
       preLoaderRoute: typeof ReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/operators': {
+      id: '/operators'
+      path: '/operators'
+      fullPath: '/operators'
+      preLoaderRoute: typeof OperatorsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ml-detections': {
+      id: '/ml-detections'
+      path: '/ml-detections'
+      fullPath: '/ml-detections'
+      preLoaderRoute: typeof MlDetectionsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/methodology': {
@@ -243,10 +323,24 @@ const rootRouteChildren: RootRouteChildren = {
   LegalRoute: LegalRoute,
   LiveRoute: LiveRoute,
   MethodologyRoute: MethodologyRoute,
+  MlDetectionsRoute: MlDetectionsRoute,
+  OperatorsRoute: OperatorsRoute,
   ReportsRoute: ReportsRoute,
   RulesRoute: RulesRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  ThreatIndexRoute: ThreatIndexRoute,
+  ViolationsRoute: ViolationsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
