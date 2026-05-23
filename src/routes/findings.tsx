@@ -9,30 +9,32 @@ const anomQO = queryOptions({ queryKey: ["anomalies"], queryFn: () => getAnomali
 const corrQO = queryOptions({ queryKey: ["correlations"], queryFn: () => getCorrelations() });
 
 export const Route = createFileRoute("/findings")({
-  head: () => ({ meta: [
-    { title: "Findings Archive — The Architecture of Never" },
-    { name: "description", content: "Documented anomaly events and biometric-surveillance correlations. Each finding is hashed, timestamped, and chained." },
-    { property: "og:title", content: "Findings — Architecture of Never" },
-    { property: "og:description", content: "Math-chosen anomaly events with chain of custody." },
-    { property: "og:url", content: "https://flightlogged.lovable.app/findings" },
-  ]}),
+  head: () => ({
+    meta: [
+      { title: "Findings Archive — The Architecture of Never" },
+      { name: "description", content: "Documented anomaly events and biometric-surveillance correlations. Each finding is hashed, timestamped, and chained." },
+      { property: "og:title", content: "Findings — Architecture of Never" },
+      { property: "og:description", content: "Math-chosen anomaly events with chain of custody." },
+      { property: "og:url", content: "https://flightlogged.lovable.app/findings" },
+    ],
+    scripts: [{
+      type: "application/ld+json",
+      children: JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "CollectionPage",
+        name: "Findings Archive — The Architecture of Never",
+        description: "Documented anomaly events and surveillance-correlated biometric events. Each finding is statistically flagged after a 48-hour baseline, SHA-256 hashed, timestamped, and chained.",
+        url: "https://flightlogged.lovable.app/findings",
+        isPartOf: { "@type": "WebSite", name: "The Architecture of Never", url: "https://flightlogged.lovable.app" },
+        about: { "@type": "Thing", name: "Civilian airspace accountability findings" },
+      }),
+    }],
+  }),
   loader: ({ context }) => Promise.all([
     context.queryClient.ensureQueryData(anomQO),
     context.queryClient.ensureQueryData(corrQO),
   ]),
   component: Findings,
-  scripts: [{
-    type: "application/ld+json",
-    children: JSON.stringify({
-      "@context": "https://schema.org",
-      "@type": "CollectionPage",
-      name: "Findings Archive — The Architecture of Never",
-      description: "Documented anomaly events and surveillance-correlated biometric events. Each finding is statistically flagged after a 48-hour baseline, SHA-256 hashed, timestamped, and chained.",
-      url: "https://flightlogged.lovable.app/findings",
-      isPartOf: { "@type": "WebSite", name: "The Architecture of Never", url: "https://flightlogged.lovable.app" },
-      about: { "@type": "Thing", name: "Civilian airspace accountability findings" },
-    }),
-  }],
   errorComponent: ({ error, reset }) => (
     <div className="min-h-screen bg-paper"><SiteHeader />
       <div className="max-w-[1400px] mx-auto px-4 py-20">
