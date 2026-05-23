@@ -1,15 +1,23 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
+import { breadcrumbScript } from "@/lib/breadcrumbs";
+
+const crumbs = [{ label: "Home", href: "/" }, { label: "Methodology" }];
 
 export const Route = createFileRoute("/methodology")({
-  head: () => ({ meta: [
+  head: () => ({
+    meta: [
     { title: "Methodology — The Architecture of Never" },
     { name: "description", content: "How Watchtower 2.0 learns baselines, scores anomalies, and produces court-ready evidence with zero cherry-picking." },
     { property: "og:title", content: "Methodology — Architecture of Never" },
     { property: "og:description", content: "Baseline learning, statistical anomaly detection, Bradford Hill scoring, SHA-256 chain of custody." },
     { property: "og:url", content: "https://flightlogged.lovable.app/methodology" },
-  ]}),
+    ],
+    links: [{ rel: "canonical", href: "https://flightlogged.lovable.app/methodology" }],
+    scripts: [breadcrumbScript(crumbs)],
+  }),
   component: Methodology,
 });
 
@@ -17,6 +25,7 @@ function Methodology() {
   return (
     <div className="min-h-screen bg-paper text-ink">
       <SiteHeader />
+      <SiteBreadcrumbs items={crumbs} />
       <section className="border-b-4 border-ink">
         <div className="max-w-[1400px] mx-auto px-4 py-16">
           <div className="label-stamp bg-warning inline-block px-2 py-1 mb-3">Methodology</div>

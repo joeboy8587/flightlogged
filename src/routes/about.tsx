@@ -1,15 +1,23 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
+import { breadcrumbScript } from "@/lib/breadcrumbs";
+
+const crumbs = [{ label: "Home", href: "/" }, { label: "About" }];
 
 export const Route = createFileRoute("/about")({
-  head: () => ({ meta: [
+  head: () => ({
+    meta: [
     { title: "About — The Architecture of Never" },
     { name: "description", content: "Who we are, what we are not, and why the first civilian-led AI watchdog institution had to be built." },
     { property: "og:title", content: "About — Architecture of Never" },
     { property: "og:description", content: "EFF meets ProPublica meets a sensor network. Civilian-led. AI-assisted." },
     { property: "og:url", content: "https://flightlogged.lovable.app/about" },
-  ]}),
+    ],
+    links: [{ rel: "canonical", href: "https://flightlogged.lovable.app/about" }],
+    scripts: [breadcrumbScript(crumbs)],
+  }),
   component: About,
 });
 
@@ -17,6 +25,7 @@ function About() {
   return (
     <div className="min-h-screen bg-paper text-ink">
       <SiteHeader />
+      <SiteBreadcrumbs items={crumbs} />
       <section className="border-b-4 border-ink">
         <div className="max-w-[1400px] mx-auto px-4 py-16">
           <div className="label-stamp bg-warning inline-block px-2 py-1 mb-3">About</div>

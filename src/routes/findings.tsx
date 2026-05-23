@@ -3,10 +3,14 @@ import { Link } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
+import { breadcrumbScript } from "@/lib/breadcrumbs";
 import { getAnomalies, getCorrelations } from "@/lib/watchtower.functions";
 
 const anomQO = queryOptions({ queryKey: ["anomalies"], queryFn: () => getAnomalies() });
 const corrQO = queryOptions({ queryKey: ["correlations"], queryFn: () => getCorrelations() });
+
+const crumbs = [{ label: "Home", href: "/" }, { label: "Findings" }];
 
 export const Route = createFileRoute("/findings")({
   head: () => ({
@@ -17,7 +21,10 @@ export const Route = createFileRoute("/findings")({
       { property: "og:description", content: "Math-chosen anomaly events with chain of custody." },
       { property: "og:url", content: "https://flightlogged.lovable.app/findings" },
     ],
-    scripts: [{
+    links: [{ rel: "canonical", href: "https://flightlogged.lovable.app/findings" }],
+    scripts: [
+      breadcrumbScript(crumbs),
+      {
       type: "application/ld+json",
       children: JSON.stringify({
         "@context": "https://schema.org",
@@ -28,7 +35,8 @@ export const Route = createFileRoute("/findings")({
         isPartOf: { "@type": "WebSite", name: "The Architecture of Never", url: "https://flightlogged.lovable.app" },
         about: { "@type": "Thing", name: "Civilian airspace accountability findings" },
       }),
-    }],
+      },
+    ],
   }),
   loader: ({ context }) => Promise.all([
     context.queryClient.ensureQueryData(anomQO),
@@ -58,6 +66,7 @@ function Findings() {
   return (
     <div className="min-h-screen bg-paper text-ink">
       <SiteHeader />
+      <SiteBreadcrumbs items={crumbs} />
       <section className="border-b-4 border-ink">
         <div className="max-w-[1400px] mx-auto px-4 py-16">
           <div className="label-stamp text-alert mb-2">Findings Archive</div>
@@ -130,6 +139,30 @@ function Findings() {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t-4 border-ink bg-paper">
+        <div className="max-w-[1400px] mx-auto px-4 py-12">
+          <div className="label-stamp bg-ink text-paper inline-block px-2 py-1 mb-4">See also · Public datasets</div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <Link to="/violations" className="brutal-border p-4 bg-paper hover:bg-warning/40">
+              <div className="font-display text-2xl mb-1">Violations Log</div>
+              <p className="text-xs font-mono opacity-70">Hashed airspace violations w/ severity & coordinates.</p>
+            </Link>
+            <Link to="/threat-index" className="brutal-border p-4 bg-paper hover:bg-warning/40">
+              <div className="font-display text-2xl mb-1">Threat Index</div>
+              <p className="text-xs font-mono opacity-70">WTI tier breakdown + top scoring events.</p>
+            </Link>
+            <Link to="/operators" className="brutal-border p-4 bg-paper hover:bg-warning/40">
+              <div className="font-display text-2xl mb-1">Operators</div>
+              <p className="text-xs font-mono opacity-70">Resolved operators with shell-company links.</p>
+            </Link>
+            <Link to="/ml-detections" className="brutal-border p-4 bg-paper hover:bg-warning/40">
+              <div className="font-display text-2xl mb-1">ML Detections</div>
+              <p className="text-xs font-mono opacity-70">Model-flagged anomalies w/ disclosed lineage.</p>
+            </Link>
           </div>
         </div>
       </section>

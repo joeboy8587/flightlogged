@@ -1,15 +1,23 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
+import { breadcrumbScript } from "@/lib/breadcrumbs";
+
+const crumbs = [{ label: "Home", href: "/" }, { label: "Take Action" }];
 
 export const Route = createFileRoute("/act")({
-  head: () => ({ meta: [
+  head: () => ({
+    meta: [
     { title: "Take Action — The Architecture of Never" },
     { name: "description", content: "Deploy a sensor, request a referral, file a FOIA, or fund the next county." },
     { property: "og:title", content: "Take Action" },
     { property: "og:description", content: "Civilian airspace accountability — your move." },
     { property: "og:url", content: "https://flightlogged.lovable.app/act" },
-  ]}),
+    ],
+    links: [{ rel: "canonical", href: "https://flightlogged.lovable.app/act" }],
+    scripts: [breadcrumbScript(crumbs)],
+  }),
   component: Act,
 });
 
@@ -28,6 +36,7 @@ function Act() {
   return (
     <div className="min-h-screen bg-paper text-ink">
       <SiteHeader />
+      <SiteBreadcrumbs items={crumbs} />
       <section className="border-b-4 border-ink">
         <div className="max-w-[1400px] mx-auto px-4 py-16">
           <div className="label-stamp bg-warning inline-block px-2 py-1 mb-3">Take Action</div>
