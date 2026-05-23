@@ -330,3 +330,171 @@ export const getCorrelations = createServerFn({ method: "GET" }).handler(async (
     evidenceHash: r.evidence_hash,
   }));
 });
+
+// ============================================================
+// EXTENDED DASHBOARDS (from evidence DB — public, non-biometric)
+// ============================================================
+
+export type CanonicalOperator = {
+  registration: string;
+  icao24: string | null;
+  faaName: string | null;
+  operatorResolved: string | null;
+  aircraftModel: string | null;
+  kcso: boolean;
+  military: boolean;
+  medical: boolean;
+  xpServices: boolean;
+  shellLinks: number;
+  occurrences: number;
+  confidence: number | null;
+  lastSeen: string | null;
+};
+
+export const getCanonicalOperators = createServerFn({ method: "GET" }).handler(async (): Promise<CanonicalOperator[]> => {
+  const e = evidence();
+  const rows = await e`
+    SELECT registration, icao24, faa_registrant_name, operator_resolved, aircraft_model,
+           kcso_flag, military_flag, medical_flag, xp_services_flag, shell_links,
+           occurrences_total, confidence, last_seen
+    FROM public.canonical_operator_profiles
+    WHERE registration IS NOT NULL
+    ORDER BY occurrences_total DESC NULLS LAST
+    LIMIT 50
+  `;
+  return rows.map((r: any) => ({
+    registration: r.registration,
+    icao24: r.icao24,
+    faaName: r.faa_registrant_name,
+    operatorResolved: r.operator_resolved,
+    aircraftModel: r.aircraft_model,
+    kcso: !!r.kcso_flag,
+    military: !!r.military_flag,
+    medical: !!r.medical_flag,
+    xpServices: !!r.xp_services_flag,
+    shellLinks: Array.isArray(r.shell_links) ? r.shell_links.length : (r.shell_links ? 1 : 0),
+    occurrences: Number(r.occurrences_total ?? 0),
+    confidence: r.confidence != null ? Number(r.confidence) : null,
+    lastSeen: r.last_seen ? new Date(r.last_seen).toISOString() : null,
+  }));
+});
+
+export type SentinelViolation = {
+  id: number;
+  timestamp: string;
+  registration: string | null;
+  aircraftType: string | null;
+  altitude: number | null;
+  latitude: number | null;
+  longitude: number | null;
+  violationType: string;
+  severity: string | null;
+  description: string | null;
+  hashShort: string | null;
+};
+
+export const getSentinelViolations = createServerFn({ method: "GET" }).handler(async (): Promise<SentinelViolation[]> => {
+  const e = evidence();
+  const rows = await e`
+    SELECT id, detection_timestamp, aircraft_registration, aircraft_type, altitude,
+           latitude, longitude, violation_type, severity, description, sha256_hash
+    FROM public.sentinel_violations
+    ORDER BY detection_timestamp DESC NULLS LAST
+    LIMIT 100
+  `;
+  return rows.map((r: any) => ({
+    id: r.id,
+    timestamp: r.detection_timestamp ? new Date(r.detection_timestamp).toISOString() : new Date(0).toISOString(),
+    registration: r.aircraft_registration,
+    aircraftType: r.aircraft_type,
+    altitude: r.altitude,
+    latitude: r.latitude != null ? Number(r.latitude) : null,
+    longitude: r.longitude != null ? Number(r.longitude) : null,
+    violationType: r.violation_type,
+    severity: r.severity,
+    description: r.description,
+    hashShort: r.sha256_hash ? String(r.sha256_hash).slice(0, 16) : null,
+  }));
+});
+
+export type ThreatTierBucket = { tier: number | null; level: string | null; count: number };
+export type ThreatTopRow = {
+  detectionId: string;
+  wti: number;
+  tier: number | null;
+  level: string | null;
+  computedAt: string | null;
+};
+export type ThreatIndexSummary = {
+  total: number;
+  buckets: ThreatTierBucket[];
+  top: ThreatTopRow[];
+  methodVersion: string | null;
+};
+
+export const getThreatIndex = createServerFn({ method: "GET" }).handler(async (): Promise<ThreatIndexSummary> => {
+  const e = evidence();
+  const [tot, buckets, top, mv] = await Promise.all([
+    e`SELECT COUNT(*)::bigint AS c FROM public.threat_tiers`,
+    e`SELECT tier_level, threat_level, COUNT(*)::int AS c
+      FROM public.threat_tiers
+      GROUP BY tier_level, threat_level
+      ORDER BY tier_level DESC NULLS LAST`,
+    e`SELECT detection_id, wti_score, tier_level, threat_level, computed_at
+      FROM public.threat_tiers
+      WHERE wti_score IS NOT NULL
+      ORDER BY wti_score DESC
+      LIMIT 25`,
+    e`SELECT method_version FROM public.threat_tiers WHERE method_version IS NOT NULL LIMIT 1`,
+  ]);
+  return {
+    total: Number(tot[0].c),
+    buckets: buckets.map((r: any) => ({ tier: r.tier_level, level: r.threat_level, count: r.c })),
+    top: top.map((r: any) => ({
+      detectionId: String(r.detection_id),
+      wti: Number(r.wti_score),
+      tier: r.tier_level,
+      level: r.threat_level,
+      computedAt: r.computed_at ? new Date(r.computed_at).toISOString() : null,
+    })),
+    methodVersion: mv[0]?.method_version ?? null,
+  };
+});
+
+export type MlAnomaly = {
+  id: string;
+  detectedAt: string;
+  registration: string | null;
+  icao24: string | null;
+  callsign: string | null;
+  anomalyType: string | null;
+  anomalyScore: number | null;
+  confidence: string | null;
+  modelName: string | null;
+  modelVersion: string | null;
+  validated: boolean;
+};
+
+export const getMlAnomalies = createServerFn({ method: "GET" }).handler(async (): Promise<MlAnomaly[]> => {
+  const e = evidence();
+  const rows = await e`
+    SELECT id, detected_at, aircraft_registration, icao24, callsign,
+           anomaly_type, anomaly_score, confidence_level, model_name, model_version, validated
+    FROM public.ml_anomaly_detections
+    ORDER BY detected_at DESC NULLS LAST
+    LIMIT 50
+  `;
+  return rows.map((r: any) => ({
+    id: String(r.id),
+    detectedAt: r.detected_at ? new Date(r.detected_at).toISOString() : new Date(0).toISOString(),
+    registration: r.aircraft_registration,
+    icao24: r.icao24,
+    callsign: r.callsign,
+    anomalyType: r.anomaly_type,
+    anomalyScore: r.anomaly_score != null ? Number(r.anomaly_score) : null,
+    confidence: r.confidence_level,
+    modelName: r.model_name,
+    modelVersion: r.model_version,
+    validated: !!r.validated,
+  }));
+});
