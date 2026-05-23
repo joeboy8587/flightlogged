@@ -9,6 +9,10 @@ The Architecture of Never operates Watchtower 2.0, an open-source sensor network
 - [Home](/): Mission, live counts, and the three pillars (Watch, Document, Advocate).
 - [Live Feed](/live): Real-time low-altitude detections with FAA registry identification and regulatory violation flags.
 - [Findings Archive](/findings): Math-flagged anomaly events and surveillance-correlated biometric events with Bradford Hill scoring.
+- [Violations Log](/violations): Time-stamped airspace violations with severity, location, and SHA-256 evidence hashes.
+- [Threat Index](/threat-index): Watchtower Threat Index (WTI) tier breakdown and top scoring events.
+- [Operators Directory](/operators): Resolved aircraft operators with shell-company linkage, agency flags, and detection counts.
+- [ML Anomaly Detections](/ml-detections): Machine-learning flagged anomalies with disclosed model name, version, and confidence.
 - [Reports](/reports): Full PDF investigations — Kern County Sheriff's Office accountability series.
 - [Rules & Regulations](/rules): Active regulatory baselines, airspace geofences, and CFR citations used by the system.
 - [Methodology](/methodology): How population-scale capture, baseline learning, anomaly detection, and chain of custody work.
