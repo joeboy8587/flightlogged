@@ -87,6 +87,26 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: appCss,
       },
     ],
+    scripts: [{
+      type: "application/ld+json",
+      children: JSON.stringify({
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            name: "The Architecture of Never",
+            url: "https://flightlogged.lovable.app",
+            description: "Civilian-led, AI-assisted airspace accountability. Population-scale ADS-B detection with SHA-256 chain of custody.",
+          },
+          {
+            "@type": "WebSite",
+            name: "The Architecture of Never",
+            url: "https://flightlogged.lovable.app",
+            description: "The machine watches. The math chooses. The record stands.",
+          },
+        ],
+      }),
+    }],
   }),
   shellComponent: RootShell,
   component: RootComponent,

@@ -14,6 +14,7 @@ export const Route = createFileRoute("/rules")({
     { name: "description", content: "The active regulatory baselines, 14 CFR citations, and FAA airspace geofence applied to every detection." },
     { property: "og:title", content: "Rules & Airspace" },
     { property: "og:description", content: "The rules the machine measures against — pulled live from our Neon-backed FAA baseline." },
+    { property: "og:url", content: "https://flightlogged.lovable.app/rules" },
   ]}),
   loader: ({ context }) => Promise.all([
     context.queryClient.ensureQueryData(baselinesQO),
