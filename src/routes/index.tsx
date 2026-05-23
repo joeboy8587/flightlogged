@@ -21,8 +21,8 @@ export const Route = createFileRoute("/")({
   }),
   loader: ({ context }) => context.queryClient.ensureQueryData(snapshotQO),
   component: Home,
-  errorComponent: ({ error, reset }) => (
-    <div className="p-10"><h1 className="text-4xl mb-4">Signal lost.</h1><p className="mb-4">{error.message}</p><button onClick={reset} className="brutal-border px-4 py-2 label-stamp bg-warning">Retry</button></div>
+  errorComponent: ({ reset }) => (
+    <div className="p-10"><h1 className="text-4xl mb-4">Signal lost.</h1><p className="mb-4">Data temporarily unavailable. Please try again.</p><button onClick={reset} className="brutal-border px-4 py-2 label-stamp bg-warning">Retry</button></div>
   ),
 });
 
