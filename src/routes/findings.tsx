@@ -35,11 +35,11 @@ export const Route = createFileRoute("/findings")({
     context.queryClient.ensureQueryData(corrQO),
   ]),
   component: Findings,
-  errorComponent: ({ error, reset }) => (
+  errorComponent: ({ reset }) => (
     <div className="min-h-screen bg-paper"><SiteHeader />
       <div className="max-w-[1400px] mx-auto px-4 py-20">
         <h1 className="text-5xl mb-4">Archive unreachable.</h1>
-        <p className="font-mono text-sm mb-6">{error.message}</p>
+        <p className="font-mono text-sm mb-6">Findings temporarily unavailable. Please try again.</p>
         <button onClick={reset} className="brutal-border px-5 py-3 label-stamp bg-warning">Retry</button>
       </div></div>
   ),
