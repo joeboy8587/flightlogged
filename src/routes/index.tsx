@@ -147,6 +147,7 @@ function Home() {
           <p className="text-xl max-w-2xl mx-auto mb-10">If you're a journalist, attorney, or affected resident — the data is here, the methodology is public, and the chain of custody holds in court.</p>
           <div className="flex flex-wrap justify-center gap-3">
             <Link to="/findings" className="label-stamp bg-ink text-paper px-6 py-4 brutal-shadow-alert">See the findings</Link>
+            <Link to="/reports" className="label-stamp bg-alert text-paper px-6 py-4 brutal-shadow-warning">Read the reports</Link>
             <Link to="/legal" className="label-stamp brutal-border px-6 py-4 hover:bg-warning">Know your protections</Link>
           </div>
         </div>
