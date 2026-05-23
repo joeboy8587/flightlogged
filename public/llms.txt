@@ -1,0 +1,21 @@
+# The Architecture of Never
+
+> Civilian-led, AI-assisted airspace accountability. Population-scale ADS-B detection with statistical anomaly scoring, SHA-256 chain of custody, and Bradford Hill causal analysis. All data derived from public sources any member of the public can verify.
+
+The Architecture of Never operates Watchtower 2.0, an open-source sensor network and analysis pipeline that logs every aircraft in its observation zone (no curated subset), learns a 48-hour baseline, and flags statistical outliers against published regulatory floors (14 CFR §91.119, §107). Findings are cryptographically hashed and chained for court-admissible evidence.
+
+## Pages
+
+- [Home](/): Mission, live counts, and the three pillars (Watch, Document, Advocate).
+- [Live Feed](/live): Real-time low-altitude detections with FAA registry identification and regulatory violation flags.
+- [Findings Archive](/findings): Math-flagged anomaly events and surveillance-correlated biometric events with Bradford Hill scoring.
+- [Reports](/reports): Full PDF investigations — Kern County Sheriff's Office accountability series.
+- [Rules & Regulations](/rules): Active regulatory baselines, airspace geofences, and CFR citations used by the system.
+- [Methodology](/methodology): How population-scale capture, baseline learning, anomaly detection, and chain of custody work.
+- [Legal Protections](/legal): First Amendment, FAA regulations, §1983, FOIA, FRE 901/902, and Daubert framework.
+- [Take Action](/act): Deploy a sensor, request a legal referral, file a FOIA, pitch a journalist, fund a county.
+- [About](/about): Who we are, what we are not, and the Josiah AI co-investigator.
+
+## Optional
+
+- [Sitemap](/sitemap.xml): Machine-readable index of all public routes.
