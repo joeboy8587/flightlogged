@@ -8,6 +8,7 @@ export const Route = createFileRoute("/about")({
     { name: "description", content: "Who we are, what we are not, and why the first civilian-led AI watchdog institution had to be built." },
     { property: "og:title", content: "About — Architecture of Never" },
     { property: "og:description", content: "EFF meets ProPublica meets a sensor network. Civilian-led. AI-assisted." },
+    { property: "og:url", content: "https://flightlogged.lovable.app/about" },
   ]}),
   component: About,
 });

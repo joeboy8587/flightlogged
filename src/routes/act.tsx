@@ -8,6 +8,7 @@ export const Route = createFileRoute("/act")({
     { name: "description", content: "Deploy a sensor, request a referral, file a FOIA, or fund the next county." },
     { property: "og:title", content: "Take Action" },
     { property: "og:description", content: "Civilian airspace accountability — your move." },
+    { property: "og:url", content: "https://flightlogged.lovable.app/act" },
   ]}),
   component: Act,
 });
@@ -16,7 +17,7 @@ function Card({ tag, title, body, cta }: { tag: string; title: string; body: str
   return (
     <article className="brutal-border-thick p-6 bg-paper brutal-shadow flex flex-col">
       <span className="label-stamp bg-ink text-paper px-2 py-1 self-start mb-3">{tag}</span>
-      <h3 className="text-3xl mb-3">{title}</h3>
+      <h2 className="text-3xl mb-3">{title}</h2>
       <p className="mb-5 flex-1">{body}</p>
       <button className="label-stamp bg-warning brutal-border px-4 py-3 self-start hover:bg-alert hover:text-paper">{cta} →</button>
     </article>

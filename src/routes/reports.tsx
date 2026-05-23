@@ -9,7 +9,23 @@ export const Route = createFileRoute("/reports")({
       { name: "description", content: "Full accountability investigations on the Kern County Sheriff's Office. Downloadable, source-cited, court-ready." },
       { property: "og:title", content: "Reports — Architecture of Never" },
       { property: "og:description", content: "Five years. $57.8M paid. Zero admissions. Read the receipts." },
+      { property: "og:url", content: "https://flightlogged.lovable.app/reports" },
     ],
+    scripts: [{
+      type: "application/ld+json",
+      children: JSON.stringify({
+        "@context": "https://schema.org",
+        "@graph": REPORTS.map((r) => ({
+          "@type": "Article",
+          headline: r.title,
+          description: r.blurb,
+          datePublished: r.date,
+          url: `https://flightlogged.lovable.app/reports#${r.slug}`,
+          author: { "@type": "Organization", name: "The Architecture of Never" },
+          publisher: { "@type": "Organization", name: "The Architecture of Never", url: "https://flightlogged.lovable.app" },
+        })),
+      }),
+    }],
   }),
   component: Reports,
 });

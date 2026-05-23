@@ -8,6 +8,7 @@ export const Route = createFileRoute("/legal")({
     { name: "description", content: "Your rights, our protections, and the legal framework that makes Watchtower evidence admissible." },
     { property: "og:title", content: "Legal Protections" },
     { property: "og:description", content: "Civil rights, FAA regulations, § 1983, FOIA, and chain of custody." },
+    { property: "og:url", content: "https://flightlogged.lovable.app/legal" },
   ]}),
   component: Legal,
 });
@@ -39,7 +40,7 @@ function Legal() {
             { t: "Daubert / Frye Standards", d: "Statistical anomaly detection with published baselines, peer-reviewable code, and known error rates clears the standard for expert evidence." },
           ].map((s) => (
             <article key={s.t} className="brutal-border p-6 brutal-shadow">
-              <h3 className="text-2xl mb-2">{s.t}</h3>
+              <h2 className="text-2xl mb-2">{s.t}</h2>
               <p>{s.d}</p>
             </article>
           ))}
