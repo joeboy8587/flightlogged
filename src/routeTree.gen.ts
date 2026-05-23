@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as MethodologyRouteImport } from './routes/methodology'
 import { Route as LiveRouteImport } from './routes/live'
 import { Route as LegalRouteImport } from './routes/legal'
@@ -21,6 +22,11 @@ import { Route as IndexRouteImport } from './routes/index'
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
   path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsRoute = ReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MethodologyRoute = MethodologyRouteImport.update({
@@ -67,6 +73,7 @@ export interface FileRoutesByFullPath {
   '/legal': typeof LegalRoute
   '/live': typeof LiveRoute
   '/methodology': typeof MethodologyRoute
+  '/reports': typeof ReportsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
 }
 export interface FileRoutesByTo {
@@ -77,6 +84,7 @@ export interface FileRoutesByTo {
   '/legal': typeof LegalRoute
   '/live': typeof LiveRoute
   '/methodology': typeof MethodologyRoute
+  '/reports': typeof ReportsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
 }
 export interface FileRoutesById {
@@ -88,6 +96,7 @@ export interface FileRoutesById {
   '/legal': typeof LegalRoute
   '/live': typeof LiveRoute
   '/methodology': typeof MethodologyRoute
+  '/reports': typeof ReportsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
 }
 export interface FileRouteTypes {
@@ -100,6 +109,7 @@ export interface FileRouteTypes {
     | '/legal'
     | '/live'
     | '/methodology'
+    | '/reports'
     | '/sitemap.xml'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -110,6 +120,7 @@ export interface FileRouteTypes {
     | '/legal'
     | '/live'
     | '/methodology'
+    | '/reports'
     | '/sitemap.xml'
   id:
     | '__root__'
@@ -120,6 +131,7 @@ export interface FileRouteTypes {
     | '/legal'
     | '/live'
     | '/methodology'
+    | '/reports'
     | '/sitemap.xml'
   fileRoutesById: FileRoutesById
 }
@@ -131,6 +143,7 @@ export interface RootRouteChildren {
   LegalRoute: typeof LegalRoute
   LiveRoute: typeof LiveRoute
   MethodologyRoute: typeof MethodologyRoute
+  ReportsRoute: typeof ReportsRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
 }
 
@@ -141,6 +154,13 @@ declare module '@tanstack/react-router' {
       path: '/sitemap.xml'
       fullPath: '/sitemap.xml'
       preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports': {
+      id: '/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof ReportsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/methodology': {
@@ -203,8 +223,19 @@ const rootRouteChildren: RootRouteChildren = {
   LegalRoute: LegalRoute,
   LiveRoute: LiveRoute,
   MethodologyRoute: MethodologyRoute,
+  ReportsRoute: ReportsRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
