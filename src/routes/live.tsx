@@ -2,6 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
+import { breadcrumbScript } from "@/lib/breadcrumbs";
 import { getSnapshot, getRecentLowAltitude, getRepeatOffenders, getIdentifiedOperators } from "@/lib/watchtower.functions";
 
 const snapQO = queryOptions({ queryKey: ["snapshot"], queryFn: () => getSnapshot(), refetchInterval: 30000 });
@@ -9,14 +11,20 @@ const lowAltQO = queryOptions({ queryKey: ["low-alt"], queryFn: () => getRecentL
 const repeatQO = queryOptions({ queryKey: ["repeat"], queryFn: () => getRepeatOffenders() });
 const idQO = queryOptions({ queryKey: ["identified"], queryFn: () => getIdentifiedOperators() });
 
+const crumbs = [{ label: "Home", href: "/" }, { label: "Live Feed" }];
+
 export const Route = createFileRoute("/live")({
-  head: () => ({ meta: [
+  head: () => ({
+    meta: [
     { title: "Live Feed — The Architecture of Never" },
     { name: "description", content: "Watchtower 2.0 live airspace feed. Every detection, every aircraft, every hour." },
     { property: "og:title", content: "Live Watchtower Feed" },
     { property: "og:description", content: "Real-time civilian airspace surveillance, math-chosen, court-ready." },
     { property: "og:url", content: "https://flightlogged.lovable.app/live" },
-  ]}),
+    ],
+    links: [{ rel: "canonical", href: "https://flightlogged.lovable.app/live" }],
+    scripts: [breadcrumbScript(crumbs)],
+  }),
   loader: ({ context }) => Promise.all([
     context.queryClient.ensureQueryData(snapQO),
     context.queryClient.ensureQueryData(lowAltQO),
@@ -52,6 +60,7 @@ function Live() {
   return (
     <div className="min-h-screen bg-paper text-ink">
       <SiteHeader />
+      <SiteBreadcrumbs items={crumbs} />
       <section className="border-b-4 border-ink bg-ink text-paper">
         <div className="max-w-[1400px] mx-auto px-4 py-12">
           <div className="label-stamp text-warning mb-4 flex items-center gap-2"><span className="w-2 h-2 bg-alert blink" /> LIVE · Refresh every 30s</div>
