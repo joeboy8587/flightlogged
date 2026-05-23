@@ -5,6 +5,7 @@ const NAV = [
   { to: "/live", label: "Live Feed" },
   { to: "/findings", label: "Findings" },
   { to: "/reports", label: "Reports" },
+  { to: "/rules", label: "Rules" },
   { to: "/methodology", label: "Methodology" },
   { to: "/legal", label: "Legal" },
   { to: "/act", label: "Take Action" },

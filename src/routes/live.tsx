@@ -2,11 +2,12 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
-import { getSnapshot, getRecentLowAltitude, getRepeatOffenders } from "@/lib/watchtower.functions";
+import { getSnapshot, getRecentLowAltitude, getRepeatOffenders, getIdentifiedOperators } from "@/lib/watchtower.functions";
 
 const snapQO = queryOptions({ queryKey: ["snapshot"], queryFn: () => getSnapshot(), refetchInterval: 30000 });
 const lowAltQO = queryOptions({ queryKey: ["low-alt"], queryFn: () => getRecentLowAltitude(), refetchInterval: 30000 });
 const repeatQO = queryOptions({ queryKey: ["repeat"], queryFn: () => getRepeatOffenders() });
+const idQO = queryOptions({ queryKey: ["identified"], queryFn: () => getIdentifiedOperators() });
 
 export const Route = createFileRoute("/live")({
   head: () => ({ meta: [
@@ -19,6 +20,7 @@ export const Route = createFileRoute("/live")({
     context.queryClient.ensureQueryData(snapQO),
     context.queryClient.ensureQueryData(lowAltQO),
     context.queryClient.ensureQueryData(repeatQO),
+    context.queryClient.ensureQueryData(idQO),
   ]),
   component: Live,
   errorComponent: ({ error, reset }) => (
@@ -44,6 +46,7 @@ function Live() {
   const { data: s } = useSuspenseQuery(snapQO);
   const { data: low } = useSuspenseQuery(lowAltQO);
   const { data: repeat } = useSuspenseQuery(repeatQO);
+  const { data: identified } = useSuspenseQuery(idQO);
 
   return (
     <div className="min-h-screen bg-paper text-ink">
@@ -100,26 +103,67 @@ function Live() {
                 <tr>
                   <th className="text-left p-3 label-stamp">When</th>
                   <th className="text-left p-3 label-stamp">Aircraft</th>
-                  <th className="text-left p-3 label-stamp">Owner</th>
+                  <th className="text-left p-3 label-stamp">Identified owner (FAA registry)</th>
                   <th className="text-right p-3 label-stamp">Altitude</th>
+                  <th className="text-left p-3 label-stamp">Rule</th>
                   <th className="text-right p-3 label-stamp">Speed</th>
                   <th className="text-left p-3 label-stamp">County</th>
                 </tr>
               </thead>
               <tbody className="font-mono">
-                {low.length === 0 && <tr><td colSpan={6} className="p-6 text-center">No low-altitude activity in the current window.</td></tr>}
+                {low.length === 0 && <tr><td colSpan={7} className="p-6 text-center">No low-altitude activity in the current window.</td></tr>}
                 {low.map((r) => (
                   <tr key={r.icao + r.capturedAt} className="border-t border-ink/20 hover:bg-warning/30">
                     <td className="p-3 whitespace-nowrap">{fmtTime(r.capturedAt)}</td>
                     <td className="p-3"><span className="font-bold">{r.registration || r.icao}</span>{r.model && <div className="text-xs opacity-60">{r.model}</div>}</td>
-                    <td className="p-3 text-xs">{r.owner || "—"}</td>
+                    <td className="p-3 text-xs">
+                      {r.identifiedName ? (
+                        <>
+                          <span className="font-bold">{r.identifiedName}</span>
+                          {(r.registrantCity || r.registrantState) && (
+                            <div className="opacity-60">{[r.registrantCity, r.registrantState].filter(Boolean).join(", ")}</div>
+                          )}
+                        </>
+                      ) : r.owner ? <span className="opacity-70">{r.owner}</span> : "—"}
+                    </td>
                     <td className={`p-3 text-right font-bold ${altClass(r.altitude)}`}>{fmt(r.altitude)} ft</td>
+                    <td className="p-3 text-xs">
+                      {r.violationSource ? (
+                        <Link to="/rules" className="inline-block bg-alert text-paper px-2 py-1 label-stamp hover:bg-ink">
+                          {r.violationSource}
+                        </Link>
+                      ) : <span className="opacity-40">—</span>}
+                    </td>
                     <td className="p-3 text-right">{r.speed ? Math.round(r.speed) + " kts" : "—"}</td>
                     <td className="p-3 text-xs">{r.county || "—"}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+          <p className="mt-3 text-xs opacity-70 font-mono">
+            Identification cross-referenced against the public FAA Aircraft Registry ({fmt(identified.length)}+ matched operators). Rule column matches active baselines in <Link to="/rules" className="underline">/rules</Link>.
+          </p>
+        </div>
+      </section>
+
+      {/* IDENTIFIED OPERATORS */}
+      <section className="border-b-4 border-ink bg-ink/5">
+        <div className="max-w-[1400px] mx-auto px-4 py-16">
+          <div className="label-stamp text-ink bg-paper inline-block px-2 py-1 mb-2 brutal-border">FAA Registry · Public record</div>
+          <h2 className="text-4xl sm:text-5xl mb-2">Identified operators in this airspace</h2>
+          <p className="text-sm opacity-70 mb-6 max-w-3xl">Mode-S hex matched against the FAA Aircraft Registry. All data is public-source and independently verifiable.</p>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {identified.map((o) => (
+              <div key={o.icao} className="brutal-border p-4 bg-paper">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="font-display text-lg">{o.registration || o.icao}</span>
+                  <span className="font-mono text-xl font-bold">{o.detections}</span>
+                </div>
+                <div className="text-xs font-bold mt-1">{o.name}</div>
+                <div className="text-xs opacity-60 font-mono">{[o.city, o.state].filter(Boolean).join(", ")}</div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
