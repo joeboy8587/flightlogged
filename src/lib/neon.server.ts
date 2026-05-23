@@ -1,24 +1,18 @@
-import postgres from "postgres";
+import { neon } from "@neondatabase/serverless";
 
-type Sql = ReturnType<typeof postgres>;
+// HTTP-based Neon driver: stateless and safe across Cloudflare Worker requests.
+// We intentionally create a fresh client per call to avoid the
+// "Cannot perform I/O on behalf of a different request" Workers error that
+// occurs when a connection (or any I/O object) is reused across requests.
 
-let _watch: Sql | null = null;
-let _evidence: Sql | null = null;
-
-export function watchtower(): Sql {
-  if (!_watch) {
-    const url = process.env.NEON_WATCHTOWER_URL;
-    if (!url) throw new Error("NEON_WATCHTOWER_URL not set");
-    _watch = postgres(url, { ssl: "require", max: 3, idle_timeout: 20 });
-  }
-  return _watch;
+export function watchtower() {
+  const url = process.env.NEON_WATCHTOWER_URL;
+  if (!url) throw new Error("NEON_WATCHTOWER_URL not set");
+  return neon(url);
 }
 
-export function evidence(): Sql {
-  if (!_evidence) {
-    const url = process.env.NEON_EVIDENCE_URL;
-    if (!url) throw new Error("NEON_EVIDENCE_URL not set");
-    _evidence = postgres(url, { ssl: "require", max: 3, idle_timeout: 20 });
-  }
-  return _evidence;
+export function evidence() {
+  const url = process.env.NEON_EVIDENCE_URL;
+  if (!url) throw new Error("NEON_EVIDENCE_URL not set");
+  return neon(url);
 }
