@@ -53,19 +53,43 @@ export type LowAltDescent = {
   altitude: number | null;
   speed: number | null;
   county: string | null;
+  identifiedName: string | null;
+  registrantType: string | null;
+  registrantCity: string | null;
+  registrantState: string | null;
+  violationRule: string | null;
+  violationSource: string | null;
+  violationScore: number | null;
 };
 
 export const getRecentLowAltitude = createServerFn({ method: "GET" }).handler(async (): Promise<LowAltDescent[]> => {
   const w = watchtower();
-  const rows = await w`
-    SELECT d.icao_hex, d.registration, d.captured_at, d.altitude_ft, d.speed_kts, d.county,
-           p.registered_owner, p.aircraft_model
-    FROM detections d
-    LEFT JOIN aircraft_profiles p ON p.icao_hex = d.icao_hex
-    WHERE d.altitude_ft IS NOT NULL AND d.altitude_ft < 1500 AND d.on_ground = false
-    ORDER BY d.captured_at DESC
-    LIMIT 40
-  `;
+  const [rows, baselines] = await Promise.all([
+    w`
+      SELECT d.icao_hex, d.registration, d.captured_at, d.altitude_ft, d.speed_kts, d.county,
+             p.registered_owner, p.aircraft_model,
+             m.name AS reg_name, m.type_registrant, m.city AS reg_city, m.state AS reg_state
+      FROM detections d
+      LEFT JOIN aircraft_profiles p ON p.icao_hex = d.icao_hex
+      LEFT JOIN faa_master m ON UPPER(m.mode_s_code_hex) = UPPER(d.icao_hex)
+      WHERE d.altitude_ft IS NOT NULL AND d.altitude_ft < 1500 AND d.on_ground = false
+      ORDER BY d.captured_at DESC
+      LIMIT 40
+    `,
+    w`SELECT rule_name, rule_source, min_altitude_violation_ft, violation_score
+      FROM regulatory_baselines WHERE is_active = true
+      ORDER BY violation_score DESC`,
+  ]);
+  const matchViolation = (alt: number | null) => {
+    if (alt == null) return null;
+    let best: any = null;
+    for (const b of baselines) {
+      if (alt < b.min_altitude_violation_ft) {
+        if (!best || Number(b.violation_score) > Number(best.violation_score)) best = b;
+      }
+    }
+    return best;
+  };
   return rows.map((r: any) => ({
     icao: r.icao_hex,
     registration: r.registration,
@@ -75,6 +99,131 @@ export const getRecentLowAltitude = createServerFn({ method: "GET" }).handler(as
     altitude: r.altitude_ft,
     speed: r.speed_kts ? Number(r.speed_kts) : null,
     county: r.county,
+    identifiedName: r.reg_name ?? null,
+    registrantType: r.type_registrant ?? null,
+    registrantCity: r.reg_city ?? null,
+    registrantState: r.reg_state ?? null,
+    ...(function () {
+      const v = matchViolation(r.altitude_ft);
+      return v
+        ? { violationRule: v.rule_name as string, violationSource: v.rule_source as string, violationScore: Number(v.violation_score) }
+        : { violationRule: null, violationSource: null, violationScore: null };
+    })(),
+  }));
+});
+
+export type RegulatoryBaseline = {
+  ruleName: string;
+  ruleSource: string;
+  minAltitudeFt: number;
+  appliesCongested: boolean;
+  appliesNight: boolean;
+  appliesResidential: boolean;
+  violationScore: number;
+  description: string | null;
+};
+
+export const getRegulatoryBaselines = createServerFn({ method: "GET" }).handler(async (): Promise<RegulatoryBaseline[]> => {
+  const w = watchtower();
+  const rows = await w`
+    SELECT rule_name, rule_source, min_altitude_violation_ft, applies_congested_area,
+           applies_night, applies_residential, violation_score, description
+    FROM regulatory_baselines
+    WHERE is_active = true
+    ORDER BY violation_score DESC
+  `;
+  return rows.map((r: any) => ({
+    ruleName: r.rule_name,
+    ruleSource: r.rule_source,
+    minAltitudeFt: r.min_altitude_violation_ft,
+    appliesCongested: r.applies_congested_area,
+    appliesNight: r.applies_night,
+    appliesResidential: r.applies_residential,
+    violationScore: Number(r.violation_score),
+    description: r.description ?? null,
+  }));
+});
+
+export type FaaRegulation = {
+  id: string | number;
+  part: string;
+  section: string;
+  heading: string;
+  title: string | null;
+};
+
+export const getRegulations = createServerFn({ method: "GET" }).handler(async (): Promise<FaaRegulation[]> => {
+  const w = watchtower();
+  const rows = await w`
+    SELECT id, part, section, heading, title
+    FROM faa_regulations
+    WHERE part IN ('91','107')
+    ORDER BY part, section
+    LIMIT 200
+  `;
+  return rows.map((r: any) => ({
+    id: r.id,
+    part: r.part,
+    section: r.section,
+    heading: r.heading,
+    title: r.title ?? null,
+  }));
+});
+
+export type AirspaceZone = {
+  airspaceType: string;
+  classLabel: string | null;
+  count: number;
+  examples: string[];
+};
+
+export const getAirspaceSummary = createServerFn({ method: "GET" }).handler(async (): Promise<AirspaceZone[]> => {
+  const w = watchtower();
+  const rows = await w`
+    SELECT airspace_type, class_label,
+           COUNT(*)::int AS c,
+           (ARRAY_AGG(name ORDER BY name))[1:3] AS examples
+    FROM faa_airspace
+    GROUP BY airspace_type, class_label
+    ORDER BY c DESC
+  `;
+  return rows.map((r: any) => ({
+    airspaceType: r.airspace_type,
+    classLabel: r.class_label,
+    count: r.c,
+    examples: r.examples ?? [],
+  }));
+});
+
+export type RegistryIdentification = {
+  icao: string;
+  registration: string | null;
+  name: string | null;
+  type: string | null;
+  city: string | null;
+  state: string | null;
+  detections: number;
+};
+
+export const getIdentifiedOperators = createServerFn({ method: "GET" }).handler(async (): Promise<RegistryIdentification[]> => {
+  const w = watchtower();
+  const rows = await w`
+    SELECT p.icao_hex, p.observed_registration, p.total_detections,
+           m.name, m.type_registrant, m.city, m.state
+    FROM aircraft_profiles p
+    LEFT JOIN faa_master m ON UPPER(m.mode_s_code_hex) = UPPER(p.icao_hex)
+    WHERE m.name IS NOT NULL
+    ORDER BY p.total_detections DESC
+    LIMIT 30
+  `;
+  return rows.map((r: any) => ({
+    icao: r.icao_hex,
+    registration: r.observed_registration,
+    name: r.name,
+    type: r.type_registrant,
+    city: r.city,
+    state: r.state,
+    detections: r.total_detections,
   }));
 });
 
