@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
@@ -51,6 +52,11 @@ function Findings() {
             Each row is cryptographically hashed, timestamped, and chained.
             We didn't pick them. The deviation from normal did.
           </p>
+          <div className="mt-6">
+            <Link to="/reports" className="label-stamp bg-ink text-paper px-4 py-3 brutal-shadow-warning hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all inline-block">
+              Read the full reports (4 PDFs) →
+            </Link>
+          </div>
         </div>
       </section>
 
