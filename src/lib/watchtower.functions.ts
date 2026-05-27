@@ -1,6 +1,67 @@
 import { createServerFn } from "@tanstack/react-start";
 import { watchtower, evidence } from "./neon.server";
 
+// ---- FAA identity enrichment ----
+export type FaaIdentity = {
+  name: string | null;
+  typeRegistrant: string | null;
+  city: string | null;
+  state: string | null;
+  aircraftModel: string | null;
+};
+
+function normReg(r: string | null | undefined): string | null {
+  if (!r) return null;
+  const s = String(r).trim().toUpperCase();
+  return s.startsWith("N") ? s.slice(1) : s;
+}
+function normHex(h: string | null | undefined): string | null {
+  if (!h) return null;
+  return String(h).trim().toUpperCase();
+}
+
+async function faaIdentityMap(
+  inputs: { registration?: string | null; icao?: string | null }[],
+): Promise<Map<string, FaaIdentity>> {
+  const regs = Array.from(new Set(inputs.map((i) => normReg(i.registration)).filter(Boolean) as string[]));
+  const hexes = Array.from(new Set(inputs.map((i) => normHex(i.icao)).filter(Boolean) as string[]));
+  if (regs.length === 0 && hexes.length === 0) return new Map();
+  const w = watchtower();
+  const regsParam = regs.length > 0 ? regs : [""];
+  const hexesParam = hexes.length > 0 ? hexes : [""];
+  const rows = await w`
+    SELECT n_number, mode_s_code_hex, name, type_registrant, city, state, mfr_mdl_code
+    FROM faa_master
+    WHERE UPPER(n_number) = ANY(${regsParam}::text[])
+       OR UPPER(mode_s_code_hex) = ANY(${hexesParam}::text[])
+  `;
+  const map = new Map<string, FaaIdentity>();
+  for (const r of rows as any[]) {
+    const ident: FaaIdentity = {
+      name: r.name ?? null,
+      typeRegistrant: r.type_registrant ?? null,
+      city: r.city ?? null,
+      state: r.state ?? null,
+      aircraftModel: r.mfr_mdl_code ?? null,
+    };
+    if (r.n_number) map.set("REG:" + String(r.n_number).toUpperCase(), ident);
+    if (r.mode_s_code_hex) map.set("HEX:" + String(r.mode_s_code_hex).toUpperCase(), ident);
+  }
+  return map;
+}
+
+function lookupIdentity(
+  map: Map<string, FaaIdentity>,
+  registration: string | null | undefined,
+  icao: string | null | undefined,
+): FaaIdentity | null {
+  const r = normReg(registration);
+  if (r && map.has("REG:" + r)) return map.get("REG:" + r)!;
+  const h = normHex(icao);
+  if (h && map.has("HEX:" + h)) return map.get("HEX:" + h)!;
+  return null;
+}
+
 export type WatchSnapshot = {
   totalDetections: number;
   uniqueAircraft: number;
@@ -238,6 +299,9 @@ export type RepeatOffender = {
   nightPct: number | null;
   anomalyScore: number | null;
   lastSeen: string;
+  identifiedName: string | null;
+  registrantCity: string | null;
+  registrantState: string | null;
 };
 
 export const getRepeatOffenders = createServerFn({ method: "GET" }).handler(async (): Promise<RepeatOffender[]> => {
@@ -250,7 +314,12 @@ export const getRepeatOffenders = createServerFn({ method: "GET" }).handler(asyn
     ORDER BY total_detections DESC
     LIMIT 25
   `;
-  return rows.map((r: any) => ({
+  const idMap = await faaIdentityMap(
+    rows.map((r: any) => ({ registration: r.observed_registration, icao: r.icao_hex })),
+  );
+  return rows.map((r: any) => {
+    const id = lookupIdentity(idMap, r.observed_registration, r.icao_hex);
+    return {
     icao: r.icao_hex,
     registration: r.observed_registration,
     owner: r.registered_owner,
@@ -261,7 +330,11 @@ export const getRepeatOffenders = createServerFn({ method: "GET" }).handler(asyn
     nightPct: r.night_pct ? Number(r.night_pct) : null,
     anomalyScore: r.anomaly_score ? Number(r.anomaly_score) : null,
     lastSeen: new Date(r.last_seen).toISOString(),
-  }));
+      identifiedName: id?.name ?? null,
+      registrantCity: id?.city ?? null,
+      registrantState: id?.state ?? null,
+    };
+  });
 });
 
 export type AnomalyFinding = {
@@ -391,6 +464,10 @@ export type SentinelViolation = {
   severity: string | null;
   description: string | null;
   hashShort: string | null;
+  identifiedName: string | null;
+  registrantCity: string | null;
+  registrantState: string | null;
+  registrantType: string | null;
 };
 
 export const getSentinelViolations = createServerFn({ method: "GET" }).handler(async (): Promise<SentinelViolation[]> => {
@@ -402,7 +479,12 @@ export const getSentinelViolations = createServerFn({ method: "GET" }).handler(a
     ORDER BY detection_timestamp DESC NULLS LAST
     LIMIT 100
   `;
-  return rows.map((r: any) => ({
+  const idMap = await faaIdentityMap(
+    rows.map((r: any) => ({ registration: r.aircraft_registration })),
+  );
+  return rows.map((r: any) => {
+    const id = lookupIdentity(idMap, r.aircraft_registration, null);
+    return {
     id: r.id,
     timestamp: r.detection_timestamp ? new Date(r.detection_timestamp).toISOString() : new Date(0).toISOString(),
     registration: r.aircraft_registration,
@@ -414,7 +496,12 @@ export const getSentinelViolations = createServerFn({ method: "GET" }).handler(a
     severity: r.severity,
     description: r.description,
     hashShort: r.sha256_hash ? String(r.sha256_hash).slice(0, 16) : null,
-  }));
+      identifiedName: id?.name ?? null,
+      registrantCity: id?.city ?? null,
+      registrantState: id?.state ?? null,
+      registrantType: id?.typeRegistrant ?? null,
+    };
+  });
 });
 
 export type ThreatTierBucket = { tier: number | null; level: string | null; count: number };
@@ -473,6 +560,9 @@ export type MlAnomaly = {
   modelName: string | null;
   modelVersion: string | null;
   validated: boolean;
+  identifiedName: string | null;
+  registrantCity: string | null;
+  registrantState: string | null;
 };
 
 export const getMlAnomalies = createServerFn({ method: "GET" }).handler(async (): Promise<MlAnomaly[]> => {
@@ -484,7 +574,12 @@ export const getMlAnomalies = createServerFn({ method: "GET" }).handler(async ()
     ORDER BY detected_at DESC NULLS LAST
     LIMIT 50
   `;
-  return rows.map((r: any) => ({
+  const idMap = await faaIdentityMap(
+    rows.map((r: any) => ({ registration: r.aircraft_registration, icao: r.icao24 })),
+  );
+  return rows.map((r: any) => {
+    const id = lookupIdentity(idMap, r.aircraft_registration, r.icao24);
+    return {
     id: String(r.id),
     detectedAt: r.detected_at ? new Date(r.detected_at).toISOString() : new Date(0).toISOString(),
     registration: r.aircraft_registration,
@@ -496,5 +591,9 @@ export const getMlAnomalies = createServerFn({ method: "GET" }).handler(async ()
     modelName: r.model_name,
     modelVersion: r.model_version,
     validated: !!r.validated,
-  }));
+      identifiedName: id?.name ?? null,
+      registrantCity: id?.city ?? null,
+      registrantState: id?.state ?? null,
+    };
+  });
 });
