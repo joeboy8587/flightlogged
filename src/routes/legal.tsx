@@ -56,6 +56,90 @@ function Legal() {
         </div>
       </section>
 
+      {/* Constitutional Framework */}
+      <section className="border-b-4 border-ink bg-ink text-paper">
+        <div className="max-w-[1400px] mx-auto px-4 py-16">
+          <div className="label-stamp bg-warning text-ink inline-block px-2 py-1 mb-3">Constitutional Framework</div>
+          <h2 className="text-4xl sm:text-6xl mb-4">The Bill of Rights applies to the sky over your house.</h2>
+          <p className="text-lg opacity-80 max-w-3xl mb-10">
+            We are not flight-tracking hobbyists. We document the systematic erosion of the right to be free from
+            unreasonable search and seizure — by aerial proxy.
+          </p>
+          <div className="grid lg:grid-cols-2 gap-6">
+            {[
+              {
+                t: "Fourth Amendment — The Right to Be Secure",
+                q: "The right of the people to be secure in their persons, houses, papers, and effects, against unreasonable searches and seizures, shall not be violated...",
+                d: "Your backyard is not public airspace. Your bedroom window is not a surveillance target. Patterned low-altitude overflights that enable visual, thermal, or electronic intrusion are not 'plain view' — they are unreasonable search by aerial proxy. See Kyllo v. United States (2001) and Carpenter v. United States (2018).",
+              },
+              {
+                t: "First Amendment — Document and Publish",
+                q: "Congress shall make no law... abridging the freedom of speech, or of the press...",
+                d: "Recording public ADS-B broadcasts, analyzing public FAA records, and publishing findings is protected speech and press activity. The government cannot retaliate against citizens for documenting government conduct.",
+              },
+              {
+                t: "Fifth Amendment — Due Process",
+                q: "No person shall... be deprived of life, liberty, or property, without due process of law...",
+                d: "If surveillance is used to construct investigations, create pretextual stops, or build dossiers without warrant or judicial oversight, due process is violated at the collection stage. We document the collection.",
+              },
+              {
+                t: "Sixth Amendment — Confrontation",
+                q: "In all criminal prosecutions, the accused shall enjoy the right... to be confronted with the witnesses against him...",
+                d: "If aircraft-collected evidence reaches a courtroom, the defense has the right to examine chain of custody, calibration records, operator identity, and mission authorization. Our SHA-256 + Merkle chain provides that forensic foundation.",
+              },
+              {
+                t: "Fourteenth Amendment — Equal Protection",
+                q: "No State shall... deny to any person within its jurisdiction the equal protection of the laws.",
+                d: "If surveillance resources are disproportionately deployed against specific neighborhoods, ethnic communities, or political dissidents, equal protection is violated. Population-scale documentation reveals those disparities.",
+              },
+            ].map((s) => (
+              <article key={s.t} className="brutal-border border-paper p-6">
+                <h3 className="text-xl mb-2">{s.t}</h3>
+                <blockquote className="border-l-4 border-warning pl-3 italic text-sm opacity-80 mb-3">{s.q}</blockquote>
+                <p>{s.d}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Constitutional remedies */}
+      <section className="border-b-4 border-ink">
+        <div className="max-w-[1400px] mx-auto px-4 py-16">
+          <h2 className="text-3xl sm:text-5xl mb-6">When rights are violated — remedies</h2>
+          <div className="overflow-x-auto brutal-border-thick">
+            <table className="w-full text-sm">
+              <thead className="bg-ink text-paper">
+                <tr>
+                  <th className="text-left p-3 label-stamp">Violation pattern</th>
+                  <th className="text-left p-3 label-stamp">Constitutional basis</th>
+                  <th className="text-left p-3 label-stamp">Remedy</th>
+                </tr>
+              </thead>
+              <tbody className="font-medium">
+                {[
+                  ["Repeated low-altitude overflights capturing private activity", "4th Amendment", "Bivens action / § 1983 claim"],
+                  ["Retaliation for documenting aircraft activity", "1st Amendment", "§ 1983 + injunctive relief"],
+                  ["Warrantless aerial-surveillance evidence used in proceedings", "4th + 6th Amendment", "Suppression motion + civil claim"],
+                  ["Surveillance targeting protected class or political viewpoint", "14th Amendment", "Equal protection litigation + DOJ complaint"],
+                  ["Pattern of surveillance without judicial oversight", "4th + 5th Amendment", "Declaratory judgment + injunctive relief"],
+                ].map(([a, b, c]) => (
+                  <tr key={a} className="border-t-2 border-ink">
+                    <td className="p-3">{a}</td>
+                    <td className="p-3 font-mono">{b}</td>
+                    <td className="p-3">{c}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-sm opacity-70 mt-4 max-w-3xl">
+            Not legal advice. Patterns above are documented in our Findings and Violations logs and exportable with full
+            SHA-256 chain of custody. Bring the receipts to your attorney.
+          </p>
+        </div>
+      </section>
+
       <section className="bg-warning border-b-4 border-ink">
         <div className="max-w-[1400px] mx-auto px-4 py-16">
           <h2 className="text-4xl sm:text-5xl mb-4">If you are affected</h2>

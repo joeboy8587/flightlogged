@@ -141,6 +141,46 @@ function Home() {
         </div>
       </section>
 
+      {/* YOUR RIGHTS IN THE AIRSPACE */}
+      <section className="border-b-4 border-ink">
+        <div className="max-w-[1400px] mx-auto px-4 py-20">
+          <div className="label-stamp bg-alert text-paper inline-block px-2 py-1 mb-3">Your Rights in the Airspace</div>
+          <h2 className="text-4xl sm:text-6xl mb-4">The Bill of Rights doesn't stop at the roofline.</h2>
+          <p className="text-lg max-w-3xl mb-10">
+            Watchtower exists because constitutional protections do not enforce themselves. Here's what's at stake every
+            time an aircraft loiters over your home — and what this site is built to defend.
+          </p>
+          <div className="overflow-x-auto brutal-border-thick">
+            <table className="w-full text-sm">
+              <thead className="bg-ink text-paper">
+                <tr>
+                  <th className="text-left p-3 label-stamp">Right</th>
+                  <th className="text-left p-3 label-stamp">What Watchtower protects</th>
+                </tr>
+              </thead>
+              <tbody className="font-medium">
+                {[
+                  ["4th Amendment", "Security in your home against unreasonable aerial search."],
+                  ["1st Amendment", "Your right to document, analyze, and publish public airspace activity."],
+                  ["5th Amendment", "Due process when surveillance is used as evidence."],
+                  ["6th Amendment", "Confrontation of aerial evidence through verifiable chain of custody."],
+                  ["14th Amendment", "Equal protection against discriminatory surveillance deployment."],
+                ].map(([r, w]) => (
+                  <tr key={r} className="border-t-2 border-ink">
+                    <td className="p-3 font-mono whitespace-nowrap">{r}</td>
+                    <td className="p-3">{w}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Link to="/legal" className="label-stamp bg-ink text-paper px-5 py-3 hover:bg-alert">Read the Constitutional Framework →</Link>
+            <Link to="/how-to-read" className="label-stamp brutal-border px-5 py-3 hover:bg-warning">How to read Watchtower</Link>
+          </div>
+        </div>
+      </section>
+
       {/* CTA */}
       <section>
         <div className="max-w-[1400px] mx-auto px-4 py-24 text-center">
