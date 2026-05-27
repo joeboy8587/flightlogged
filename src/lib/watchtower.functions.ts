@@ -27,11 +27,13 @@ async function faaIdentityMap(
   const hexes = Array.from(new Set(inputs.map((i) => normHex(i.icao)).filter(Boolean) as string[]));
   if (regs.length === 0 && hexes.length === 0) return new Map();
   const w = watchtower();
+  const regsParam = regs.length > 0 ? regs : [""];
+  const hexesParam = hexes.length > 0 ? hexes : [""];
   const rows = await w`
     SELECT n_number, mode_s_code_hex, name, type_registrant, city, state, mfr_mdl_code
     FROM faa_master
-    WHERE (${regs.length > 0} AND UPPER(n_number) = ANY(${regs}))
-       OR (${hexes.length > 0} AND UPPER(mode_s_code_hex) = ANY(${hexes}))
+    WHERE UPPER(n_number) = ANY(${regsParam}::text[])
+       OR UPPER(mode_s_code_hex) = ANY(${hexesParam}::text[])
   `;
   const map = new Map<string, FaaIdentity>();
   for (const r of rows as any[]) {
