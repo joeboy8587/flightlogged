@@ -83,6 +83,7 @@ function MlDetections() {
                 <tr>
                   <th className="text-left p-3 label-stamp">Detected</th>
                   <th className="text-left p-3 label-stamp">Aircraft</th>
+                  <th className="text-left p-3 label-stamp">Identified owner (FAA registry)</th>
                   <th className="text-left p-3 label-stamp">Anomaly</th>
                   <th className="text-right p-3 label-stamp">Score</th>
                   <th className="text-left p-3 label-stamp">Confidence</th>
@@ -91,11 +92,21 @@ function MlDetections() {
                 </tr>
               </thead>
               <tbody className="font-mono">
-                {data.length === 0 && <tr><td colSpan={7} className="p-6 text-center">No ML detections on record.</td></tr>}
+                {data.length === 0 && <tr><td colSpan={8} className="p-6 text-center">No ML detections on record.</td></tr>}
                 {data.map((m) => (
                   <tr key={m.id} className="border-t border-ink/20 hover:bg-warning/30">
                     <td className="p-3 whitespace-nowrap text-xs">{new Date(m.detectedAt).toLocaleString()}</td>
                     <td className="p-3 font-bold">{m.registration || m.icao24 || m.callsign || "—"}</td>
+                    <td className="p-3 text-xs">
+                      {m.identifiedName ? (
+                        <>
+                          <span className="font-bold">{m.identifiedName}</span>
+                          {(m.registrantCity || m.registrantState) && (
+                            <div className="opacity-60">{[m.registrantCity, m.registrantState].filter(Boolean).join(", ")}</div>
+                          )}
+                        </>
+                      ) : <span className="opacity-40">—</span>}
+                    </td>
                     <td className="p-3">{m.anomalyType || "—"}</td>
                     <td className="p-3 text-right">{m.anomalyScore != null ? m.anomalyScore.toFixed(2) : "—"}</td>
                     <td className="p-3"><span className={`label-stamp px-2 py-1 ${confClass(m.confidence)}`}>{m.confidence || "—"}</span></td>
