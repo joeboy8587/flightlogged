@@ -1,6 +1,65 @@
 import { createServerFn } from "@tanstack/react-start";
 import { watchtower, evidence } from "./neon.server";
 
+// ---- FAA identity enrichment ----
+export type FaaIdentity = {
+  name: string | null;
+  typeRegistrant: string | null;
+  city: string | null;
+  state: string | null;
+  aircraftModel: string | null;
+};
+
+function normReg(r: string | null | undefined): string | null {
+  if (!r) return null;
+  const s = String(r).trim().toUpperCase();
+  return s.startsWith("N") ? s.slice(1) : s;
+}
+function normHex(h: string | null | undefined): string | null {
+  if (!h) return null;
+  return String(h).trim().toUpperCase();
+}
+
+async function faaIdentityMap(
+  inputs: { registration?: string | null; icao?: string | null }[],
+): Promise<Map<string, FaaIdentity>> {
+  const regs = Array.from(new Set(inputs.map((i) => normReg(i.registration)).filter(Boolean) as string[]));
+  const hexes = Array.from(new Set(inputs.map((i) => normHex(i.icao)).filter(Boolean) as string[]));
+  if (regs.length === 0 && hexes.length === 0) return new Map();
+  const w = watchtower();
+  const rows = await w`
+    SELECT n_number, mode_s_code_hex, name, type_registrant, city, state, mfr_mdl_code
+    FROM faa_master
+    WHERE (${regs.length > 0} AND UPPER(n_number) = ANY(${regs}))
+       OR (${hexes.length > 0} AND UPPER(mode_s_code_hex) = ANY(${hexes}))
+  `;
+  const map = new Map<string, FaaIdentity>();
+  for (const r of rows as any[]) {
+    const ident: FaaIdentity = {
+      name: r.name ?? null,
+      typeRegistrant: r.type_registrant ?? null,
+      city: r.city ?? null,
+      state: r.state ?? null,
+      aircraftModel: r.mfr_mdl_code ?? null,
+    };
+    if (r.n_number) map.set("REG:" + String(r.n_number).toUpperCase(), ident);
+    if (r.mode_s_code_hex) map.set("HEX:" + String(r.mode_s_code_hex).toUpperCase(), ident);
+  }
+  return map;
+}
+
+function lookupIdentity(
+  map: Map<string, FaaIdentity>,
+  registration: string | null | undefined,
+  icao: string | null | undefined,
+): FaaIdentity | null {
+  const r = normReg(registration);
+  if (r && map.has("REG:" + r)) return map.get("REG:" + r)!;
+  const h = normHex(icao);
+  if (h && map.has("HEX:" + h)) return map.get("HEX:" + h)!;
+  return null;
+}
+
 export type WatchSnapshot = {
   totalDetections: number;
   uniqueAircraft: number;
