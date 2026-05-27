@@ -83,6 +83,7 @@ function Violations() {
                 <tr>
                   <th className="text-left p-3 label-stamp">Time</th>
                   <th className="text-left p-3 label-stamp">Aircraft</th>
+                  <th className="text-left p-3 label-stamp">Identified owner (FAA registry)</th>
                   <th className="text-left p-3 label-stamp">Type</th>
                   <th className="text-left p-3 label-stamp">Violation</th>
                   <th className="text-left p-3 label-stamp">Severity</th>
@@ -92,11 +93,22 @@ function Violations() {
                 </tr>
               </thead>
               <tbody className="font-mono">
-                {data.length === 0 && <tr><td colSpan={8} className="p-6 text-center">No violations on record.</td></tr>}
+                {data.length === 0 && <tr><td colSpan={9} className="p-6 text-center">No violations on record.</td></tr>}
                 {data.map((v) => (
                   <tr key={v.id} className="border-t border-ink/20 hover:bg-warning/30">
                     <td className="p-3 whitespace-nowrap text-xs">{new Date(v.timestamp).toLocaleString()}</td>
                     <td className="p-3 font-bold">{v.registration || "—"}</td>
+                    <td className="p-3 text-xs">
+                      {v.identifiedName ? (
+                        <>
+                          <span className="font-bold">{v.identifiedName}</span>
+                          {(v.registrantCity || v.registrantState) && (
+                            <div className="opacity-60">{[v.registrantCity, v.registrantState].filter(Boolean).join(", ")}</div>
+                          )}
+                          {v.registrantType && <div className="opacity-50">{v.registrantType}</div>}
+                        </>
+                      ) : <span className="opacity-40">—</span>}
+                    </td>
                     <td className="p-3 text-xs">{v.aircraftType || "—"}</td>
                     <td className="p-3">{v.violationType}</td>
                     <td className="p-3"><span className={`label-stamp px-2 py-1 ${sevClass(v.severity)}`}>{v.severity || "—"}</span></td>
