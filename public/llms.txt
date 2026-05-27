@@ -19,6 +19,7 @@ The Architecture of Never operates Watchtower 2.0, an open-source sensor network
 - [Legal Protections](/legal): First Amendment, FAA regulations, §1983, FOIA, FRE 901/902, and Daubert framework.
 - [Take Action](/act): Deploy a sensor, request a legal referral, file a FOIA, pitch a journalist, fund a county.
 - [About](/about): Who we are, what we are not, and the Josiah AI co-investigator.
+- [How to Read Watchtower](/how-to-read): Section-by-section field manual for reading the Live Feed, Findings, Violations, Threat Index, Operators, ML detections, Rules, and Methodology — written for journalists, attorneys, and affected residents.
 
 ## Optional
 

@@ -19,6 +19,7 @@ import { Route as MlDetectionsRouteImport } from './routes/ml-detections'
 import { Route as MethodologyRouteImport } from './routes/methodology'
 import { Route as LiveRouteImport } from './routes/live'
 import { Route as LegalRouteImport } from './routes/legal'
+import { Route as HowToReadRouteImport } from './routes/how-to-read'
 import { Route as FindingsRouteImport } from './routes/findings'
 import { Route as ActRouteImport } from './routes/act'
 import { Route as AboutRouteImport } from './routes/about'
@@ -74,6 +75,11 @@ const LegalRoute = LegalRouteImport.update({
   path: '/legal',
   getParentRoute: () => rootRouteImport,
 } as any)
+const HowToReadRoute = HowToReadRouteImport.update({
+  id: '/how-to-read',
+  path: '/how-to-read',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const FindingsRoute = FindingsRouteImport.update({
   id: '/findings',
   path: '/findings',
@@ -100,6 +106,7 @@ export interface FileRoutesByFullPath {
   '/about': typeof AboutRoute
   '/act': typeof ActRoute
   '/findings': typeof FindingsRoute
+  '/how-to-read': typeof HowToReadRoute
   '/legal': typeof LegalRoute
   '/live': typeof LiveRoute
   '/methodology': typeof MethodologyRoute
@@ -116,6 +123,7 @@ export interface FileRoutesByTo {
   '/about': typeof AboutRoute
   '/act': typeof ActRoute
   '/findings': typeof FindingsRoute
+  '/how-to-read': typeof HowToReadRoute
   '/legal': typeof LegalRoute
   '/live': typeof LiveRoute
   '/methodology': typeof MethodologyRoute
@@ -133,6 +141,7 @@ export interface FileRoutesById {
   '/about': typeof AboutRoute
   '/act': typeof ActRoute
   '/findings': typeof FindingsRoute
+  '/how-to-read': typeof HowToReadRoute
   '/legal': typeof LegalRoute
   '/live': typeof LiveRoute
   '/methodology': typeof MethodologyRoute
@@ -151,6 +160,7 @@ export interface FileRouteTypes {
     | '/about'
     | '/act'
     | '/findings'
+    | '/how-to-read'
     | '/legal'
     | '/live'
     | '/methodology'
@@ -167,6 +177,7 @@ export interface FileRouteTypes {
     | '/about'
     | '/act'
     | '/findings'
+    | '/how-to-read'
     | '/legal'
     | '/live'
     | '/methodology'
@@ -183,6 +194,7 @@ export interface FileRouteTypes {
     | '/about'
     | '/act'
     | '/findings'
+    | '/how-to-read'
     | '/legal'
     | '/live'
     | '/methodology'
@@ -200,6 +212,7 @@ export interface RootRouteChildren {
   AboutRoute: typeof AboutRoute
   ActRoute: typeof ActRoute
   FindingsRoute: typeof FindingsRoute
+  HowToReadRoute: typeof HowToReadRoute
   LegalRoute: typeof LegalRoute
   LiveRoute: typeof LiveRoute
   MethodologyRoute: typeof MethodologyRoute
@@ -284,6 +297,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LegalRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/how-to-read': {
+      id: '/how-to-read'
+      path: '/how-to-read'
+      fullPath: '/how-to-read'
+      preLoaderRoute: typeof HowToReadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/findings': {
       id: '/findings'
       path: '/findings'
@@ -320,6 +340,7 @@ const rootRouteChildren: RootRouteChildren = {
   AboutRoute: AboutRoute,
   ActRoute: ActRoute,
   FindingsRoute: FindingsRoute,
+  HowToReadRoute: HowToReadRoute,
   LegalRoute: LegalRoute,
   LiveRoute: LiveRoute,
   MethodologyRoute: MethodologyRoute,
