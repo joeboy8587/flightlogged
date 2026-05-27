@@ -190,7 +190,14 @@ function Live() {
                   <span className="font-display text-xl">{r.registration || r.icao}</span>
                   <span className="font-mono text-2xl font-bold">{r.totalDetections}</span>
                 </div>
-                {r.owner && <div className="text-xs opacity-70 mb-1">{r.owner}</div>}
+                {r.identifiedName ? (
+                  <div className="mb-1">
+                    <div className="text-xs font-bold">{r.identifiedName}</div>
+                    {(r.registrantCity || r.registrantState) && (
+                      <div className="text-xs opacity-60 font-mono">{[r.registrantCity, r.registrantState].filter(Boolean).join(", ")} · FAA registry</div>
+                    )}
+                  </div>
+                ) : r.owner ? <div className="text-xs opacity-70 mb-1">{r.owner}</div> : null}
                 {r.model && <div className="text-xs opacity-50 mb-3">{r.model}</div>}
                 <div className="grid grid-cols-3 gap-2 text-xs font-mono">
                   <div><div className="opacity-60 label-stamp">MIN ALT</div><div className="font-bold">{fmt(r.minAltitude)} ft</div></div>
