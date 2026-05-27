@@ -558,6 +558,9 @@ export type MlAnomaly = {
   modelName: string | null;
   modelVersion: string | null;
   validated: boolean;
+  identifiedName: string | null;
+  registrantCity: string | null;
+  registrantState: string | null;
 };
 
 export const getMlAnomalies = createServerFn({ method: "GET" }).handler(async (): Promise<MlAnomaly[]> => {
@@ -569,7 +572,12 @@ export const getMlAnomalies = createServerFn({ method: "GET" }).handler(async ()
     ORDER BY detected_at DESC NULLS LAST
     LIMIT 50
   `;
-  return rows.map((r: any) => ({
+  const idMap = await faaIdentityMap(
+    rows.map((r: any) => ({ registration: r.aircraft_registration, icao: r.icao24 })),
+  );
+  return rows.map((r: any) => {
+    const id = lookupIdentity(idMap, r.aircraft_registration, r.icao24);
+    return {
     id: String(r.id),
     detectedAt: r.detected_at ? new Date(r.detected_at).toISOString() : new Date(0).toISOString(),
     registration: r.aircraft_registration,
@@ -581,5 +589,9 @@ export const getMlAnomalies = createServerFn({ method: "GET" }).handler(async ()
     modelName: r.model_name,
     modelVersion: r.model_version,
     validated: !!r.validated,
-  }));
+      identifiedName: id?.name ?? null,
+      registrantCity: id?.city ?? null,
+      registrantState: id?.state ?? null,
+    };
+  });
 });
