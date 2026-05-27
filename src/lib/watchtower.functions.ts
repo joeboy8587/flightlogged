@@ -462,6 +462,10 @@ export type SentinelViolation = {
   severity: string | null;
   description: string | null;
   hashShort: string | null;
+  identifiedName: string | null;
+  registrantCity: string | null;
+  registrantState: string | null;
+  registrantType: string | null;
 };
 
 export const getSentinelViolations = createServerFn({ method: "GET" }).handler(async (): Promise<SentinelViolation[]> => {
@@ -473,7 +477,12 @@ export const getSentinelViolations = createServerFn({ method: "GET" }).handler(a
     ORDER BY detection_timestamp DESC NULLS LAST
     LIMIT 100
   `;
-  return rows.map((r: any) => ({
+  const idMap = await faaIdentityMap(
+    rows.map((r: any) => ({ registration: r.aircraft_registration })),
+  );
+  return rows.map((r: any) => {
+    const id = lookupIdentity(idMap, r.aircraft_registration, null);
+    return {
     id: r.id,
     timestamp: r.detection_timestamp ? new Date(r.detection_timestamp).toISOString() : new Date(0).toISOString(),
     registration: r.aircraft_registration,
@@ -485,7 +494,12 @@ export const getSentinelViolations = createServerFn({ method: "GET" }).handler(a
     severity: r.severity,
     description: r.description,
     hashShort: r.sha256_hash ? String(r.sha256_hash).slice(0, 16) : null,
-  }));
+      identifiedName: id?.name ?? null,
+      registrantCity: id?.city ?? null,
+      registrantState: id?.state ?? null,
+      registrantType: id?.typeRegistrant ?? null,
+    };
+  });
 });
 
 export type ThreatTierBucket = { tier: number | null; level: string | null; count: number };
