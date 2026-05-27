@@ -297,6 +297,9 @@ export type RepeatOffender = {
   nightPct: number | null;
   anomalyScore: number | null;
   lastSeen: string;
+  identifiedName: string | null;
+  registrantCity: string | null;
+  registrantState: string | null;
 };
 
 export const getRepeatOffenders = createServerFn({ method: "GET" }).handler(async (): Promise<RepeatOffender[]> => {
@@ -309,7 +312,12 @@ export const getRepeatOffenders = createServerFn({ method: "GET" }).handler(asyn
     ORDER BY total_detections DESC
     LIMIT 25
   `;
-  return rows.map((r: any) => ({
+  const idMap = await faaIdentityMap(
+    rows.map((r: any) => ({ registration: r.observed_registration, icao: r.icao_hex })),
+  );
+  return rows.map((r: any) => {
+    const id = lookupIdentity(idMap, r.observed_registration, r.icao_hex);
+    return {
     icao: r.icao_hex,
     registration: r.observed_registration,
     owner: r.registered_owner,
@@ -320,7 +328,11 @@ export const getRepeatOffenders = createServerFn({ method: "GET" }).handler(asyn
     nightPct: r.night_pct ? Number(r.night_pct) : null,
     anomalyScore: r.anomaly_score ? Number(r.anomaly_score) : null,
     lastSeen: new Date(r.last_seen).toISOString(),
-  }));
+      identifiedName: id?.name ?? null,
+      registrantCity: id?.city ?? null,
+      registrantState: id?.state ?? null,
+    };
+  });
 });
 
 export type AnomalyFinding = {
