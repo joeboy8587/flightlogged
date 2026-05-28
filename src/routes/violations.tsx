@@ -4,9 +4,10 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
 import { breadcrumbScript } from "@/lib/breadcrumbs";
-import { getSentinelViolations } from "@/lib/watchtower.functions";
+import { getSentinelViolations, getNeonViolations } from "@/lib/watchtower.functions";
 
 const vQO = queryOptions({ queryKey: ["sentinel-violations"], queryFn: () => getSentinelViolations() });
+const nQO = queryOptions({ queryKey: ["neon-violations"], queryFn: () => getNeonViolations() });
 
 const crumbs = [
   { label: "Home", href: "/" },
@@ -39,7 +40,10 @@ export const Route = createFileRoute("/violations")({
       },
     ],
   }),
-  loader: ({ context }) => context.queryClient.ensureQueryData(vQO),
+  loader: ({ context }) => Promise.all([
+    context.queryClient.ensureQueryData(vQO),
+    context.queryClient.ensureQueryData(nQO),
+  ]),
   component: Violations,
   errorComponent: ({ reset }) => (
     <div className="min-h-screen bg-paper"><SiteHeader />
@@ -60,6 +64,7 @@ function sevClass(s: string | null) {
 
 function Violations() {
   const { data } = useSuspenseQuery(vQO);
+  const { data: neon } = useSuspenseQuery(nQO);
   return (
     <div className="min-h-screen bg-paper text-ink">
       <SiteHeader />
@@ -74,6 +79,71 @@ function Violations() {
           </p>
         </div>
       </section>
+
+      {/* Neon-side fresh violations summary */}
+      <section className="border-b-4 border-ink">
+        <div className="max-w-[1400px] mx-auto px-4 py-12">
+          <div className="label-stamp text-alert mb-2">Live regulatory classifications · {neon.totalRows.toLocaleString()} records</div>
+          <h2 className="text-3xl sm:text-4xl mb-2">Fresh violations from regulatory engine</h2>
+          <p className="text-sm opacity-70 mb-6 max-w-3xl">
+            Source: <code>violation_classifications</code> table. Each row is a flight matched against an
+            active FAA baseline. Window: {neon.firstSeen ? new Date(neon.firstSeen).toLocaleDateString() : "—"} → {neon.lastSeen ? new Date(neon.lastSeen).toLocaleDateString() : "—"}.
+          </p>
+
+          <div className="grid md:grid-cols-2 gap-6 mb-8">
+            <div className="brutal-border p-4">
+              <div className="label-stamp mb-3 text-alert">Rules triggered</div>
+              <ul className="space-y-2 font-mono text-sm">
+                {neon.ruleCounts.map((r) => (
+                  <li key={r.rule} className="flex justify-between border-b border-ink/10 pb-1">
+                    <span>{r.rule}</span><span className="font-bold">{r.count.toLocaleString()}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="brutal-border p-4">
+              <div className="label-stamp mb-3 text-alert">Top operators by violations</div>
+              <ol className="space-y-1 font-mono text-xs">
+                {neon.topOperators.map((o, i) => (
+                  <li key={o.ownerName + i} className="flex justify-between gap-2 border-b border-ink/10 py-1">
+                    <span><span className="opacity-50">{(i + 1).toString().padStart(2, "0")}.</span> <span className="font-bold">{o.ownerName}</span>{(o.ownerCity || o.ownerState) && <span className="opacity-60"> · {[o.ownerCity, o.ownerState].filter(Boolean).join(", ")}</span>}</span>
+                    <span className="font-bold">{o.count}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto brutal-border-thick">
+            <table className="w-full text-sm">
+              <thead className="bg-ink text-paper">
+                <tr>
+                  <th className="text-left p-3 label-stamp">When</th>
+                  <th className="text-left p-3 label-stamp">Aircraft</th>
+                  <th className="text-left p-3 label-stamp">Owner</th>
+                  <th className="text-left p-3 label-stamp">Rule</th>
+                  <th className="text-right p-3 label-stamp">Alt (ft)</th>
+                  <th className="text-left p-3 label-stamp">Position</th>
+                </tr>
+              </thead>
+              <tbody className="font-mono">
+                {neon.rows.length === 0 && <tr><td colSpan={6} className="p-6 text-center">No classified violations on record.</td></tr>}
+                {neon.rows.map((r, i) => (
+                  <tr key={(r.detectionId ?? r.icao) + r.capturedAt + i} className="border-t border-ink/20 hover:bg-warning/30">
+                    <td className="p-3 whitespace-nowrap text-xs">{new Date(r.capturedAt).toLocaleString()}</td>
+                    <td className="p-3"><span className="font-bold">{r.registration || r.icao}</span></td>
+                    <td className="p-3 text-xs">{r.ownerName ? <><span className="font-bold">{r.ownerName}</span>{(r.ownerCity || r.ownerState) && <div className="opacity-60">{[r.ownerCity, r.ownerState].filter(Boolean).join(", ")}</div>}</> : <span className="opacity-40">—</span>}</td>
+                    <td className="p-3 text-xs"><span className="label-stamp bg-alert text-paper px-2 py-1">{r.rule}</span></td>
+                    <td className="p-3 text-right font-bold">{r.altitude ?? "—"}</td>
+                    <td className="p-3 text-xs">{r.latitude != null && r.longitude != null ? `${r.latitude.toFixed(3)}, ${r.longitude.toFixed(3)}` : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
       <section>
         <div className="max-w-[1400px] mx-auto px-4 py-12">
           <div className="label-stamp text-alert mb-2">Latest 100 violations</div>
