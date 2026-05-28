@@ -717,7 +717,7 @@ export const getLocalAgencyAircraft = createServerFn({ method: "GET" }).handler(
     WHERE (m.name ILIKE '%kern county%'
         OR m.name ILIKE '%bakersfield%'
         OR m.city ILIKE '%bakersfield%')
-      AND d.altitude_ft IS NULL OR d.altitude_ft >= -100
+      AND (d.altitude_ft IS NULL OR d.altitude_ft >= -100)
     GROUP BY d.icao_hex, d.registration, m.name, m.city, m.state
     ORDER BY detections DESC
     LIMIT 25
