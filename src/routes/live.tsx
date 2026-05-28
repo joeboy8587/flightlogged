@@ -107,6 +107,46 @@ function Live() {
             </div>
             <Link to="/methodology" className="label-stamp brutal-border px-3 py-2 hover:bg-warning">What counts as low? →</Link>
           </div>
+
+          {/* Constitutional banner */}
+          <div className="brutal-border-thick bg-ink text-paper p-5 mb-6">
+            <div className="label-stamp text-warning mb-2">Your rights in this airspace</div>
+            <div className="grid md:grid-cols-3 gap-4 text-sm">
+              <div>
+                <div className="font-bold mb-1">Fourth Amendment</div>
+                <p className="opacity-80">Patterned low-altitude overflights that enable visual or electronic intrusion are not "plain view" — they are search by aerial proxy.</p>
+              </div>
+              <div>
+                <div className="font-bold mb-1">First Amendment</div>
+                <p className="opacity-80">ADS-B is unencrypted public broadcast. FAA registry is public record. Documenting and publishing is protected speech.</p>
+              </div>
+              <div>
+                <div className="font-bold mb-1">What we log</div>
+                <p className="opacity-80">Altitude deviations, patterned overflights, and operator identity — exactly as received, hashed for chain of custody.</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Reader explainers */}
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-3 mb-6 text-xs">
+            <div className="brutal-border p-3 bg-paper">
+              <div className="label-stamp mb-1">What counts as low?</div>
+              <p>Below 1,500 ft AGL, excluding aircraft on the ground. Altitudes from ADS-B barometric pressure; ±50–100 ft from true AGL depending on terrain.</p>
+            </div>
+            <div className="brutal-border p-3 bg-paper">
+              <div className="label-stamp mb-1">Rule column</div>
+              <p><span className="font-bold">Pattern Surveillance Indicator</span> — deviation from 48-hour baseline; flags for review, no allegation. <span className="font-bold">Stalking Statute + FAR 91.119</span> — below FAA minimum safe altitude over populated area.</p>
+            </div>
+            <div className="brutal-border p-3 bg-paper">
+              <div className="label-stamp mb-1">Unidentified / Masked</div>
+              <p>Hex codes with no N-number or owner are not in the public FAA registry. Possible causes: military, blocked registration, international aircraft, transponder anomaly. Logged as received.</p>
+            </div>
+            <div className="brutal-border p-3 bg-paper">
+              <div className="label-stamp mb-1">County: OTHER</div>
+              <p>GPS coordinates outside our primary 4-county zone (Kern, Kings, Tulare, Fresno) or within transition airspace between counties.</p>
+            </div>
+          </div>
+
           <div className="overflow-x-auto brutal-border-thick">
             <table className="w-full text-sm">
               <thead className="bg-ink text-paper">
