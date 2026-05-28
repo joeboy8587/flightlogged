@@ -203,6 +203,17 @@ function Live() {
       {/* IDENTIFIED OPERATORS */}
       <section className="border-b-4 border-ink bg-ink/5">
         <div className="max-w-[1400px] mx-auto px-4 py-16">
+          {/* Coverage disclosure */}
+          <div className="brutal-border p-4 mb-6 bg-warning/40">
+            <div className="label-stamp mb-1">Sensor coverage disclosure</div>
+            <p className="text-xs">
+              Our ADS-B receivers cover lat 34.0–37.5 / lon −120.5 to −116.5 — roughly LA basin north
+              through the Central Valley. Aircraft detected at latitudes below ~35° (e.g. LAPD Air
+              Support over Los Angeles) appear in our feed but are <strong>not</strong> operating in
+              Kern/Kings/Tulare/Fresno. Those rows are tagged county <code>OTHER</code>.
+            </p>
+          </div>
+
           <div className="label-stamp text-ink bg-paper inline-block px-2 py-1 mb-2 brutal-border">FAA Registry · Public record</div>
           <h2 className="text-4xl sm:text-5xl mb-2">Identified operators in this airspace</h2>
           <p className="text-sm opacity-70 mb-6 max-w-3xl">Mode-S hex matched against the FAA Aircraft Registry. All data is public-source and independently verifiable.</p>
@@ -220,6 +231,49 @@ function Live() {
           </div>
         </div>
       </section>
+
+      {/* LOCAL AGENCY AIRCRAFT (Kern County) */}
+      {local.length > 0 && (
+        <section className="border-b-4 border-ink bg-alert/10">
+          <div className="max-w-[1400px] mx-auto px-4 py-16">
+            <div className="label-stamp text-paper bg-alert inline-block px-2 py-1 mb-2">Local government aircraft · Kern County</div>
+            <h2 className="text-4xl sm:text-5xl mb-2">Sheriff, fire, and county-owned aircraft detected</h2>
+            <p className="text-sm opacity-70 mb-6 max-w-3xl">
+              Aircraft whose FAA registry owner is a Kern County government agency or Bakersfield-based
+              entity, matched by Mode-S hex. These are the operators that should be subject to public
+              accountability under California Public Records Act and federal FOIA.
+            </p>
+            <div className="overflow-x-auto brutal-border-thick">
+              <table className="w-full text-sm">
+                <thead className="bg-ink text-paper">
+                  <tr>
+                    <th className="text-left p-3 label-stamp">Aircraft</th>
+                    <th className="text-left p-3 label-stamp">Registered owner</th>
+                    <th className="text-right p-3 label-stamp">Detections</th>
+                    <th className="text-right p-3 label-stamp">Min alt</th>
+                    <th className="text-right p-3 label-stamp">Avg alt</th>
+                    <th className="text-left p-3 label-stamp">Counties seen</th>
+                    <th className="text-left p-3 label-stamp">Last seen</th>
+                  </tr>
+                </thead>
+                <tbody className="font-mono">
+                  {local.map((a) => (
+                    <tr key={a.icao} className="border-t border-ink/20 hover:bg-warning/30">
+                      <td className="p-3"><span className="font-bold">{a.registration || a.icao}</span><div className="text-xs opacity-50">{a.icao}</div></td>
+                      <td className="p-3 text-xs"><span className="font-bold">{a.agency}</span><div className="opacity-60">{[a.city, a.state].filter(Boolean).join(", ")}</div></td>
+                      <td className="p-3 text-right font-bold">{fmt(a.detections)}</td>
+                      <td className={`p-3 text-right ${altClass(a.minAltitude)}`}>{a.minAltitude == null ? "—" : `${fmt(a.minAltitude)} ft`}</td>
+                      <td className="p-3 text-right">{a.avgAltitude == null ? "—" : `${fmt(a.avgAltitude)} ft`}</td>
+                      <td className="p-3 text-xs">{a.counties || "—"}</td>
+                      <td className="p-3 text-xs whitespace-nowrap">{fmtTime(a.lastSeen)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* REPEAT OFFENDERS */}
       <section>
