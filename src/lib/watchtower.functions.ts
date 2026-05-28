@@ -305,6 +305,7 @@ export type RepeatOffender = {
   identifiedName: string | null;
   registrantCity: string | null;
   registrantState: string | null;
+  transponderAnomaly: boolean;
 };
 
 export const getRepeatOffenders = createServerFn({ method: "GET" }).handler(async (): Promise<RepeatOffender[]> => {
@@ -322,13 +323,15 @@ export const getRepeatOffenders = createServerFn({ method: "GET" }).handler(asyn
   );
   return rows.map((r: any) => {
     const id = lookupIdentity(idMap, r.observed_registration, r.icao_hex);
+    const rawMin = r.min_altitude == null ? null : Number(r.min_altitude);
+    const anomaly = rawMin != null && rawMin < -100;
     return {
     icao: r.icao_hex,
     registration: r.observed_registration,
     owner: r.registered_owner,
     model: r.aircraft_model,
     totalDetections: r.total_detections,
-    minAltitude: r.min_altitude,
+    minAltitude: anomaly ? null : rawMin,
     avgAltitude: r.avg_altitude ? Number(r.avg_altitude) : null,
     nightPct: r.night_pct ? Number(r.night_pct) : null,
     anomalyScore: r.anomaly_score ? Number(r.anomaly_score) : null,
@@ -336,6 +339,7 @@ export const getRepeatOffenders = createServerFn({ method: "GET" }).handler(asyn
       identifiedName: id?.name ?? null,
       registrantCity: id?.city ?? null,
       registrantState: id?.state ?? null,
+      transponderAnomaly: anomaly,
     };
   });
 });
