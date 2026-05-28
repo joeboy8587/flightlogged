@@ -133,7 +133,10 @@ export const getRecentLowAltitude = createServerFn({ method: "GET" }).handler(as
       FROM detections d
       LEFT JOIN aircraft_profiles p ON p.icao_hex = d.icao_hex
       LEFT JOIN faa_master m ON UPPER(m.mode_s_code_hex) = UPPER(d.icao_hex)
-      WHERE d.altitude_ft IS NOT NULL AND d.altitude_ft < 1500 AND d.on_ground = false
+      WHERE d.altitude_ft IS NOT NULL
+        AND d.altitude_ft < 1500
+        AND d.altitude_ft >= -100      -- exclude transponder/barometric anomalies from public display
+        AND d.on_ground = false
       ORDER BY d.captured_at DESC
       LIMIT 40
     `,
