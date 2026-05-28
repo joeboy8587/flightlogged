@@ -4,12 +4,13 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
 import { breadcrumbScript } from "@/lib/breadcrumbs";
-import { getSnapshot, getRecentLowAltitude, getRepeatOffenders, getIdentifiedOperators } from "@/lib/watchtower.functions";
+import { getSnapshot, getRecentLowAltitude, getRepeatOffenders, getIdentifiedOperators, getLocalAgencyAircraft } from "@/lib/watchtower.functions";
 
 const snapQO = queryOptions({ queryKey: ["snapshot"], queryFn: () => getSnapshot(), refetchInterval: 30000 });
 const lowAltQO = queryOptions({ queryKey: ["low-alt"], queryFn: () => getRecentLowAltitude(), refetchInterval: 30000 });
 const repeatQO = queryOptions({ queryKey: ["repeat"], queryFn: () => getRepeatOffenders() });
 const idQO = queryOptions({ queryKey: ["identified"], queryFn: () => getIdentifiedOperators() });
+const localQO = queryOptions({ queryKey: ["local-agencies"], queryFn: () => getLocalAgencyAircraft() });
 
 const crumbs = [{ label: "Home", href: "/" }, { label: "Live Feed" }];
 
@@ -30,6 +31,7 @@ export const Route = createFileRoute("/live")({
     context.queryClient.ensureQueryData(lowAltQO),
     context.queryClient.ensureQueryData(repeatQO),
     context.queryClient.ensureQueryData(idQO),
+    context.queryClient.ensureQueryData(localQO),
   ]),
   component: Live,
   errorComponent: ({ reset }) => (
@@ -56,6 +58,7 @@ function Live() {
   const { data: low } = useSuspenseQuery(lowAltQO);
   const { data: repeat } = useSuspenseQuery(repeatQO);
   const { data: identified } = useSuspenseQuery(idQO);
+  const { data: local } = useSuspenseQuery(localQO);
 
   return (
     <div className="min-h-screen bg-paper text-ink">
