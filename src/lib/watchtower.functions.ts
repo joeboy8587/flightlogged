@@ -604,3 +604,135 @@ export const getMlAnomalies = createServerFn({ method: "GET" }).handler(async ()
     };
   });
 });
+
+// ============= Neon-native violations (violation_classifications) =============
+export type NeonViolation = {
+  detectionId: string | null;
+  icao: string;
+  registration: string | null;
+  capturedAt: string;
+  altitude: number | null;
+  speed: number | null;
+  latitude: number | null;
+  longitude: number | null;
+  rule: string;
+  ownerName: string | null;
+  ownerCity: string | null;
+  ownerState: string | null;
+  typeRegistrant: string | null;
+  aircraftMfr: string | null;
+  aircraftModel: string | null;
+};
+
+export type NeonViolationSummary = {
+  totalRows: number;
+  firstSeen: string | null;
+  lastSeen: string | null;
+  ruleCounts: { rule: string; count: number }[];
+  topOperators: { ownerName: string; ownerCity: string | null; ownerState: string | null; count: number }[];
+  rows: NeonViolation[];
+};
+
+export const getNeonViolations = createServerFn({ method: "GET" }).handler(async (): Promise<NeonViolationSummary> => {
+  const w = watchtower();
+  const [meta, ruleCounts, topOps, rows] = await Promise.all([
+    w`SELECT COUNT(*)::int AS total,
+             MIN(captured_at) AS first_seen,
+             MAX(captured_at) AS last_seen
+      FROM violation_classifications`,
+    w`SELECT rule_violated, COUNT(*)::int AS c
+      FROM violation_classifications
+      GROUP BY rule_violated
+      ORDER BY c DESC`,
+    w`SELECT owner_name, owner_city, owner_state, COUNT(*)::int AS c
+      FROM violation_classifications
+      WHERE owner_name IS NOT NULL
+      GROUP BY owner_name, owner_city, owner_state
+      ORDER BY c DESC
+      LIMIT 15`,
+    w`SELECT detection_id, icao_hex, registration, captured_at, altitude_ft, speed_kts,
+             latitude, longitude, rule_violated, owner_name, owner_city, owner_state,
+             type_registrant, aircraft_mfr, aircraft_model
+      FROM violation_classifications
+      WHERE altitude_ft IS NULL OR altitude_ft >= -100
+      ORDER BY captured_at DESC NULLS LAST
+      LIMIT 100`,
+  ]);
+  const m = meta[0] as any;
+  return {
+    totalRows: m?.total ?? 0,
+    firstSeen: m?.first_seen ? new Date(m.first_seen).toISOString() : null,
+    lastSeen: m?.last_seen ? new Date(m.last_seen).toISOString() : null,
+    ruleCounts: (ruleCounts as any[]).map((r) => ({ rule: r.rule_violated, count: r.c })),
+    topOperators: (topOps as any[]).map((r) => ({
+      ownerName: r.owner_name, ownerCity: r.owner_city, ownerState: r.owner_state, count: r.c,
+    })),
+    rows: (rows as any[]).map((r) => ({
+      detectionId: r.detection_id ?? null,
+      icao: r.icao_hex,
+      registration: r.registration,
+      capturedAt: r.captured_at ? new Date(r.captured_at).toISOString() : new Date(0).toISOString(),
+      altitude: r.altitude_ft,
+      speed: r.speed_kts != null ? Number(r.speed_kts) : null,
+      latitude: r.latitude != null ? Number(r.latitude) : null,
+      longitude: r.longitude != null ? Number(r.longitude) : null,
+      rule: r.rule_violated,
+      ownerName: r.owner_name,
+      ownerCity: r.owner_city,
+      ownerState: r.owner_state,
+      typeRegistrant: r.type_registrant,
+      aircraftMfr: r.aircraft_mfr,
+      aircraftModel: r.aircraft_model,
+    })),
+  };
+});
+
+// ============= Local agencies in airspace (Kern + neighbors, from FAA registry match) =============
+export type LocalAgencyAircraft = {
+  icao: string;
+  registration: string | null;
+  agency: string;
+  city: string | null;
+  state: string | null;
+  detections: number;
+  minAltitude: number | null;
+  avgAltitude: number | null;
+  counties: string;
+  firstSeen: string;
+  lastSeen: string;
+};
+
+export const getLocalAgencyAircraft = createServerFn({ method: "GET" }).handler(async (): Promise<LocalAgencyAircraft[]> => {
+  const w = watchtower();
+  const rows = await w`
+    SELECT d.icao_hex, d.registration, m.name, m.city, m.state,
+           COUNT(*)::int AS detections,
+           MIN(d.altitude_ft) AS min_alt,
+           ROUND(AVG(d.altitude_ft)::numeric, 0)::int AS avg_alt,
+           STRING_AGG(DISTINCT d.county, ',' ORDER BY d.county) AS counties,
+           MIN(d.captured_at) AS first_seen,
+           MAX(d.captured_at) AS last_seen
+    FROM detections d
+    JOIN faa_master m ON UPPER(m.mode_s_code_hex) = UPPER(d.icao_hex)
+    WHERE (m.name ILIKE '%kern county%'
+        OR m.name ILIKE '%bakersfield%'
+        OR m.city ILIKE '%bakersfield%')
+      AND (d.altitude_ft IS NULL OR d.altitude_ft >= -100)
+    GROUP BY d.icao_hex, d.registration, m.name, m.city, m.state
+    ORDER BY detections DESC
+    LIMIT 25
+  `;
+  return (rows as any[]).map((r) => ({
+    icao: r.icao_hex,
+    registration: r.registration,
+    agency: r.name,
+    city: r.city,
+    state: r.state,
+    detections: r.detections,
+    minAltitude: r.min_alt == null ? null : Number(r.min_alt),
+    avgAltitude: r.avg_alt == null ? null : Number(r.avg_alt),
+    counties: r.counties ?? "",
+    firstSeen: r.first_seen ? new Date(r.first_seen).toISOString() : new Date(0).toISOString(),
+    lastSeen: r.last_seen ? new Date(r.last_seen).toISOString() : new Date(0).toISOString(),
+  }));
+});
