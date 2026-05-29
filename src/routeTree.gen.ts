@@ -21,6 +21,7 @@ import { Route as LiveRouteImport } from './routes/live'
 import { Route as LegalRouteImport } from './routes/legal'
 import { Route as HowToReadRouteImport } from './routes/how-to-read'
 import { Route as FindingsRouteImport } from './routes/findings'
+import { Route as CoordinationRouteImport } from './routes/coordination'
 import { Route as ActRouteImport } from './routes/act'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
@@ -85,6 +86,11 @@ const FindingsRoute = FindingsRouteImport.update({
   path: '/findings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CoordinationRoute = CoordinationRouteImport.update({
+  id: '/coordination',
+  path: '/coordination',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ActRoute = ActRouteImport.update({
   id: '/act',
   path: '/act',
@@ -105,6 +111,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/act': typeof ActRoute
+  '/coordination': typeof CoordinationRoute
   '/findings': typeof FindingsRoute
   '/how-to-read': typeof HowToReadRoute
   '/legal': typeof LegalRoute
@@ -122,6 +129,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/act': typeof ActRoute
+  '/coordination': typeof CoordinationRoute
   '/findings': typeof FindingsRoute
   '/how-to-read': typeof HowToReadRoute
   '/legal': typeof LegalRoute
@@ -140,6 +148,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/act': typeof ActRoute
+  '/coordination': typeof CoordinationRoute
   '/findings': typeof FindingsRoute
   '/how-to-read': typeof HowToReadRoute
   '/legal': typeof LegalRoute
@@ -159,6 +168,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/act'
+    | '/coordination'
     | '/findings'
     | '/how-to-read'
     | '/legal'
@@ -176,6 +186,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/act'
+    | '/coordination'
     | '/findings'
     | '/how-to-read'
     | '/legal'
@@ -193,6 +204,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/act'
+    | '/coordination'
     | '/findings'
     | '/how-to-read'
     | '/legal'
@@ -211,6 +223,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
   ActRoute: typeof ActRoute
+  CoordinationRoute: typeof CoordinationRoute
   FindingsRoute: typeof FindingsRoute
   HowToReadRoute: typeof HowToReadRoute
   LegalRoute: typeof LegalRoute
@@ -311,6 +324,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FindingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/coordination': {
+      id: '/coordination'
+      path: '/coordination'
+      fullPath: '/coordination'
+      preLoaderRoute: typeof CoordinationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/act': {
       id: '/act'
       path: '/act'
@@ -339,6 +359,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
   ActRoute: ActRoute,
+  CoordinationRoute: CoordinationRoute,
   FindingsRoute: FindingsRoute,
   HowToReadRoute: HowToReadRoute,
   LegalRoute: LegalRoute,
