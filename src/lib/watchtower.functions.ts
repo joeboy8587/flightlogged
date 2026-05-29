@@ -736,3 +736,245 @@ export const getLocalAgencyAircraft = createServerFn({ method: "GET" }).handler(
     lastSeen: r.last_seen ? new Date(r.last_seen).toISOString() : new Date(0).toISOString(),
   }));
 });
+
+// ============================================================
+// BEHAVIORAL COORDINATION — operational-role classifier
+// ------------------------------------------------------------
+// Three buckets, behavior-first (not registry-first):
+//   1. Direct State Patrol      — registry-owned by government
+//   2. Contractor State Function — private LLC whose telemetry matches the
+//                                   government baseline (altitude / county /
+//                                   hour-of-day). § 1983 via public-function test.
+//   3. Enterprise Auxiliary      — private/shell coordinating with the same
+//                                   pattern (RICO predicate signal).
+// ============================================================
+
+export type CoordinationRow = {
+  icao: string;
+  registration: string | null;
+  registryOwner: string | null;
+  registrantType: string | null;
+  city: string | null;
+  state: string | null;
+  detections: number;
+  medianAltitude: number | null;
+  minAltitude: number | null;
+  countiesSeen: string[];
+  hoursSeen: number[];
+  countyOverlap: number;        // 0..1
+  hourOverlap: number;          // 0..1
+  altitudeMatch: boolean;
+  lowOrbit: boolean;            // median < 1500 ft
+  coordinationScore: number;    // 0..4
+  operationalRole:
+    | "Direct State Patrol"
+    | "Contractor State Function"
+    | "Enterprise Auxiliary"
+    | "Independent";
+  legalTheory: string;
+  lastSeen: string;
+};
+
+export type BehavioralBaseline = {
+  aircraft: { registration: string | null; icao: string; owner: string | null }[];
+  counties: string[];
+  hours: number[];
+  medianBand: { lo: number; hi: number } | null;
+};
+
+export type BehavioralCoordination = {
+  baseline: BehavioralBaseline;
+  rows: CoordinationRow[];
+  countByRole: Record<CoordinationRow["operationalRole"], number>;
+};
+
+const DIRECT_STATE_RX =
+  /\b(sheriff|police|county of|city of|fire (department|district)|department of|state of|u\.?s\.?|united states|customs|border patrol|f\.?b\.?i|federal bureau|drug enforcement|highway patrol|chp|government)\b/i;
+const CONTRACTOR_RX =
+  /\b(aerial|patrol|aviation|helicopter|airborne|airways|surveillance|security|recon)\b/i;
+const SHELL_RX = /\b(llc|holdings|trust|llp|services|enterprises|capital|group)\b/i;
+
+function jaccard<T>(a: T[], b: T[]): number {
+  if (a.length === 0 || b.length === 0) return 0;
+  const A = new Set(a);
+  let inter = 0;
+  for (const x of b) if (A.has(x)) inter++;
+  const union = new Set<T>([...a, ...b]).size;
+  return union === 0 ? 0 : inter / union;
+}
+
+export const getBehavioralCoordination = createServerFn({ method: "GET" }).handler(
+  async (): Promise<BehavioralCoordination> => {
+    const w = watchtower();
+    const rows = await w`
+      SELECT d.icao_hex, d.registration,
+             m.name AS owner, m.type_registrant, m.city, m.state,
+             COUNT(*)::int AS detections,
+             PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY d.altitude_ft) AS median_alt,
+             MIN(d.altitude_ft) AS min_alt,
+             ARRAY_AGG(DISTINCT d.county) FILTER (WHERE d.county IS NOT NULL) AS counties,
+             ARRAY_AGG(DISTINCT EXTRACT(HOUR FROM d.captured_at)::int) AS hours,
+             MAX(d.captured_at) AS last_seen
+      FROM detections d
+      LEFT JOIN faa_master m ON UPPER(m.mode_s_code_hex) = UPPER(d.icao_hex)
+      WHERE d.altitude_ft IS NOT NULL
+        AND d.altitude_ft >= -100
+        AND d.on_ground = false
+      GROUP BY d.icao_hex, d.registration, m.name, m.type_registrant, m.city, m.state
+      HAVING COUNT(*) >= 10
+      ORDER BY COUNT(*) DESC
+      LIMIT 300
+    `;
+
+    type Raw = {
+      icao_hex: string;
+      registration: string | null;
+      owner: string | null;
+      type_registrant: string | null;
+      city: string | null;
+      state: string | null;
+      detections: number;
+      median_alt: number | null;
+      min_alt: number | null;
+      counties: string[] | null;
+      hours: number[] | null;
+      last_seen: string;
+    };
+    const all = (rows as any[]) as Raw[];
+
+    // Build baseline from direct-state aircraft
+    const direct = all.filter(
+      (r) => r.owner && DIRECT_STATE_RX.test(r.owner),
+    );
+    const baseCountiesSet = new Set<string>();
+    const baseHoursSet = new Set<number>();
+    const baseMedians: number[] = [];
+    for (const d of direct) {
+      (d.counties ?? []).forEach((c) => c && baseCountiesSet.add(c));
+      (d.hours ?? []).forEach((h) => h != null && baseHoursSet.add(Number(h)));
+      if (d.median_alt != null) baseMedians.push(Number(d.median_alt));
+    }
+    baseMedians.sort((a, b) => a - b);
+    const medianBand =
+      baseMedians.length > 0
+        ? {
+            lo: Math.min(...baseMedians) - 200,
+            hi: Math.max(...baseMedians) + 200,
+          }
+        : null;
+    const baseCounties = Array.from(baseCountiesSet);
+    const baseHours = Array.from(baseHoursSet);
+
+    const baselineAircraft = direct.map((d) => ({
+      registration: d.registration,
+      icao: d.icao_hex,
+      owner: d.owner,
+    }));
+
+    function classify(r: Raw): CoordinationRow {
+      const counties = (r.counties ?? []).filter(Boolean) as string[];
+      const hours = (r.hours ?? []).map(Number);
+      const med = r.median_alt != null ? Number(r.median_alt) : null;
+
+      const isDirect = !!r.owner && DIRECT_STATE_RX.test(r.owner);
+      const countyOverlap =
+        counties.length === 0
+          ? 0
+          : counties.filter((c) => baseCountiesSet.has(c)).length / counties.length;
+      const hourOverlap = jaccard(hours, baseHours);
+      const altitudeMatch =
+        medianBand != null && med != null && med >= medianBand.lo && med <= medianBand.hi;
+      const lowOrbit = med != null && med < 1500;
+
+      let score = 0;
+      if (altitudeMatch) score++;
+      if (countyOverlap >= 0.5) score++;
+      if (hourOverlap >= 0.4) score++;
+      if (lowOrbit) score++;
+
+      let role: CoordinationRow["operationalRole"];
+      let theory: string;
+      if (isDirect) {
+        role = "Direct State Patrol";
+        theory =
+          "Government-owned per FAA registry. State actor by ownership. 42 U.S.C. § 1983 applies directly.";
+      } else if (score >= 3 && r.owner && CONTRACTOR_RX.test(r.owner)) {
+        role = "Contractor State Function";
+        theory =
+          "Private contractor whose telemetry matches the government baseline. Public-function test (Marsh v. Alabama) — state actor for § 1983 purposes.";
+      } else if (score >= 3 && r.owner && SHELL_RX.test(r.owner)) {
+        role = "Enterprise Auxiliary";
+        theory =
+          "Private/shell entity coordinated with the state-actor cluster. RICO predicate signal — 18 U.S.C. § 1962(c), \"association in fact\" per § 1961(4).";
+      } else if (score >= 3) {
+        role = "Enterprise Auxiliary";
+        theory =
+          "Behavior matches the state-actor cluster despite non-government registry. Coordination warrants further inquiry.";
+      } else {
+        role = "Independent";
+        theory = "No behavioral coordination with state-actor baseline detected.";
+      }
+
+      return {
+        icao: r.icao_hex,
+        registration: r.registration,
+        registryOwner: r.owner,
+        registrantType: r.type_registrant,
+        city: r.city,
+        state: r.state,
+        detections: r.detections,
+        medianAltitude: med,
+        minAltitude: r.min_alt != null ? Number(r.min_alt) : null,
+        countiesSeen: counties,
+        hoursSeen: hours,
+        countyOverlap: Math.round(countyOverlap * 100) / 100,
+        hourOverlap: Math.round(hourOverlap * 100) / 100,
+        altitudeMatch,
+        lowOrbit,
+        coordinationScore: score,
+        operationalRole: role,
+        legalTheory: theory,
+        lastSeen: new Date(r.last_seen).toISOString(),
+      };
+    }
+
+    const classified = all.map(classify);
+
+    // Keep direct + anything with score >= 2; cap at 100 by detections.
+    const filtered = classified
+      .filter((r) => r.operationalRole !== "Independent" || r.coordinationScore >= 2)
+      .sort((a, b) => {
+        const rank: Record<CoordinationRow["operationalRole"], number> = {
+          "Direct State Patrol": 0,
+          "Contractor State Function": 1,
+          "Enterprise Auxiliary": 2,
+          Independent: 3,
+        };
+        if (rank[a.operationalRole] !== rank[b.operationalRole])
+          return rank[a.operationalRole] - rank[b.operationalRole];
+        if (b.coordinationScore !== a.coordinationScore)
+          return b.coordinationScore - a.coordinationScore;
+        return b.detections - a.detections;
+      })
+      .slice(0, 100);
+
+    const countByRole: Record<CoordinationRow["operationalRole"], number> = {
+      "Direct State Patrol": 0,
+      "Contractor State Function": 0,
+      "Enterprise Auxiliary": 0,
+      Independent: 0,
+    };
+    for (const r of filtered) countByRole[r.operationalRole]++;
+
+    return {
+      baseline: {
+        aircraft: baselineAircraft,
+        counties: baseCounties.sort(),
+        hours: baseHours.sort((a, b) => a - b),
+        medianBand,
+      },
+      rows: filtered,
+      countByRole,
+    };
+  },
+);
