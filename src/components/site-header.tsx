@@ -6,6 +6,7 @@ const NAV = [
   { to: "/live", label: "Live Feed" },
   { to: "/findings", label: "Findings" },
   { to: "/violations", label: "Violations" },
+  { to: "/coordination", label: "Coordination" },
   { to: "/threat-index", label: "Threat Index" },
   { to: "/operators", label: "Operators" },
   { to: "/ml-detections", label: "ML" },

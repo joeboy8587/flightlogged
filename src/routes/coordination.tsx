@@ -1,0 +1,331 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
+import { SiteHeader } from "@/components/site-header";
+import { SiteFooter } from "@/components/site-footer";
+import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
+import { breadcrumbScript } from "@/lib/breadcrumbs";
+import { getBehavioralCoordination, type CoordinationRow } from "@/lib/watchtower.functions";
+
+const coordQO = queryOptions({
+  queryKey: ["behavioral-coordination"],
+  queryFn: () => getBehavioralCoordination(),
+});
+
+const crumbs = [
+  { label: "Home", href: "/" },
+  { label: "Coordination" },
+];
+
+export const Route = createFileRoute("/coordination")({
+  head: () => ({
+    meta: [
+      { title: "Behavioral Coordination — The Architecture of Never" },
+      {
+        name: "description",
+        content:
+          "Operational-role classification of every aircraft: Direct State Patrol, Contractor State Function, Enterprise Auxiliary. Behavior-first, registry-second.",
+      },
+      { property: "og:title", content: "Behavioral Coordination" },
+      {
+        property: "og:description",
+        content:
+          "The sky doesn't read the FAA registry. It records where the metal goes. Operational-role analysis with § 1983 and RICO theory mapping.",
+      },
+      { property: "og:url", content: "https://flightlogged.lovable.app/coordination" },
+    ],
+    links: [{ rel: "canonical", href: "https://flightlogged.lovable.app/coordination" }],
+    scripts: [
+      breadcrumbScript(crumbs),
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Dataset",
+          name: "Behavioral Coordination Index",
+          description:
+            "Aircraft classified by operational role based on observed telemetry coordination with the government state-actor baseline.",
+          url: "https://flightlogged.lovable.app/coordination",
+          creator: { "@type": "Organization", name: "The Architecture of Never" },
+          isAccessibleForFree: true,
+        }),
+      },
+    ],
+  }),
+  loader: ({ context }) => context.queryClient.ensureQueryData(coordQO),
+  component: Coordination,
+  errorComponent: ({ reset }) => (
+    <div className="min-h-screen bg-paper">
+      <SiteHeader />
+      <div className="max-w-[1400px] mx-auto px-4 py-20">
+        <h1 className="text-5xl mb-4">Index unavailable.</h1>
+        <p className="font-mono text-sm mb-6">Coordination data temporarily unavailable.</p>
+        <button onClick={reset} className="brutal-border px-5 py-3 label-stamp bg-warning">
+          Retry
+        </button>
+      </div>
+    </div>
+  ),
+});
+
+function roleClass(role: CoordinationRow["operationalRole"]) {
+  switch (role) {
+    case "Direct State Patrol":
+      return "bg-alert text-paper";
+    case "Contractor State Function":
+      return "bg-warning text-ink";
+    case "Enterprise Auxiliary":
+      return "bg-ink text-paper";
+    default:
+      return "bg-paper text-ink brutal-border";
+  }
+}
+
+function Pill({ on, label }: { on: boolean; label: string }) {
+  return (
+    <span
+      className={`label-stamp px-2 py-0.5 ${on ? "bg-ink text-paper" : "bg-paper text-ink/40 brutal-border"}`}
+    >
+      {label}
+    </span>
+  );
+}
+
+function Coordination() {
+  const { data } = useSuspenseQuery(coordQO);
+  const { baseline, rows, countByRole } = data;
+
+  return (
+    <div className="min-h-screen bg-paper text-ink">
+      <SiteHeader />
+      <SiteBreadcrumbs items={crumbs} />
+
+      <section className="border-b-4 border-ink bg-ink text-paper">
+        <div className="max-w-[1400px] mx-auto px-4 py-12">
+          <div className="label-stamp text-warning mb-4">Operational-role classifier · behavior-first</div>
+          <h1 className="text-5xl sm:text-7xl mb-4">The sky doesn't read the registry.</h1>
+          <p className="max-w-3xl text-sm opacity-80 mb-6">
+            Three buckets. The registry says one thing — the telemetry says another. We classify by
+            what the metal actually does: altitude band, county footprint, hour-of-day clustering.
+            Coordination with the state-actor baseline = constitutional and statutory exposure.
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-0 brutal-border-thick border-paper">
+            {[
+              ["Direct State", countByRole["Direct State Patrol"], "bg-alert text-paper"],
+              ["Contractor State", countByRole["Contractor State Function"], "bg-warning text-ink"],
+              ["Enterprise Auxiliary", countByRole["Enterprise Auxiliary"], "bg-paper text-ink"],
+              ["Independent (≥2 signals)", countByRole["Independent"], "bg-ink text-paper"],
+            ].map(([l, v, cls], i) => (
+              <div
+                key={String(l)}
+                className={`p-5 ${i < 3 ? "sm:border-r border-paper/30" : ""} ${cls as string}`}
+              >
+                <div className="label-stamp opacity-70">{l as string}</div>
+                <div className="font-mono text-4xl font-bold mt-1">{v as number}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Legal framework */}
+      <section className="border-b-4 border-ink">
+        <div className="max-w-[1400px] mx-auto px-4 py-12">
+          <div className="label-stamp text-alert mb-2">Legal framework</div>
+          <h2 className="text-3xl sm:text-4xl mb-6">Three buckets, three theories.</h2>
+          <div className="grid md:grid-cols-3 gap-4">
+            <div className="brutal-border p-5">
+              <div className="label-stamp bg-alert text-paper inline-block px-2 py-0.5 mb-3">
+                Direct State Patrol
+              </div>
+              <p className="text-sm mb-3">
+                <strong>Registry says:</strong> government agency.<br />
+                <strong>Telemetry confirms:</strong> government orbit, altitude, timing.
+              </p>
+              <p className="text-xs opacity-80 font-mono">
+                § 1983 slam dunk. State actor by ownership. No public-function analysis required.
+              </p>
+            </div>
+            <div className="brutal-border p-5 bg-warning/40">
+              <div className="label-stamp bg-warning text-ink inline-block px-2 py-0.5 mb-3 brutal-border">
+                Contractor State Function
+              </div>
+              <p className="text-sm mb-3">
+                <strong>Registry says:</strong> private aviation LLC.<br />
+                <strong>Telemetry proves:</strong> identical orbit, altitude, timing to direct state actor.
+              </p>
+              <p className="text-xs opacity-80 font-mono">
+                § 1983 via public-function test (Marsh v. Alabama). A private entity performing a
+                traditional government function — aerial law enforcement patrol — is a state actor.
+              </p>
+            </div>
+            <div className="brutal-border p-5 bg-ink text-paper">
+              <div className="label-stamp bg-paper text-ink inline-block px-2 py-0.5 mb-3">
+                Enterprise Auxiliary
+              </div>
+              <p className="text-sm mb-3">
+                <strong>Registry says:</strong> shell LLC / holding entity.<br />
+                <strong>Telemetry proves:</strong> coordinated with state-actor cluster.
+              </p>
+              <p className="text-xs opacity-80 font-mono">
+                RICO predicate signal. 18 U.S.C. § 1962(c) — "association in fact" per § 1961(4).
+                Pattern of coordinated conduct = enterprise.
+              </p>
+            </div>
+          </div>
+          <p className="mt-6 text-xs font-mono opacity-70 max-w-3xl">
+            Classification is computed from public telemetry — not legal conclusion. Bucket assignment
+            is the prosecutor's theory, not the verdict. Defense always available.
+          </p>
+        </div>
+      </section>
+
+      {/* Baseline */}
+      <section className="border-b-4 border-ink bg-paper">
+        <div className="max-w-[1400px] mx-auto px-4 py-12">
+          <div className="label-stamp text-alert mb-2">State-actor baseline</div>
+          <h2 className="text-3xl sm:text-4xl mb-2">What "government behavior" looks like.</h2>
+          <p className="text-sm opacity-70 max-w-3xl mb-6">
+            Computed from {baseline.aircraft.length} aircraft whose FAA registry owner is a
+            government entity (sheriff, police, fire, county, federal). Every other aircraft is
+            scored against this signature.
+          </p>
+          <div className="grid md:grid-cols-3 gap-4 text-sm">
+            <div className="brutal-border p-4">
+              <div className="label-stamp mb-2">Median altitude band</div>
+              <div className="font-mono text-2xl font-bold">
+                {baseline.medianBand
+                  ? `${baseline.medianBand.lo.toLocaleString()} – ${baseline.medianBand.hi.toLocaleString()} ft`
+                  : "—"}
+              </div>
+              <p className="text-xs opacity-60 mt-2">±200 ft buffer applied. Match = altitude signal.</p>
+            </div>
+            <div className="brutal-border p-4">
+              <div className="label-stamp mb-2">Counties patrolled</div>
+              <div className="font-mono text-xs leading-relaxed">
+                {baseline.counties.length > 0 ? baseline.counties.join(" · ") : "—"}
+              </div>
+              <p className="text-xs opacity-60 mt-2">Overlap ≥ 50% of candidate's counties = signal.</p>
+            </div>
+            <div className="brutal-border p-4">
+              <div className="label-stamp mb-2">Hour-of-day windows</div>
+              <div className="font-mono text-xs leading-relaxed">
+                {baseline.hours.length > 0
+                  ? baseline.hours.map((h) => String(h).padStart(2, "0")).join(" · ")
+                  : "—"}
+              </div>
+              <p className="text-xs opacity-60 mt-2">Jaccard overlap ≥ 0.4 = temporal signal.</p>
+            </div>
+          </div>
+          {baseline.aircraft.length > 0 && (
+            <div className="mt-6">
+              <div className="label-stamp mb-2">Reference aircraft</div>
+              <div className="flex flex-wrap gap-2 font-mono text-xs">
+                {baseline.aircraft.slice(0, 20).map((a) => (
+                  <span key={a.icao} className="brutal-border px-2 py-1 bg-alert/10">
+                    <strong>{a.registration || a.icao}</strong>
+                    {a.owner && <span className="opacity-60"> · {a.owner}</span>}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* The table */}
+      <section>
+        <div className="max-w-[1400px] mx-auto px-4 py-12">
+          <div className="label-stamp text-alert mb-2">
+            Operators classified by behavior · {rows.length} aircraft
+          </div>
+          <h2 className="text-3xl sm:text-4xl mb-6">Tail-by-tail.</h2>
+          <div className="overflow-x-auto brutal-border-thick">
+            <table className="w-full text-sm">
+              <thead className="bg-ink text-paper">
+                <tr>
+                  <th className="text-left p-3 label-stamp">Tail</th>
+                  <th className="text-left p-3 label-stamp">Registry owner</th>
+                  <th className="text-left p-3 label-stamp">Operational role</th>
+                  <th className="text-left p-3 label-stamp">Coordination signals</th>
+                  <th className="text-right p-3 label-stamp">Score</th>
+                  <th className="text-right p-3 label-stamp">Median alt</th>
+                  <th className="text-right p-3 label-stamp">Detections</th>
+                </tr>
+              </thead>
+              <tbody className="font-mono">
+                {rows.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="p-6 text-center">
+                      No coordinating aircraft on record yet.
+                    </td>
+                  </tr>
+                )}
+                {rows.map((r) => (
+                  <tr key={r.icao} className="border-t border-ink/20 hover:bg-warning/30 align-top">
+                    <td className="p-3">
+                      <div className="font-bold text-base">{r.registration || r.icao}</div>
+                      <div className="text-xs opacity-50">{r.icao}</div>
+                    </td>
+                    <td className="p-3 text-xs max-w-xs">
+                      <div className="font-bold">{r.registryOwner || "—"}</div>
+                      {(r.city || r.state) && (
+                        <div className="opacity-60">{[r.city, r.state].filter(Boolean).join(", ")}</div>
+                      )}
+                      {r.registrantType && <div className="opacity-50">{r.registrantType}</div>}
+                    </td>
+                    <td className="p-3">
+                      <span className={`label-stamp inline-block px-2 py-1 ${roleClass(r.operationalRole)}`}>
+                        {r.operationalRole}
+                      </span>
+                      <p className="text-[10px] opacity-70 mt-2 max-w-[240px] leading-snug font-sans">
+                        {r.legalTheory}
+                      </p>
+                    </td>
+                    <td className="p-3">
+                      <div className="flex flex-col gap-1 text-[10px]">
+                        <Pill on={r.altitudeMatch} label="ALT MATCH" />
+                        <Pill on={r.countyOverlap >= 0.5} label={`COUNTY ${Math.round(r.countyOverlap * 100)}%`} />
+                        <Pill on={r.hourOverlap >= 0.4} label={`HOUR ${Math.round(r.hourOverlap * 100)}%`} />
+                        <Pill on={r.lowOrbit} label="LOW ORBIT" />
+                      </div>
+                    </td>
+                    <td className="p-3 text-right">
+                      <div className="font-bold text-2xl">{r.coordinationScore}</div>
+                      <div className="text-[10px] opacity-50">/ 4</div>
+                    </td>
+                    <td className="p-3 text-right">
+                      {r.medianAltitude != null ? `${Math.round(r.medianAltitude).toLocaleString()} ft` : "—"}
+                      {r.minAltitude != null && (
+                        <div className="text-[10px] opacity-50">min {Math.round(r.minAltitude)} ft</div>
+                      )}
+                    </td>
+                    <td className="p-3 text-right font-bold">{r.detections.toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-4 text-xs opacity-70 font-mono max-w-3xl">
+            Score = sum of four binary signals: altitude band match, county overlap ≥ 50%, hour-of-day
+            Jaccard ≥ 0.4, median orbit below 1,500 ft. Computed from{" "}
+            <Link to="/methodology" className="underline">public ADS-B and FAA registry data</Link>.
+            Coordination ≠ conspiracy. Coordination = the precondition for one.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Link to="/operators" className="brutal-border px-4 py-2 label-stamp hover:bg-warning">
+              Operators directory →
+            </Link>
+            <Link to="/legal" className="brutal-border px-4 py-2 label-stamp hover:bg-warning">
+              § 1983 + RICO framework →
+            </Link>
+            <Link to="/violations" className="brutal-border px-4 py-2 label-stamp hover:bg-warning">
+              Violations log →
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <SiteFooter />
+    </div>
+  );
+}
