@@ -53,6 +53,129 @@ type Report = {
 
 const REPORTS: Report[] = [
   {
+    slug: "bpd-vs-kcso-comparison",
+    file: "/reports/watchtower-bpd-vs-kcso-comparison-may2026.docx",
+    date: "May 2026",
+    classification: "Comparative Reform Analysis",
+    pages: "11 pp",
+    title: "BPD vs. KCSO: Two Agencies, Opposite Results",
+    blurb:
+      "Bakersfield Police and the Kern County Sheriff signed materially identical DOJ stipulated judgments in the same investigation cycle, in the same city, under the same monitor framework. Five years in, BPD is in effective compliance across five reform areas and moving into training implementation. KCSO took a two-year extension over its own objection — then killed three people in eight days.",
+    highlights: [
+      { label: "Reform areas BPD: effective", value: "5 / equivalent" },
+      { label: "Reform areas KCSO: deficient", value: "5 / 8" },
+      { label: "DOJ extension", value: "BPD: none · KCSO: +2 yrs" },
+      { label: "Killings post-extension (KCSO)", value: "3 in 8 days" },
+      { label: "BPD OIS trend 2023→2024", value: "7 → 3" },
+      { label: "KCSO aerial surveillance spend", value: "$4.1M / yr" },
+    ],
+    takeaways: [
+      "The reform requirements are not impossible — BPD is proving they are achievable next door, with less than half the budget.",
+      "Leadership posture is the dominant variable: BPD framed reform as a path to a model agency; KCSO denied the underlying findings.",
+      "BPD's Community Advisory Panel is functioning and reviewing policy. KCSO's council was driven to resignation.",
+      "KCSO's continued failure under the same legal framework is a choice, not a structural inevitability.",
+    ],
+    accent: "warning",
+  },
+  {
+    slug: "porterville-critical-incident",
+    file: "/reports/2026-04-09-porterville-critical-incident.pdf",
+    date: "April 9, 2026",
+    classification: "Critical Incident Release · KCSO",
+    pages: "5 pp",
+    title: "Porterville BearCat Killing — Source Documents",
+    blurb:
+      "The official KCSO incident release for the April 9, 2026 use-of-force event on W. Bryan Avenue: timeline, SWAT vehicle deployment (BearCat and Rook), the three-stage run-over sequence, and the in-house review board determination of 'within policy.'",
+    highlights: [
+      { label: "Reviewing body", value: "KCSO Incident Review Board" },
+      { label: "Review determination", value: "Within policy" },
+      { label: "Deadly-force platform", value: "BearCat (armored)" },
+      { label: "Run-overs documented", value: "3" },
+    ],
+    takeaways: [
+      "Released by KCSO; reviewed by KCSO; cleared by KCSO. Same chain of command, same outcome architecture.",
+      "Use of an armored vehicle as a deadly-force platform is not addressed in the existing DOJ stipulated judgment.",
+      "Body-worn camera explicitly disclaimed as not capturing what the deputy sees — the evidentiary asymmetry is in the agency's favor by design.",
+    ],
+    accent: "alert",
+  },
+  {
+    slug: "hwy58-critical-incident",
+    file: "/reports/2026-04-10-hwy58-critical-incident.pdf",
+    date: "April 10, 2026",
+    classification: "Critical Incident Release · KCSO",
+    pages: "—",
+    title: "Eastbound Highway 58 Killing — Source Documents",
+    blurb:
+      "The second KCSO killing in two days, on Highway 58 east of Bakersfield. Source release published for chain-of-custody preservation and journalistic verification.",
+    highlights: [
+      { label: "Days after Porterville", value: "1" },
+      { label: "Days into DOJ extension", value: "< 30" },
+    ],
+    takeaways: [
+      "Second fatal use-of-force incident inside 48 hours, during an active federal oversight period.",
+      "Released and reviewed inside the same agency that the DOJ has found in persistent non-compliance.",
+    ],
+    accent: "alert",
+  },
+  {
+    slug: "deputy-shooting-suspect-and-response",
+    file: "/reports/deputy-shooting-suspect-and-response.pdf",
+    date: "April 2026",
+    classification: "Critical Incident Release · KCSO",
+    pages: "—",
+    title: "Deputy Shooting: Suspect and Response",
+    blurb:
+      "The third fatal KCSO incident in the eight-day window following the DOJ's March 2026 extension decision. Mirrored here to preserve the public release.",
+    highlights: [
+      { label: "Window", value: "8 days, 3 deaths" },
+      { label: "Oversight status", value: "Active stipulated judgment" },
+    ],
+    takeaways: [
+      "Pattern, not isolated event: three fatal encounters in the same agency, in the same week, under the same monitor.",
+      "Preserved verbatim from the agency's own release — no editorial alteration.",
+    ],
+    accent: "ink",
+  },
+  {
+    slug: "police-vehicle-use-of-force",
+    file: "/reports/police-vehicle-use-of-force.pdf",
+    date: "2026",
+    classification: "Legal / Doctrine Reference",
+    pages: "—",
+    title: "Police Vehicle Use of Force — Doctrinal Reference",
+    blurb:
+      "Legal and policy reference on the use of motor vehicles — including armored vehicles — as instruments of force. Underpins the Graham v. Connor analysis applied to the Porterville incident.",
+    highlights: [
+      { label: "Controlling framework", value: "Graham v. Connor" },
+      { label: "Open question", value: "Armored vehicle as deadly weapon" },
+    ],
+    takeaways: [
+      "Use of a vehicle as a deadly-force instrument is a constitutional question, not just a policy one.",
+      "Provides the doctrinal scaffolding for evaluating the BearCat run-over sequence on April 9, 2026.",
+    ],
+    accent: "ink",
+  },
+  {
+    slug: "california-doj-report",
+    file: "/reports/california-doj-report.pdf",
+    date: "Public record",
+    classification: "California Department of Justice",
+    pages: "—",
+    title: "California DOJ Report on KCSO — Source Filing",
+    blurb:
+      "The California Department of Justice findings underlying the 2020 KCSO stipulated judgment. Mirrored here to keep the controlling document one click away from every downstream finding on this site.",
+    highlights: [
+      { label: "Issuing body", value: "California DOJ" },
+      { label: "Investigation period", value: "2016 onward" },
+    ],
+    takeaways: [
+      "Establishes the pattern-or-practice findings that every subsequent Watchtower report cross-references.",
+      "Read this first if you are an attorney, journalist, or legislator new to the file.",
+    ],
+    accent: "warning",
+  },
+  {
     slug: "dismantling-the-architecture",
     file: "/reports/dismantling-the-architecture-kcso.pdf",
     date: "April 2026",

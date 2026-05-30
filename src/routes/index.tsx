@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { PullQuote } from "@/components/pull-quote";
 import { getSnapshot } from "@/lib/watchtower.functions";
 
 const snapshotQO = queryOptions({
@@ -53,8 +54,9 @@ function Home() {
               The record stands.
             </h1>
             <p className="text-lg sm:text-xl max-w-2xl mb-8 font-medium">
-              The first civilian-led, AI-assisted watchdog institution for airspace accountability.
-              Every aircraft. Every altitude. Every hour. <strong>No cherry-picking. No opinions. Just math, hashes, and chain of custody.</strong>
+              Civilian-led, AI-assisted airspace accountability — built to the evidentiary standard a court requires
+              and the public deserves. Every aircraft. Every altitude. Every hour.{" "}
+              <strong>Population-scale data. Hashed chain of custody. Reproducible findings.</strong>
             </p>
             <div className="flex flex-wrap gap-3">
               <Link to="/live" className="label-stamp bg-ink text-paper px-5 py-3 brutal-shadow-warning hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all">
@@ -184,8 +186,12 @@ function Home() {
       {/* CTA */}
       <section>
         <div className="max-w-[1400px] mx-auto px-4 py-24 text-center">
+          <PullQuote seed="home-cta" variant="default" className="mx-auto" />
           <h2 className="text-5xl sm:text-7xl mb-6">Watch back.</h2>
-          <p className="text-xl max-w-2xl mx-auto mb-10">If you're a journalist, attorney, or affected resident — the data is here, the methodology is public, and the chain of custody holds in court.</p>
+          <p className="text-xl max-w-2xl mx-auto mb-10">
+            Journalists, attorneys, legislators, and affected residents: the data is open, the methodology is public,
+            and the chain of custody is built to survive cross-examination.
+          </p>
           <div className="flex flex-wrap justify-center gap-3">
             <Link to="/findings" className="label-stamp bg-ink text-paper px-6 py-4 brutal-shadow-alert">See the findings</Link>
             <Link to="/reports" className="label-stamp bg-alert text-paper px-6 py-4 brutal-shadow-warning">Read the reports</Link>
