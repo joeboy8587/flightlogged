@@ -11,6 +11,9 @@ export function SiteFooter() {
             the math chooses, the record stands. Forever, and on the record.
           </p>
           <p className="mt-4 label-stamp text-warning">Watchtower 2.0 · Population-scale · Anti-bias by design</p>
+          <p className="mt-3 text-sm">
+            Contact: <a className="text-warning underline" href="mailto:watchtowerproject@proton.me">watchtowerproject@proton.me</a>
+          </p>
         </div>
         <div>
           <h4 className="label-stamp text-warning mb-3">The Work</h4>

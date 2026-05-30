@@ -71,6 +71,10 @@ function About() {
             It witnesses without bias, remembers with cryptographic integrity, correlates without cherry-picking,
             and escalates by threshold — not by emotion. Every reflection it writes is hashed into the evidence chain.
           </p>
+          <p className="mt-6 opacity-80">
+            Press, legal, and partnership inquiries:{" "}
+            <a className="text-warning underline" href="mailto:watchtowerproject@proton.me">watchtowerproject@proton.me</a>
+          </p>
         </div>
       </section>
 
