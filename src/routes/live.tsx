@@ -237,11 +237,56 @@ function Live() {
         <section className="border-b-4 border-ink bg-alert/10">
           <div className="max-w-[1400px] mx-auto px-4 py-16">
             <div className="label-stamp text-paper bg-alert inline-block px-2 py-1 mb-2">Local government aircraft · Kern County</div>
-            <h2 className="text-4xl sm:text-5xl mb-2">Sheriff, fire, and county-owned aircraft detected</h2>
-            <p className="text-sm opacity-70 mb-6 max-w-3xl">
-              Aircraft whose FAA registry owner is a Kern County government agency or Bakersfield-based
-              entity, matched by Mode-S hex. These are the operators that should be subject to public
-              accountability under California Public Records Act and federal FOIA.
+            <h2 className="text-4xl sm:text-5xl mb-2">Aircraft operating like local government in Kern County</h2>
+            <p className="text-sm opacity-70 mb-4 max-w-3xl">
+              Two kinds of aircraft appear in this table: (1) tails whose <strong>FAA registry owner</strong>
+              is a Kern County government agency (sheriff, fire, county), and (2) tails registered to
+              Bakersfield-based private LLCs whose <strong>flight behavior matches</strong> the government
+              baseline — same altitude band, same county footprint, same hour-of-day pattern.
+            </p>
+
+            {/* Defendability disclosure — shell vs. government */}
+            <div className="brutal-border-thick bg-ink text-paper p-5 mb-6">
+              <div className="label-stamp text-warning mb-2">Read this before you read the table</div>
+              <div className="grid md:grid-cols-3 gap-4 text-sm">
+                <div>
+                  <div className="font-bold mb-1">A shell LLC in this list is not "government"</div>
+                  <p className="opacity-80">
+                    Entries like <em>BFL AVIATION LLC</em>, <em>BEST EQUIPMENT LEASING LLC</em>,
+                    <em> JERK ASSETS LLC</em>, or <em>KCSI AERIAL PATROL INC</em> are <strong>private
+                    registrations</strong>. The FAA registry does not call them government. We list
+                    them here because their <strong>telemetry behaves like</strong> the sheriff/fire baseline.
+                  </p>
+                </div>
+                <div>
+                  <div className="font-bold mb-1">Why they're surfaced</div>
+                  <p className="opacity-80">
+                    Patrol orbits cluster at 300–700 ft over Kern County during the same daylight
+                    windows as KCSO and Kern County Fire. When a private tail flies that same signature
+                    repeatedly, it is — at minimum — operating <em>like</em> a state actor. Public-function
+                    test (Marsh v. Alabama) is the legal hook, not a verdict.
+                  </p>
+                </div>
+                <div>
+                  <div className="font-bold mb-1">How to tell which is which</div>
+                  <p className="opacity-80">
+                    The <strong>Registered owner</strong> column is the FAA registry name verbatim.
+                    "KERN COUNTY SHERIFFS OFFICE" and "KERN COUNTY FIRE DEPARTMENT" are confirmed
+                    government. Everything else is a private entity flying a government-shaped
+                    pattern — see <Link to="/coordination" className="underline">Coordination</Link> for the per-tail score.
+                  </p>
+                </div>
+              </div>
+              <p className="mt-4 text-xs font-mono opacity-70">
+                Bucket assignment = registry data + observed behavior. Defense rebuttal always
+                available. Coordination ≠ conspiracy.
+              </p>
+            </div>
+
+            <p className="text-xs opacity-70 mb-6 max-w-3xl font-mono">
+              All tails on this list — government or private — should be subject to public
+              accountability under the California Public Records Act and federal FOIA when
+              performing patrol functions over a populated county.
             </p>
             <div className="overflow-x-auto brutal-border-thick">
               <table className="w-full text-sm">
