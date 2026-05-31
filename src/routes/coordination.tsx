@@ -93,6 +93,7 @@ function Pill({ on, label }: { on: boolean; label: string }) {
 function Coordination() {
   const { data } = useSuspenseQuery(coordQO);
   const { baseline, rows, countByRole } = data;
+  const kernCount = rows.filter((r) => r.kernPriority).length;
 
   return (
     <div className="min-h-screen bg-paper text-ink">
@@ -124,6 +125,49 @@ function Coordination() {
               </div>
             ))}
           </div>
+          <div className="mt-3 label-stamp text-warning">
+            {kernCount} aircraft prioritized · Kern County hub
+          </div>
+        </div>
+      </section>
+
+      {/* How the buckets are assigned — defendability disclaimer */}
+      <section className="border-b-4 border-ink bg-warning/30">
+        <div className="max-w-[1400px] mx-auto px-4 py-10">
+          <div className="label-stamp text-alert mb-2">Read this before you read the table</div>
+          <h2 className="text-2xl sm:text-3xl mb-4">How an aircraft lands in a bucket.</h2>
+          <div className="grid md:grid-cols-3 gap-4 text-sm">
+            <div className="brutal-border p-4 bg-paper">
+              <div className="label-stamp mb-2">Registry alone is not enough</div>
+              <p>
+                A tail registered to <em>"9K AIR LLC"</em> can still fly KCSO patrol orbits.
+                A tail registered to a sheriff's department can fly a charity transport.
+                The FAA registry tells you who paid for the metal — not what the metal is doing.
+              </p>
+            </div>
+            <div className="brutal-border p-4 bg-paper">
+              <div className="label-stamp mb-2">Behavior is the second axis</div>
+              <p>
+                We compute a 0–4 coordination score against the state-actor baseline:
+                altitude band match, county-footprint overlap ≥ 50%, hour-of-day Jaccard ≥ 0.4,
+                median orbit below 1,500 ft. Three+ signals = the metal is acting like a patrol.
+              </p>
+            </div>
+            <div className="brutal-border p-4 bg-paper">
+              <div className="label-stamp mb-2">Why you'll see "surprises"</div>
+              <p>
+                A non-government LLC can appear in <strong>Contractor State Function</strong> when
+                behavior matches. A KCSO-flown tail registered to a shell can appear in
+                <strong> Enterprise Auxiliary</strong>. That's not a bug — it's the registry
+                fiction vs. the telemetry truth. Every row shows its <em>Basis</em> chip.
+              </p>
+            </div>
+          </div>
+          <p className="mt-4 text-xs font-mono opacity-80 max-w-3xl">
+            <strong>Defendability:</strong> bucket assignment is computed from public ADS-B and
+            the FAA Aircraft Registry. It is a prosecutor's theory, not a verdict. Every signal
+            is reproducible from the raw data. Defense rebuttal is always available.
+          </p>
         </div>
       </section>
 
@@ -236,7 +280,7 @@ function Coordination() {
       <section>
         <div className="max-w-[1400px] mx-auto px-4 py-12">
           <div className="label-stamp text-alert mb-2">
-            Operators classified by behavior · {rows.length} aircraft
+            Operators classified by behavior · {rows.length} aircraft · Kern-priority sort active
           </div>
           <h2 className="text-3xl sm:text-4xl mb-6">Tail-by-tail.</h2>
           <div className="overflow-x-auto brutal-border-thick">
@@ -246,6 +290,7 @@ function Coordination() {
                   <th className="text-left p-3 label-stamp">Tail</th>
                   <th className="text-left p-3 label-stamp">Registry owner</th>
                   <th className="text-left p-3 label-stamp">Operational role</th>
+                  <th className="text-left p-3 label-stamp">Basis</th>
                   <th className="text-left p-3 label-stamp">Coordination signals</th>
                   <th className="text-right p-3 label-stamp">Score</th>
                   <th className="text-right p-3 label-stamp">Median alt</th>
@@ -255,15 +300,25 @@ function Coordination() {
               <tbody className="font-mono">
                 {rows.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="p-6 text-center">
+                    <td colSpan={8} className="p-6 text-center">
                       No coordinating aircraft on record yet.
                     </td>
                   </tr>
                 )}
                 {rows.map((r) => (
-                  <tr key={r.icao} className="border-t border-ink/20 hover:bg-warning/30 align-top">
+                  <tr
+                    key={r.icao}
+                    className={`border-t border-ink/20 hover:bg-warning/30 align-top ${r.kernPriority ? "bg-alert/5" : ""}`}
+                  >
                     <td className="p-3">
-                      <div className="font-bold text-base">{r.registration || r.icao}</div>
+                      <div className="font-bold text-base flex items-center gap-2">
+                        {r.registration || r.icao}
+                        {r.kernPriority && (
+                          <span className="label-stamp bg-alert text-paper px-1.5 py-0.5 text-[9px]">
+                            KERN
+                          </span>
+                        )}
+                      </div>
                       <div className="text-xs opacity-50">{r.icao}</div>
                     </td>
                     <td className="p-3 text-xs max-w-xs">
@@ -280,6 +335,24 @@ function Coordination() {
                       <p className="text-[10px] opacity-70 mt-2 max-w-[240px] leading-snug font-sans">
                         {r.legalTheory}
                       </p>
+                    </td>
+                    <td className="p-3 text-[10px] align-top">
+                      <span
+                        className={`label-stamp inline-block px-2 py-1 ${
+                          r.classificationBasis === "Registry + Behavior"
+                            ? "bg-alert text-paper"
+                            : r.classificationBasis === "Registry"
+                              ? "bg-ink text-paper"
+                              : "bg-warning text-ink"
+                        }`}
+                      >
+                        {r.classificationBasis}
+                      </span>
+                      {r.classificationBasis === "Behavior" && (
+                        <p className="mt-1 opacity-70 font-sans leading-snug max-w-[160px]">
+                          Registry doesn't say state actor; telemetry does.
+                        </p>
+                      )}
                     </td>
                     <td className="p-3">
                       <div className="flex flex-col gap-1 text-[10px]">
@@ -307,7 +380,9 @@ function Coordination() {
           </div>
           <p className="mt-4 text-xs opacity-70 font-mono max-w-3xl">
             Score = sum of four binary signals: altitude band match, county overlap ≥ 50%, hour-of-day
-            Jaccard ≥ 0.4, median orbit below 1,500 ft. Computed from{" "}
+            Jaccard ≥ 0.4, median orbit below 1,500 ft. Kern-priority sort lifts aircraft seen in
+            Kern County or registered to Kern/Bakersfield/KCSO/KCSI entities to the top of each
+            bucket — it is a sort weight, not a filter. Computed from{" "}
             <Link to="/methodology" className="underline">public ADS-B and FAA registry data</Link>.
             Coordination ≠ conspiracy. Coordination = the precondition for one.
           </p>

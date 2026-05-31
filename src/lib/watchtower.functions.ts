@@ -772,6 +772,8 @@ export type CoordinationRow = {
     | "Enterprise Auxiliary"
     | "Independent";
   legalTheory: string;
+  kernPriority: boolean;       // owner mentions Kern/Bakersfield/KCSO OR seen in Kern county
+  classificationBasis: "Registry" | "Behavior" | "Registry + Behavior";
   lastSeen: string;
 };
 
@@ -789,10 +791,12 @@ export type BehavioralCoordination = {
 };
 
 const DIRECT_STATE_RX =
-  /\b(sheriff|police|county of|city of|fire (department|district)|department of|state of|u\.?s\.?|united states|customs|border patrol|f\.?b\.?i|federal bureau|drug enforcement|highway patrol|chp|government)\b/i;
+  /\b(sheriff|police|county of|city of|fire (department|district)|department of|state of|u\.?s\.?|united states|customs|border patrol|f\.?b\.?i|federal bureau|drug enforcement|highway patrol|chp|government|kern county|bakersfield|kcso|kcsi|county sheriff|county of kern)\b/i;
 const CONTRACTOR_RX =
   /\b(aerial|patrol|aviation|helicopter|airborne|airways|surveillance|security|recon)\b/i;
 const SHELL_RX = /\b(llc|holdings|trust|llp|services|enterprises|capital|group)\b/i;
+const KERN_COUNTY_RX = /\bkern\b/i;
+const KERN_OWNER_RX = /\b(kern county|bakersfield|kcso|kcsi|9k air)\b/i;
 
 function jaccard<T>(a: T[], b: T[]): number {
   if (a.length === 0 || b.length === 0) return 0;
@@ -915,6 +919,15 @@ export const getBehavioralCoordination = createServerFn({ method: "GET" }).handl
         theory = "No behavioral coordination with state-actor baseline detected.";
       }
 
+      const kernOwner = !!r.owner && KERN_OWNER_RX.test(r.owner);
+      const kernSeen = counties.some((c) => KERN_COUNTY_RX.test(c));
+      const kernPriority = kernOwner || kernSeen;
+
+      let classificationBasis: CoordinationRow["classificationBasis"];
+      if (isDirect && score >= 3) classificationBasis = "Registry + Behavior";
+      else if (isDirect) classificationBasis = "Registry";
+      else classificationBasis = "Behavior";
+
       return {
         icao: r.icao_hex,
         registration: r.registration,
@@ -934,6 +947,8 @@ export const getBehavioralCoordination = createServerFn({ method: "GET" }).handl
         coordinationScore: score,
         operationalRole: role,
         legalTheory: theory,
+        kernPriority,
+        classificationBasis,
         lastSeen: new Date(r.last_seen).toISOString(),
       };
     }
@@ -952,6 +967,8 @@ export const getBehavioralCoordination = createServerFn({ method: "GET" }).handl
         };
         if (rank[a.operationalRole] !== rank[b.operationalRole])
           return rank[a.operationalRole] - rank[b.operationalRole];
+        // Kern-priority floats up inside each bucket (not a filter — a weight)
+        if (a.kernPriority !== b.kernPriority) return a.kernPriority ? -1 : 1;
         if (b.coordinationScore !== a.coordinationScore)
           return b.coordinationScore - a.coordinationScore;
         return b.detections - a.detections;
