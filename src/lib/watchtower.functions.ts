@@ -772,6 +772,8 @@ export type CoordinationRow = {
     | "Enterprise Auxiliary"
     | "Independent";
   legalTheory: string;
+  kernPriority: boolean;       // owner mentions Kern/Bakersfield/KCSO OR seen in Kern county
+  classificationBasis: "Registry" | "Behavior" | "Registry + Behavior";
   lastSeen: string;
 };
 
