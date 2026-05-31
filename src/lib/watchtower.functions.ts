@@ -789,10 +789,12 @@ export type BehavioralCoordination = {
 };
 
 const DIRECT_STATE_RX =
-  /\b(sheriff|police|county of|city of|fire (department|district)|department of|state of|u\.?s\.?|united states|customs|border patrol|f\.?b\.?i|federal bureau|drug enforcement|highway patrol|chp|government)\b/i;
+  /\b(sheriff|police|county of|city of|fire (department|district)|department of|state of|u\.?s\.?|united states|customs|border patrol|f\.?b\.?i|federal bureau|drug enforcement|highway patrol|chp|government|kern county|bakersfield|kcso|kcsi|county sheriff|county of kern)\b/i;
 const CONTRACTOR_RX =
   /\b(aerial|patrol|aviation|helicopter|airborne|airways|surveillance|security|recon)\b/i;
 const SHELL_RX = /\b(llc|holdings|trust|llp|services|enterprises|capital|group)\b/i;
+const KERN_COUNTY_RX = /\bkern\b/i;
+const KERN_OWNER_RX = /\b(kern county|bakersfield|kcso|kcsi|9k air)\b/i;
 
 function jaccard<T>(a: T[], b: T[]): number {
   if (a.length === 0 || b.length === 0) return 0;
