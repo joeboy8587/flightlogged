@@ -919,6 +919,15 @@ export const getBehavioralCoordination = createServerFn({ method: "GET" }).handl
         theory = "No behavioral coordination with state-actor baseline detected.";
       }
 
+      const kernOwner = !!r.owner && KERN_OWNER_RX.test(r.owner);
+      const kernSeen = counties.some((c) => KERN_COUNTY_RX.test(c));
+      const kernPriority = kernOwner || kernSeen;
+
+      let classificationBasis: CoordinationRow["classificationBasis"];
+      if (isDirect && score >= 3) classificationBasis = "Registry + Behavior";
+      else if (isDirect) classificationBasis = "Registry";
+      else classificationBasis = "Behavior";
+
       return {
         icao: r.icao_hex,
         registration: r.registration,
@@ -938,6 +947,8 @@ export const getBehavioralCoordination = createServerFn({ method: "GET" }).handl
         coordinationScore: score,
         operationalRole: role,
         legalTheory: theory,
+        kernPriority,
+        classificationBasis,
         lastSeen: new Date(r.last_seen).toISOString(),
       };
     }
@@ -956,6 +967,8 @@ export const getBehavioralCoordination = createServerFn({ method: "GET" }).handl
         };
         if (rank[a.operationalRole] !== rank[b.operationalRole])
           return rank[a.operationalRole] - rank[b.operationalRole];
+        // Kern-priority floats up inside each bucket (not a filter — a weight)
+        if (a.kernPriority !== b.kernPriority) return a.kernPriority ? -1 : 1;
         if (b.coordinationScore !== a.coordinationScore)
           return b.coordinationScore - a.coordinationScore;
         return b.detections - a.detections;
