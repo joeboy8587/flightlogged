@@ -97,6 +97,21 @@ function Live() {
             <strong className="text-warning">0% flagged during baseline — by design.</strong> The system observes
             for 48 hours to learn what normal looks like before it identifies abnormal. After baseline, math chooses.
           </p>
+          {s.biometricEvents > 0 && s.biometricEvents === s.correlatedEvents && (
+            <div className="mt-4 brutal-border-thick bg-warning text-ink p-4 max-w-3xl text-sm">
+              <div className="label-stamp mb-1">Methodology disclosure · correlation rate</div>
+              <p>
+                Every biometric event currently in the evidence database
+                ({fmt(s.biometricEvents)}) carries the
+                <code className="font-mono"> related_surveillance = true </code>
+                flag — so the "surveillance-correlated" count equals the total.
+                This is a <strong>known data-pipeline state</strong>, not a
+                100% causation claim. A non-correlated control population must
+                be ingested before the ratio is evidentiary. We disclose this
+                up front so the number is not mistaken for a finding.
+              </p>
+            </div>
+          )}
         </div>
       </section>
 

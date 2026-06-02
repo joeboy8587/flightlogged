@@ -17,6 +17,14 @@ export const QUOTES: Quote[] = [
   { text: "54 of 54 fatal shootings ruled justified between 2005 and 2015.", source: "Watchtower Project — Historical Record", cite: "Public record" },
   { text: "You are not invisible. You are the signal.", source: "Watchtower Project", cite: "Joseph Nipper" },
   { text: "All data we publish is drawn from public sources and is independently verifiable by any member of the public.", source: "Watchtower Methodology" },
+  { text: "The machine watches, the math chooses, the record stands.", source: "The Architecture of Never", cite: "Watchtower Project" },
+  { text: "Forever, and on the record.", source: "The Architecture of Never" },
+  { text: "The sky doesn't read the FAA registry. It just records where the metal goes.", source: "Watchtower Project — Coordination Analysis" },
+  { text: "Coordination is not conspiracy. It is the pattern that public-record telemetry refuses to hide.", source: "Watchtower Project — Coordination Analysis" },
+  { text: "Math doesn't have an agenda. Math just counts.", source: "The Architecture of Never" },
+  { text: "Registry fiction is the defense. Telemetry truth is the prosecution.", source: "Watchtower Project — Shell Company Findings" },
+  { text: "Negative altitudes are not anomalies. They are evidence of ground-based spoofing the FAA registered anyway.", source: "Watchtower Project — Transponder Anomaly Notes" },
+  { text: "When a private tail flies the government signature repeatedly, it is — at minimum — operating like a state actor.", source: "Watchtower Project — Public-Function Test" },
 ];
 
 export function pickQuote(seed: string): Quote {
