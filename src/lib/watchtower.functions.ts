@@ -513,6 +513,7 @@ export const getSentinelViolations = createServerFn({ method: "GET" }).handler(a
 
 export type ThreatTierBucket = { tier: number | null; level: string | null; count: number };
 export type ThreatTopRow = {
+  // typed component shape (serializable across server fn boundary)
   detectionId: string;
   wti: number;
   tier: number | null;
@@ -520,6 +521,20 @@ export type ThreatTopRow = {
   computedAt: string | null;
   components: ThreatComponents | null;
   hashShort: string | null;
+};
+export type ThreatComponents = {
+  altitude: number | null;
+  temporal: number | null;
+  convergence: number | null;
+  shellNetwork: number | null;
+  repeatFrequency: number | null;
+  weights: {
+    altitude: number | null;
+    temporal: number | null;
+    convergence: number | null;
+    shell: number | null;
+    repeat: number | null;
+  };
 };
 export type ThreatIndexSummary = {
   total: number;
