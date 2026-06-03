@@ -569,7 +569,22 @@ export const getThreatIndex = createServerFn({ method: "GET" }).handler(async ()
       tier: r.tier_level,
       level: r.threat_level,
       computedAt: r.computed_at ? new Date(r.computed_at).toISOString() : null,
-      components: r.components ?? null,
+      components: r.components
+        ? {
+            altitude: r.components.altitude ?? null,
+            temporal: r.components.temporal ?? null,
+            convergence: r.components.convergence ?? null,
+            shellNetwork: r.components.shell_network ?? null,
+            repeatFrequency: r.components.repeat_frequency ?? null,
+            weights: {
+              altitude: r.components.weights?.altitude ?? null,
+              temporal: r.components.weights?.temporal ?? null,
+              convergence: r.components.weights?.convergence ?? null,
+              shell: r.components.weights?.shell ?? null,
+              repeat: r.components.weights?.repeat ?? null,
+            },
+          }
+        : null,
       hashShort: r.sha256_hash ? String(r.sha256_hash).slice(0, 12) : null,
     })),
     methodVersion: mv[0]?.method_version ?? null,
