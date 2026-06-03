@@ -518,28 +518,32 @@ export type ThreatTopRow = {
   tier: number | null;
   level: string | null;
   computedAt: string | null;
+  components: Record<string, unknown> | null;
+  hashShort: string | null;
 };
 export type ThreatIndexSummary = {
   total: number;
   buckets: ThreatTierBucket[];
   top: ThreatTopRow[];
   methodVersion: string | null;
+  hashedRows: number;
 };
 
 export const getThreatIndex = createServerFn({ method: "GET" }).handler(async (): Promise<ThreatIndexSummary> => {
   const e = evidence();
-  const [tot, buckets, top, mv] = await Promise.all([
+  const [tot, buckets, top, mv, hashed] = await Promise.all([
     e`SELECT COUNT(*)::bigint AS c FROM public.threat_tiers`,
     e`SELECT tier_level, threat_level, COUNT(*)::int AS c
       FROM public.threat_tiers
       GROUP BY tier_level, threat_level
       ORDER BY tier_level DESC NULLS LAST`,
-    e`SELECT detection_id, wti_score, tier_level, threat_level, computed_at
+    e`SELECT detection_id, wti_score, tier_level, threat_level, computed_at, components, sha256_hash
       FROM public.threat_tiers
       WHERE wti_score IS NOT NULL
       ORDER BY wti_score DESC
       LIMIT 25`,
     e`SELECT method_version FROM public.threat_tiers WHERE method_version IS NOT NULL LIMIT 1`,
+    e`SELECT COUNT(*)::bigint AS c FROM public.threat_tiers WHERE sha256_hash IS NOT NULL`,
   ]);
   return {
     total: Number(tot[0].c),
@@ -550,8 +554,11 @@ export const getThreatIndex = createServerFn({ method: "GET" }).handler(async ()
       tier: r.tier_level,
       level: r.threat_level,
       computedAt: r.computed_at ? new Date(r.computed_at).toISOString() : null,
+      components: r.components ?? null,
+      hashShort: r.sha256_hash ? String(r.sha256_hash).slice(0, 12) : null,
     })),
     methodVersion: mv[0]?.method_version ?? null,
+    hashedRows: Number(hashed[0].c),
   };
 });
 
@@ -570,22 +577,56 @@ export type MlAnomaly = {
   identifiedName: string | null;
   registrantCity: string | null;
   registrantState: string | null;
+  featureKeys: string[];
+  hashShort: string | null;
 };
 
-export const getMlAnomalies = createServerFn({ method: "GET" }).handler(async (): Promise<MlAnomaly[]> => {
+export type MlModelCard = {
+  total: number;
+  validatedTrue: number;
+  validationRate: number; // 0..1
+  distinctModels: number;
+  distinctVersions: number;
+  topModels: { modelName: string | null; modelVersion: string | null; count: number }[];
+};
+
+export type MlPayload = {
+  card: MlModelCard;
+  rows: MlAnomaly[];
+};
+
+export const getMlAnomalies = createServerFn({ method: "GET" }).handler(async (): Promise<MlPayload> => {
   const e = evidence();
-  const rows = await e`
-    SELECT id, detected_at, aircraft_registration, icao24, callsign,
-           anomaly_type, anomaly_score, confidence_level, model_name, model_version, validated
-    FROM public.ml_anomaly_detections
-    ORDER BY detected_at DESC NULLS LAST
-    LIMIT 50
-  `;
+  const [rows, stats, top] = await Promise.all([
+    e`
+      SELECT id, detected_at, aircraft_registration, icao24, callsign,
+             anomaly_type, anomaly_score, confidence_level, model_name, model_version,
+             validated, features, sha256_hash
+      FROM public.ml_anomaly_detections
+      ORDER BY detected_at DESC NULLS LAST
+      LIMIT 50
+    `,
+    e`
+      SELECT COUNT(*)::bigint AS total,
+             COUNT(*) FILTER (WHERE validated = true)::bigint AS validated_true,
+             COUNT(DISTINCT model_name)::int AS models,
+             COUNT(DISTINCT model_version)::int AS versions
+      FROM public.ml_anomaly_detections
+    `,
+    e`
+      SELECT model_name, model_version, COUNT(*)::bigint AS c
+      FROM public.ml_anomaly_detections
+      GROUP BY 1, 2
+      ORDER BY c DESC
+      LIMIT 5
+    `,
+  ]);
   const idMap = await faaIdentityMap(
     rows.map((r: any) => ({ registration: r.aircraft_registration, icao: r.icao24 })),
   );
-  return rows.map((r: any) => {
+  const mapped = rows.map((r: any) => {
     const id = lookupIdentity(idMap, r.aircraft_registration, r.icao24);
+    const fk = r.features && typeof r.features === "object" ? Object.keys(r.features).slice(0, 6) : [];
     return {
     id: String(r.id),
     detectedAt: r.detected_at ? new Date(r.detected_at).toISOString() : new Date(0).toISOString(),
@@ -601,8 +642,27 @@ export const getMlAnomalies = createServerFn({ method: "GET" }).handler(async ()
       identifiedName: id?.name ?? null,
       registrantCity: id?.city ?? null,
       registrantState: id?.state ?? null,
+      featureKeys: fk,
+      hashShort: r.sha256_hash ? String(r.sha256_hash).slice(0, 12) : null,
     };
   });
+  const total = Number(stats[0].total);
+  const validatedTrue = Number(stats[0].validated_true);
+  return {
+    card: {
+      total,
+      validatedTrue,
+      validationRate: total > 0 ? validatedTrue / total : 0,
+      distinctModels: Number(stats[0].models),
+      distinctVersions: Number(stats[0].versions),
+      topModels: (top as any[]).map((r) => ({
+        modelName: r.model_name,
+        modelVersion: r.model_version,
+        count: Number(r.c),
+      })),
+    },
+    rows: mapped,
+  };
 });
 
 // ============= Neon-native violations (violation_classifications) =============
