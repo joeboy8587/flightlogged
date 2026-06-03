@@ -60,6 +60,7 @@ function tierClass(t: number | null) {
 
 function ThreatIndex() {
   const { data } = useSuspenseQuery(tiQO);
+  const hashedPct = data.total > 0 ? (data.hashedRows / data.total) * 100 : 0;
   return (
     <div className="min-h-screen bg-paper text-ink">
       <SiteHeader />
@@ -72,6 +73,48 @@ function ThreatIndex() {
             Every detection receives a Watchtower Threat Index score and a tier 1–5 classification.
             Method is open. Source data is public. Highest-scoring events surface here first.
           </p>
+          <div className="mt-6 grid sm:grid-cols-3 gap-3 max-w-3xl">
+            <div className="brutal-border-thick border-paper p-3">
+              <div className="label-stamp opacity-60 mb-1">Method</div>
+              <div className="font-mono text-sm">{data.methodVersion ?? "—"}</div>
+            </div>
+            <div className="brutal-border-thick border-paper p-3">
+              <div className="label-stamp opacity-60 mb-1">Scored events</div>
+              <div className="font-display text-2xl">{data.total.toLocaleString()}</div>
+            </div>
+            <div className="brutal-border-thick border-paper p-3">
+              <div className="label-stamp opacity-60 mb-1">Cryptographically hashed</div>
+              <div className="font-display text-2xl">{hashedPct.toFixed(1)}%</div>
+              <div className="text-[10px] font-mono opacity-70">{data.hashedRows.toLocaleString()} of {data.total.toLocaleString()}</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="border-b-4 border-ink bg-warning text-ink">
+        <div className="max-w-[1400px] mx-auto px-4 py-8">
+          <div className="label-stamp mb-2">How a WTI score is built</div>
+          <p className="text-sm max-w-3xl">
+            Each score is a weighted sum of five public-data components: altitude (vs. CFR floor),
+            temporal pattern (vs. 48-hour baseline), convergence (multi-aircraft proximity),
+            shell-network linkage (public corporate filings), and repeat frequency. The weights
+            below ship with every row — no hidden parameters.
+          </p>
+          {data.top[0]?.components?.weights && (
+            <div className="mt-3 flex flex-wrap gap-2 font-mono text-xs">
+              {([
+                ["altitude", data.top[0].components.weights.altitude],
+                ["temporal", data.top[0].components.weights.temporal],
+                ["convergence", data.top[0].components.weights.convergence],
+                ["shell", data.top[0].components.weights.shell],
+                ["repeat", data.top[0].components.weights.repeat],
+              ] as const).map(([k, w]) => (
+                <span key={k} className="brutal-border bg-paper px-2 py-1">
+                  {k} <strong>×{w != null ? (w * 100).toFixed(0) + "%" : "—"}</strong>
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -92,33 +135,56 @@ function ThreatIndex() {
 
       <section>
         <div className="max-w-[1400px] mx-auto px-4 py-12">
-          <h2 className="text-4xl sm:text-5xl mb-6">Top 25 by WTI score</h2>
-          <div className="overflow-x-auto brutal-border-thick">
-            <table className="w-full text-sm">
-              <thead className="bg-ink text-paper">
-                <tr>
-                  <th className="text-left p-3 label-stamp">Detection</th>
-                  <th className="text-right p-3 label-stamp">WTI</th>
-                  <th className="text-left p-3 label-stamp">Tier</th>
-                  <th className="text-left p-3 label-stamp">Level</th>
-                  <th className="text-left p-3 label-stamp">Computed</th>
-                </tr>
-              </thead>
-              <tbody className="font-mono">
-                {data.top.map((r) => (
-                  <tr key={r.detectionId} className="border-t border-ink/20 hover:bg-warning/30">
-                    <td className="p-3 text-xs">{r.detectionId}</td>
-                    <td className="p-3 text-right font-bold">{r.wti.toFixed(2)}</td>
-                    <td className="p-3"><span className={`label-stamp px-2 py-1 ${tierClass(r.tier)}`}>T{r.tier ?? "—"}</span></td>
-                    <td className="p-3">{r.level || "—"}</td>
-                    <td className="p-3 whitespace-nowrap text-xs">{r.computedAt ? new Date(r.computedAt).toLocaleString() : "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <h2 className="text-4xl sm:text-5xl mb-6">Top 25 by WTI score — with score breakdown</h2>
+          <div className="space-y-3">
+            {data.top.map((r) => {
+              const c = r.components;
+              const bars: { k: string; v: number | null }[] = c
+                ? [
+                    { k: "altitude", v: c.altitude },
+                    { k: "temporal", v: c.temporal },
+                    { k: "convergence", v: c.convergence },
+                    { k: "shell", v: c.shellNetwork },
+                    { k: "repeat", v: c.repeatFrequency },
+                  ]
+                : [];
+              return (
+                <article key={r.detectionId} className="brutal-border p-4 bg-paper">
+                  <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
+                    <div className="font-mono text-xs">
+                      <div className="opacity-60">{r.computedAt ? new Date(r.computedAt).toLocaleString() : "—"}</div>
+                      <div className="opacity-70 truncate max-w-[280px]">det: {r.detectionId}</div>
+                      {r.hashShort && <div className="opacity-50">sha256: {r.hashShort}…</div>}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`label-stamp px-2 py-1 ${tierClass(r.tier)}`}>T{r.tier ?? "—"} · {r.level || "—"}</span>
+                      <span className="label-stamp bg-ink text-paper px-2 py-1">WTI {r.wti.toFixed(2)}</span>
+                    </div>
+                  </div>
+                  {c ? (
+                    <div className="grid sm:grid-cols-5 gap-2">
+                      {bars.map((b) => (
+                        <div key={b.k} className="brutal-border bg-paper p-2">
+                          <div className="flex items-baseline justify-between mb-1">
+                            <span className="label-stamp text-[10px]">{b.k}</span>
+                            <span className="font-mono text-xs font-bold">{b.v != null ? b.v : "—"}</span>
+                          </div>
+                          <div className="h-2 bg-ink/10">
+                            <div className="h-full bg-alert" style={{ width: `${Math.min(100, Math.max(0, Number(b.v ?? 0)))}%` }} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="font-mono text-xs opacity-60">Component breakdown unavailable for this row.</p>
+                  )}
+                </article>
+              );
+            })}
           </div>
           <p className="mt-3 text-xs opacity-70 font-mono">
-            Source: <code>threat_tiers</code>. Method version is published with every score.
+            Source: <code>threat_tiers</code>. Component values are 0–100; final WTI = Σ(component × weight).
+            Every row carries the method version so a third party can reproduce the score.
           </p>
         </div>
       </section>
