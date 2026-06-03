@@ -518,7 +518,7 @@ export type ThreatTopRow = {
   tier: number | null;
   level: string | null;
   computedAt: string | null;
-  components: Record<string, unknown> | null;
+  components: ThreatComponents | null;
   hashShort: string | null;
 };
 export type ThreatIndexSummary = {
