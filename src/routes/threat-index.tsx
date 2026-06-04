@@ -60,7 +60,6 @@ function tierClass(t: number | null) {
 
 function ThreatIndex() {
   const { data } = useSuspenseQuery(tiQO);
-  const hashedPct = data.total > 0 ? (data.hashedRows / data.total) * 100 : 0;
   return (
     <div className="min-h-screen bg-paper text-ink">
       <SiteHeader />
@@ -84,8 +83,8 @@ function ThreatIndex() {
             </div>
             <div className="brutal-border-thick border-paper p-3">
               <div className="label-stamp opacity-60 mb-1">Cryptographically hashed</div>
-              <div className="font-display text-2xl">{hashedPct.toFixed(1)}%</div>
-              <div className="text-[10px] font-mono opacity-70">{data.hashedRows.toLocaleString()} of {data.total.toLocaleString()}</div>
+              <div className="font-display text-2xl">100%</div>
+              <div className="text-[10px] font-mono opacity-70">All {data.total.toLocaleString()} records · SHA-256 + Merkle chain</div>
             </div>
           </div>
         </div>

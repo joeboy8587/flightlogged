@@ -15,7 +15,7 @@ export const QUOTES: Quote[] = [
   { text: "Use of a BearCat as a deadly weapon falls outside constitutional limits under Graham v. Connor.", source: "KCSO Comprehensive Audit", cite: "Watchtower Project" },
   { text: "Internal review is designed to exonerate: same chain of command, same officers, same policies.", source: "The Architecture of Never: 2005–2026", cite: "Watchtower Project" },
   { text: "54 of 54 fatal shootings ruled justified between 2005 and 2015.", source: "Watchtower Project — Historical Record", cite: "Public record" },
-  { text: "You are not invisible. You are the signal.", source: "Watchtower Project", cite: "Joseph Nipper" },
+  { text: "You are not invisible. You are the signal.", source: "Watchtower Project" },
   { text: "All data we publish is drawn from public sources and is independently verifiable by any member of the public.", source: "Watchtower Methodology" },
   { text: "The machine watches, the math chooses, the record stands.", source: "The Architecture of Never", cite: "Watchtower Project" },
   { text: "Forever, and on the record.", source: "The Architecture of Never" },

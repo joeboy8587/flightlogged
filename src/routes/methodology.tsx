@@ -45,7 +45,7 @@ function Methodology() {
             { n: "02", t: "48-hour baseline", d: "Before flagging anything, the system observes for 48 hours to learn what NORMAL looks like for that airspace at that time of day, season, and weather." },
             { n: "03", t: "Statistical anomaly detection", d: "Outliers are scored against the learned distribution. The threshold is published. We don't pick — math picks." },
             { n: "04", t: "Chain of custody", d: "Each record receives a SHA-256 hash linked into a Merkle chain. Any tampering is detectable. Evidence is reproducible by any third party." },
-            { n: "05", t: "Bradford Hill scoring", d: "Where we correlate aircraft activity with biometric or witness data, we apply the Bradford Hill criteria (strength, consistency, specificity, temporality, etc.) — the same framework used in epidemiology and courtrooms." },
+            { n: "05", t: "Bradford Hill scoring", d: "We apply the Bradford Hill criteria (strength, consistency, specificity, temporality, etc.) to aircraft-pattern and public-record corroboration — the same framework used in epidemiology and courtrooms. No physiological or personal-health data is included in the public record; the public site is system-focused, not autobiographical." },
             { n: "06", t: "Open source by design", d: "Every line of Watchtower 2.0 will be public. The methodology IS the code. Deploy it in your county, get the same answers." },
           ].map((s, i, arr) => (
             <div key={s.n} className={`p-8 bg-paper ${i % 2 === 0 ? "lg:border-r-4 border-ink" : ""} ${i < arr.length - 2 ? "border-b-4 border-ink" : ""} ${i === arr.length - 2 ? "lg:border-b-0 border-b-4 border-ink" : ""}`}>
