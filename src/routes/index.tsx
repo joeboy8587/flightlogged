@@ -35,7 +35,7 @@ function Home() {
     { label: "Detections logged", value: fmt(s.totalDetections), accent: false },
     { label: "Unique aircraft", value: fmt(s.uniqueAircraft), accent: false },
     { label: "Anomaly events", value: fmt(s.anomalyEvents), accent: true },
-    { label: "Biometric correlations", value: fmt(s.correlatedEvents), accent: true },
+    { label: "Court-ready detections", value: fmt(s.flightDetections), accent: true },
   ];
   return (
     <div className="min-h-screen bg-paper text-ink">
@@ -103,7 +103,7 @@ function Home() {
           <div className="grid lg:grid-cols-3 gap-0 brutal-border-thick">
             {[
               { num: "01", title: "WATCH", desc: "An autonomous sensor network learns what NORMAL looks like for 48 hours before it identifies ABNORMAL. One person can't watch 4,000 aircraft. A system can.", tag: "Watchtower 2.0" },
-              { num: "02", title: "DOCUMENT", desc: "Every detection is hashed, timestamped, and chained. Biometric correlations score against the Bradford Hill criteria. Court-ready by construction.", tag: "Neon · SHA-256 · Merkle" },
+              { num: "02", title: "DOCUMENT", desc: "Every detection is SHA-256 hashed, timestamped, and Merkle-chained. 100% chain-of-custody coverage. Court-ready by construction.", tag: "Neon · SHA-256 · Merkle" },
               { num: "03", title: "ADVOCATE", desc: "Public reporting. Legislative support. Legal referral networks. FOIA-as-a-service. The data becomes leverage.", tag: "Architecture of Never" },
             ].map((p, i) => (
               <div key={p.num} className={`p-8 ${i < 2 ? "lg:border-r-4 border-b-4 lg:border-b-0 border-ink" : ""} bg-paper`}>
