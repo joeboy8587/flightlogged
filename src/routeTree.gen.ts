@@ -22,6 +22,7 @@ import { Route as LegalRouteImport } from './routes/legal'
 import { Route as HowToReadRouteImport } from './routes/how-to-read'
 import { Route as FindingsRouteImport } from './routes/findings'
 import { Route as CoordinationRouteImport } from './routes/coordination'
+import { Route as CitationsRouteImport } from './routes/citations'
 import { Route as ActRouteImport } from './routes/act'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
@@ -91,6 +92,11 @@ const CoordinationRoute = CoordinationRouteImport.update({
   path: '/coordination',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CitationsRoute = CitationsRouteImport.update({
+  id: '/citations',
+  path: '/citations',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ActRoute = ActRouteImport.update({
   id: '/act',
   path: '/act',
@@ -111,6 +117,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/act': typeof ActRoute
+  '/citations': typeof CitationsRoute
   '/coordination': typeof CoordinationRoute
   '/findings': typeof FindingsRoute
   '/how-to-read': typeof HowToReadRoute
@@ -129,6 +136,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/act': typeof ActRoute
+  '/citations': typeof CitationsRoute
   '/coordination': typeof CoordinationRoute
   '/findings': typeof FindingsRoute
   '/how-to-read': typeof HowToReadRoute
@@ -148,6 +156,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/act': typeof ActRoute
+  '/citations': typeof CitationsRoute
   '/coordination': typeof CoordinationRoute
   '/findings': typeof FindingsRoute
   '/how-to-read': typeof HowToReadRoute
@@ -168,6 +177,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/act'
+    | '/citations'
     | '/coordination'
     | '/findings'
     | '/how-to-read'
@@ -186,6 +196,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/act'
+    | '/citations'
     | '/coordination'
     | '/findings'
     | '/how-to-read'
@@ -204,6 +215,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/act'
+    | '/citations'
     | '/coordination'
     | '/findings'
     | '/how-to-read'
@@ -223,6 +235,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
   ActRoute: typeof ActRoute
+  CitationsRoute: typeof CitationsRoute
   CoordinationRoute: typeof CoordinationRoute
   FindingsRoute: typeof FindingsRoute
   HowToReadRoute: typeof HowToReadRoute
@@ -331,6 +344,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CoordinationRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/citations': {
+      id: '/citations'
+      path: '/citations'
+      fullPath: '/citations'
+      preLoaderRoute: typeof CitationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/act': {
       id: '/act'
       path: '/act'
@@ -359,6 +379,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
   ActRoute: ActRoute,
+  CitationsRoute: CitationsRoute,
   CoordinationRoute: CoordinationRoute,
   FindingsRoute: FindingsRoute,
   HowToReadRoute: HowToReadRoute,
