@@ -1085,3 +1085,108 @@ export const getBehavioralCoordination = createServerFn({ method: "GET" }).handl
     };
   },
 );
+
+// ============================================================
+// /citations — Rule → CFR/USC + Consent Decree mapping
+// ============================================================
+export type CitationRow = {
+  rule: string;
+  count: number;
+  part: string | null;
+  section: string | null;
+  cfrHeading: string | null;
+  cfrHashShort: string | null;
+};
+export type DecreeRow = {
+  provision: string;
+  severity: string | null;
+  description: string | null;
+  date: string | null;
+  hashShort: string | null;
+};
+export type CitationsPayload = {
+  rules: CitationRow[];
+  decrees: DecreeRow[];
+  totals: {
+    classifiedDetections: number;
+    cfrRegs: number;
+    cfrHashedPct: number;
+    uscStatutes: number;
+    uscHashedPct: number;
+    decreeViolations: number;
+  };
+};
+
+function parseFarRule(rule: string): { part: string | null; section: string | null } {
+  // Examples: FAR_91_119_B_CONGESTED, FAR_107_29, NIGHT_LOW_RESIDENTIAL
+  const m = rule.match(/^FAR_(\d+)(?:_(\d+))?/i);
+  if (!m) return { part: null, section: null };
+  return { part: m[1] ?? null, section: m[2] ?? null };
+}
+
+export const getCitationsMap = createServerFn({ method: "GET" }).handler(
+  async (): Promise<CitationsPayload> => {
+    const w = watchtower();
+    const e = evidence();
+    const [ruleAgg, regs, decrees, totals] = await Promise.all([
+      w`SELECT rule_violated AS rule, COUNT(*)::int AS c
+        FROM violation_classifications
+        WHERE rule_violated IS NOT NULL
+        GROUP BY rule_violated
+        ORDER BY c DESC`,
+      w`SELECT part, section, heading, sha256_hash FROM faa_regulations`,
+      e`SELECT provision_violated, severity, violation_description, violation_date, sha256_hash
+        FROM consent_decree_violations
+        ORDER BY violation_date DESC NULLS LAST
+        LIMIT 50`,
+      Promise.all([
+        w`SELECT COUNT(*)::int AS c FROM violation_classifications`,
+        w`SELECT COUNT(*)::int AS total, COUNT(sha256_hash)::int AS hashed FROM faa_regulations`,
+        e`SELECT COUNT(*)::int AS total, COUNT(sha256_hash)::int AS hashed FROM regulatory_statutes`,
+        e`SELECT COUNT(*)::int AS c FROM consent_decree_violations`,
+      ]),
+    ]);
+
+    const regIndex = new Map<string, { heading: string | null; hash: string | null }>();
+    for (const r of regs as any[]) {
+      const key = `${String(r.part ?? "").trim()}|${String(r.section ?? "").trim()}`;
+      if (!regIndex.has(key)) regIndex.set(key, { heading: r.heading ?? null, hash: r.sha256_hash ?? null });
+    }
+
+    const rules: CitationRow[] = (ruleAgg as any[]).map((r) => {
+      const { part, section } = parseFarRule(r.rule);
+      const key = `${part ?? ""}|${section ?? ""}`;
+      const hit = part && section ? regIndex.get(key) : null;
+      return {
+        rule: r.rule,
+        count: r.c,
+        part,
+        section,
+        cfrHeading: hit?.heading ?? null,
+        cfrHashShort: hit?.hash ? hit.hash.slice(0, 12) : null,
+      };
+    });
+
+    const decreeRows: DecreeRow[] = (decrees as any[]).map((d) => ({
+      provision: d.provision_violated ?? "—",
+      severity: d.severity ?? null,
+      description: d.violation_description ?? null,
+      date: d.violation_date ? new Date(d.violation_date).toISOString() : null,
+      hashShort: d.sha256_hash ? String(d.sha256_hash).slice(0, 12) : null,
+    }));
+
+    const [tClass, tRegs, tUsc, tDec] = totals;
+    return {
+      rules,
+      decrees: decreeRows,
+      totals: {
+        classifiedDetections: (tClass as any)[0].c,
+        cfrRegs: (tRegs as any)[0].total,
+        cfrHashedPct: (tRegs as any)[0].total ? Math.round(((tRegs as any)[0].hashed / (tRegs as any)[0].total) * 1000) / 10 : 0,
+        uscStatutes: (tUsc as any)[0].total,
+        uscHashedPct: (tUsc as any)[0].total ? Math.round(((tUsc as any)[0].hashed / (tUsc as any)[0].total) * 1000) / 10 : 0,
+        decreeViolations: (tDec as any)[0].c,
+      },
+    };
+  },
+);
