@@ -10,6 +10,7 @@ const NAV = [
   { to: "/threat-index", label: "Threat Index" },
   { to: "/operators", label: "Operators" },
   { to: "/ml-detections", label: "ML" },
+  { to: "/citations", label: "Citations" },
   { to: "/reports", label: "Reports" },
   { to: "/rules", label: "Rules" },
   { to: "/methodology", label: "Methodology" },
