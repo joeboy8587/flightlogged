@@ -98,6 +98,65 @@ function Home() {
       </div>
 
       {/* THREE PILLARS */}
+      {/* FAA DEMAND BANNER */}
+      <section className="border-b-4 border-ink bg-alert text-paper">
+        <div className="max-w-[1400px] mx-auto px-4 py-16">
+          <div className="grid lg:grid-cols-12 gap-8 items-start">
+            <div className="lg:col-span-8">
+              <div className="label-stamp bg-paper text-ink inline-block px-2 py-1 mb-4">
+                Public petition · Addressed to the Federal Aviation Administration
+              </div>
+              <h2 className="text-4xl sm:text-6xl mb-5 leading-tight">
+                The violations are public.<br />The record is hashed.<br />
+                <span className="bg-ink text-warning px-2">FAA — enforce the rules we pay you to enforce.</span>
+              </h2>
+              <p className="text-lg max-w-3xl mb-4 font-medium">
+                {fmt(s.flightDetections)} court-ready flight detections. {fmt(s.anomalyEvents)} statistical
+                anomalies. Every record SHA-256 fingerprinted and Merkle-chained against tampering. Every
+                altitude, every registration, every owner pulled from public ADS-B broadcasts and the public
+                FAA Aircraft Registry — independently verifiable by any member of the public, including the
+                regulator whose statutory job it is to look.
+              </p>
+              <p className="text-lg max-w-3xl mb-6 font-medium">
+                14 CFR § 91.119 (minimum safe altitudes). 14 CFR § 91.13 (careless or reckless operation).
+                14 CFR § 91.227 (ADS-B Out integrity). These are not novel theories. They are the FAA's
+                own regulations, broken on a population scale, in plain view, over a populated county,
+                while the agency that taxpayers fund to enforce them has not acted.
+              </p>
+              <p className="text-base max-w-3xl mb-8 opacity-95">
+                This site is the notice. The dataset is the exhibit. Silence after this point is a
+                choice — and it is on the record.
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <Link to="/citations" className="label-stamp bg-ink text-paper px-5 py-3 hover:bg-warning hover:text-ink transition-colors">
+                  See the citations →
+                </Link>
+                <Link to="/violations" className="label-stamp bg-paper text-ink px-5 py-3 hover:bg-warning transition-colors">
+                  Browse the violations
+                </Link>
+                <Link to="/reports" className="label-stamp brutal-border border-paper px-5 py-3 hover:bg-ink transition-colors">
+                  Read the reports
+                </Link>
+              </div>
+            </div>
+            <aside className="lg:col-span-4 brutal-border-thick border-paper bg-ink p-6">
+              <div className="label-stamp text-warning mb-3">What we are demanding</div>
+              <ol className="space-y-3 text-sm font-medium list-decimal pl-5">
+                <li>Open an enforcement docket on the repeat-offender aircraft surfaced in <Link to="/live" className="underline">/live</Link>.</li>
+                <li>Audit 14 CFR § 91.227 (ADS-B Out) integrity for tails with suppressed or anomalous altitude.</li>
+                <li>Publish disposition for each violation referred — not "no further action" by silence.</li>
+                <li>Recognize civilian ADS-B + hashed chain of custody as admissible regulatory evidence.</li>
+              </ol>
+              <div className="mt-5 pt-4 border-t border-paper/20 text-xs font-mono opacity-80">
+                All data referenced here is drawn from public ADS-B broadcasts and the public FAA registry,
+                independently verifiable.
+              </div>
+            </aside>
+          </div>
+        </div>
+      </section>
+
+      {/* THREE PILLARS */}
       <section className="border-b-4 border-ink">
         <div className="max-w-[1400px] mx-auto px-4 py-20">
           <div className="grid lg:grid-cols-3 gap-0 brutal-border-thick">
