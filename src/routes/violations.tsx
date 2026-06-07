@@ -5,6 +5,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
 import { breadcrumbScript } from "@/lib/breadcrumbs";
 import { getSentinelViolations, getNeonViolations } from "@/lib/watchtower.functions";
+import { UndergroundClub } from "@/components/underground-club";
 
 const vQO = queryOptions({ queryKey: ["sentinel-violations"], queryFn: () => getSentinelViolations() });
 const nQO = queryOptions({ queryKey: ["neon-violations"], queryFn: () => getNeonViolations() });
@@ -79,6 +80,8 @@ function Violations() {
           </p>
         </div>
       </section>
+
+      <UndergroundClub />
 
       {/* Neon-side fresh violations summary */}
       <section className="border-b-4 border-ink">

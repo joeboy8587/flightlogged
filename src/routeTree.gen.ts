@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ViolationsRouteImport } from './routes/violations'
+import { Route as ToolkitRouteImport } from './routes/toolkit'
 import { Route as ThreatIndexRouteImport } from './routes/threat-index'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as RulesRouteImport } from './routes/rules'
@@ -26,10 +27,17 @@ import { Route as CitationsRouteImport } from './routes/citations'
 import { Route as ActRouteImport } from './routes/act'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ToolkitIndexRouteImport } from './routes/toolkit.index'
+import { Route as ToolkitFoiaRouteImport } from './routes/toolkit.foia'
 
 const ViolationsRoute = ViolationsRouteImport.update({
   id: '/violations',
   path: '/violations',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ToolkitRoute = ToolkitRouteImport.update({
+  id: '/toolkit',
+  path: '/toolkit',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ThreatIndexRoute = ThreatIndexRouteImport.update({
@@ -112,6 +120,16 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ToolkitIndexRoute = ToolkitIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ToolkitRoute,
+} as any)
+const ToolkitFoiaRoute = ToolkitFoiaRouteImport.update({
+  id: '/foia',
+  path: '/foia',
+  getParentRoute: () => ToolkitRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -130,7 +148,10 @@ export interface FileRoutesByFullPath {
   '/rules': typeof RulesRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/threat-index': typeof ThreatIndexRoute
+  '/toolkit': typeof ToolkitRouteWithChildren
   '/violations': typeof ViolationsRoute
+  '/toolkit/foia': typeof ToolkitFoiaRoute
+  '/toolkit/': typeof ToolkitIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -150,6 +171,8 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/threat-index': typeof ThreatIndexRoute
   '/violations': typeof ViolationsRoute
+  '/toolkit/foia': typeof ToolkitFoiaRoute
+  '/toolkit': typeof ToolkitIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -169,7 +192,10 @@ export interface FileRoutesById {
   '/rules': typeof RulesRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/threat-index': typeof ThreatIndexRoute
+  '/toolkit': typeof ToolkitRouteWithChildren
   '/violations': typeof ViolationsRoute
+  '/toolkit/foia': typeof ToolkitFoiaRoute
+  '/toolkit/': typeof ToolkitIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -190,7 +216,10 @@ export interface FileRouteTypes {
     | '/rules'
     | '/sitemap.xml'
     | '/threat-index'
+    | '/toolkit'
     | '/violations'
+    | '/toolkit/foia'
+    | '/toolkit/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -210,6 +239,8 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/threat-index'
     | '/violations'
+    | '/toolkit/foia'
+    | '/toolkit'
   id:
     | '__root__'
     | '/'
@@ -228,7 +259,10 @@ export interface FileRouteTypes {
     | '/rules'
     | '/sitemap.xml'
     | '/threat-index'
+    | '/toolkit'
     | '/violations'
+    | '/toolkit/foia'
+    | '/toolkit/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -248,6 +282,7 @@ export interface RootRouteChildren {
   RulesRoute: typeof RulesRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   ThreatIndexRoute: typeof ThreatIndexRoute
+  ToolkitRoute: typeof ToolkitRouteWithChildren
   ViolationsRoute: typeof ViolationsRoute
 }
 
@@ -258,6 +293,13 @@ declare module '@tanstack/react-router' {
       path: '/violations'
       fullPath: '/violations'
       preLoaderRoute: typeof ViolationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/toolkit': {
+      id: '/toolkit'
+      path: '/toolkit'
+      fullPath: '/toolkit'
+      preLoaderRoute: typeof ToolkitRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/threat-index': {
@@ -372,8 +414,35 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/toolkit/': {
+      id: '/toolkit/'
+      path: '/'
+      fullPath: '/toolkit/'
+      preLoaderRoute: typeof ToolkitIndexRouteImport
+      parentRoute: typeof ToolkitRoute
+    }
+    '/toolkit/foia': {
+      id: '/toolkit/foia'
+      path: '/foia'
+      fullPath: '/toolkit/foia'
+      preLoaderRoute: typeof ToolkitFoiaRouteImport
+      parentRoute: typeof ToolkitRoute
+    }
   }
 }
+
+interface ToolkitRouteChildren {
+  ToolkitFoiaRoute: typeof ToolkitFoiaRoute
+  ToolkitIndexRoute: typeof ToolkitIndexRoute
+}
+
+const ToolkitRouteChildren: ToolkitRouteChildren = {
+  ToolkitFoiaRoute: ToolkitFoiaRoute,
+  ToolkitIndexRoute: ToolkitIndexRoute,
+}
+
+const ToolkitRouteWithChildren =
+  ToolkitRoute._addFileChildren(ToolkitRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -392,18 +461,9 @@ const rootRouteChildren: RootRouteChildren = {
   RulesRoute: RulesRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   ThreatIndexRoute: ThreatIndexRoute,
+  ToolkitRoute: ToolkitRouteWithChildren,
   ViolationsRoute: ViolationsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

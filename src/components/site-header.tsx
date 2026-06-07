@@ -13,6 +13,7 @@ const NAV = [
   { to: "/citations", label: "Citations" },
   { to: "/reports", label: "Reports" },
   { to: "/rules", label: "Rules" },
+  { to: "/toolkit", label: "Toolkit" },
   { to: "/methodology", label: "Methodology" },
   { to: "/legal", label: "Legal" },
   { to: "/act", label: "Take Action" },
