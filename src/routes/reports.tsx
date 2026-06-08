@@ -10,7 +10,11 @@ export const Route = createFileRoute("/reports")({
   head: () => ({
     meta: [
       { title: "Reports — The Architecture of Never" },
-      { name: "description", content: "Full accountability investigations on the Kern County Sheriff's Office. Downloadable, source-cited, court-ready." },
+      {
+        name: "description",
+        content:
+          "Full accountability investigations on the Kern County Sheriff's Office. Downloadable, source-cited, court-ready.",
+      },
       { property: "og:title", content: "Reports — Architecture of Never" },
       { property: "og:description", content: "Five years. $57.8M paid. Zero admissions. Read the receipts." },
       { property: "og:url", content: "https://flightlogged.lovable.app/reports" },
@@ -19,19 +23,23 @@ export const Route = createFileRoute("/reports")({
     scripts: [
       breadcrumbScript(crumbs),
       {
-      type: "application/ld+json",
-      children: JSON.stringify({
-        "@context": "https://schema.org",
-        "@graph": REPORTS.map((r) => ({
-          "@type": "Article",
-          headline: r.title,
-          description: r.blurb,
-          datePublished: r.date,
-          url: `https://flightlogged.lovable.app/reports#${r.slug}`,
-          author: { "@type": "Organization", name: "The Architecture of Never" },
-          publisher: { "@type": "Organization", name: "The Architecture of Never", url: "https://flightlogged.lovable.app" },
-        })),
-      }),
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@graph": REPORTS.map((r) => ({
+            "@type": "Article",
+            headline: r.title,
+            description: r.blurb,
+            datePublished: r.date,
+            url: `https://flightlogged.lovable.app/reports#${r.slug}`,
+            author: { "@type": "Organization", name: "The Architecture of Never" },
+            publisher: {
+              "@type": "Organization",
+              name: "The Architecture of Never",
+              url: "https://flightlogged.lovable.app",
+            },
+          })),
+        }),
       },
     ],
   }),
@@ -53,6 +61,31 @@ type Report = {
 
 const REPORTS: Report[] = [
   {
+    slug: "bpd-vs-kcso-comparison",
+
+    date: "May 2026",
+    classification: "Comparative Reform Analysis",
+    pages: "11 pp",
+    title: "BPD vs. KCSO: Two Agencies, Opposite Results",
+    blurb:
+      "Bakersfield Police and the Kern County Sheriff signed materially identical DOJ stipulated judgments in the same investigation cycle, in the same city, under the same monitor framework. Five years in, BPD is in effective compliance across five reform areas and moving into training implementation. KCSO took a two-year extension over its own objection — then killed three people in eight days.",
+    highlights: [
+      { label: "Reform areas BPD: effective", value: "5 / equivalent" },
+      { label: "Reform areas KCSO: deficient", value: "5 / 8" },
+      { label: "DOJ extension", value: "BPD: none · KCSO: +2 yrs" },
+      { label: "Killings post-extension (KCSO)", value: "3 in 8 days" },
+      { label: "BPD OIS trend 2023→2024", value: "7 → 3" },
+      { label: "KCSO aerial surveillance spend", value: "$4.1M / yr" },
+    ],
+    takeaways: [
+      "The reform requirements are not impossible — BPD is proving they are achievable next door, with less than half the budget.",
+      "Leadership posture is the dominant variable: BPD framed reform as a path to a model agency; KCSO denied the underlying findings.",
+      "BPD's Community Advisory Panel is functioning and reviewing policy. KCSO's council was driven to resignation.",
+      "KCSO's continued failure under the same legal framework is a choice, not a structural inevitability.",
+    ],
+    accent: "warning",
+  },
+  {
     slug: "porterville-critical-incident",
     file: "/reports/2026-04-09-porterville-critical-incident.pdf",
     date: "April 9, 2026",
@@ -60,7 +93,7 @@ const REPORTS: Report[] = [
     pages: "5 pp",
     title: "Porterville BearCat Killing — Source Documents",
     blurb:
-      "The official KCSO incident release for the April 9, 2026 use-of-force event on W. Bryan Avenue: timeline, SWAT vehicle deployment (BearCat and Rook), the three-stage run-over sequence, and [...]",
+      "The official KCSO incident release for the April 9, 2026 use-of-force event on W. Bryan Avenue: timeline, SWAT vehicle deployment (BearCat and Rook), the three-stage run-over sequence, and the in-house review board determination of 'within policy.'",
     highlights: [
       { label: "Reviewing body", value: "KCSO Incident Review Board" },
       { label: "Review determination", value: "Within policy" },
@@ -120,7 +153,7 @@ const REPORTS: Report[] = [
     pages: "—",
     title: "Police Vehicle Use of Force — Doctrinal Reference",
     blurb:
-      "Legal and policy reference on the use of motor vehicles — including armored vehicles — as instruments of force. Underpins the Graham v. Connor analysis applied to the Porterville incid[...]",
+      "Legal and policy reference on the use of motor vehicles — including armored vehicles — as instruments of force. Underpins the Graham v. Connor analysis applied to the Porterville incident.",
     highlights: [
       { label: "Controlling framework", value: "Graham v. Connor" },
       { label: "Open question", value: "Armored vehicle as deadly weapon" },
@@ -139,7 +172,7 @@ const REPORTS: Report[] = [
     pages: "—",
     title: "California DOJ Report on KCSO — Source Filing",
     blurb:
-      "The California Department of Justice findings underlying the 2020 KCSO stipulated judgment. Mirrored here to keep the controlling document one click away from every downstream finding on t[...]",
+      "The California Department of Justice findings underlying the 2020 KCSO stipulated judgment. Mirrored here to keep the controlling document one click away from every downstream finding on this site.",
     highlights: [
       { label: "Issuing body", value: "California DOJ" },
       { label: "Investigation period", value: "2016 onward" },
@@ -158,7 +191,7 @@ const REPORTS: Report[] = [
     pages: "50+ pp",
     title: "Dismantling the Architecture",
     blurb:
-      "A 12-dimension deep-research investigation of the Kern County Sheriff's Office. Five years into a DOJ stipulated judgment, KCSO remains non-compliant in 5 of 8 reform areas — while build[...]",
+      "A 12-dimension deep-research investigation of the Kern County Sheriff's Office. Five years into a DOJ stipulated judgment, KCSO remains non-compliant in 5 of 8 reform areas — while building out the surveillance and armored capacity the judgment never touched.",
     highlights: [
       { label: "Settlements paid (taxpayer)", value: "$57.8M+" },
       { label: "Lewis verdict (2nd largest CA OIS)", value: "$30.5M" },
@@ -184,7 +217,7 @@ const REPORTS: Report[] = [
     pages: "50+ pp",
     title: "KCSO Comprehensive Audit",
     blurb:
-      "The full evidentiary record: court filings, DOJ documents, FAA registry data, pension-fund agendas, and official monitor reports — cross-referenced into ten domains of systemic accountab[...]",
+      "The full evidentiary record: court filings, DOJ documents, FAA registry data, pension-fund agendas, and official monitor reports — cross-referenced into ten domains of systemic accountability evasion.",
     highlights: [
       { label: "Independent searches", value: "200+" },
       { label: "Research dimensions", value: "12" },
@@ -208,7 +241,7 @@ const REPORTS: Report[] = [
     pages: "9 pp",
     title: "Evidence: Survey Discrepancy Analysis",
     blurb:
-      "The court-mandated KCSO community survey produced a '66% feel safe' headline. We audited the sample. It is not a survey of Kern County — it is a survey of a different county that does no[...]",
+      "The court-mandated KCSO community survey produced a '66% feel safe' headline. We audited the sample. It is not a survey of Kern County — it is a survey of a different county that does not exist.",
     highlights: [
       { label: "Hispanic/Latino under-representation", value: "−30.8 pp" },
       { label: "Bachelor's-or-higher over-representation", value: "+17.7 pp" },
@@ -267,9 +300,9 @@ function Reports() {
           <div className="label-stamp bg-alert text-paper inline-block px-2 py-1 mb-3">Reports · The Receipts</div>
           <h1 className="text-5xl sm:text-7xl mb-6">Read the file. Then read it to your supervisor.</h1>
           <p className="text-lg max-w-3xl">
-            These are not op-eds. They are source-cited, footnote-indexed accountability investigations.
-            Every PDF below is downloadable, redistributable, and built to survive cross-examination.
-            Start with the case that matters to your work — they all link to the same architecture.
+            These are not op-eds. They are source-cited, footnote-indexed accountability investigations. Every PDF below
+            is downloadable, redistributable, and built to survive cross-examination. Start with the case that matters
+            to your work — they all link to the same architecture.
           </p>
         </div>
       </section>
@@ -279,9 +312,13 @@ function Reports() {
           {REPORTS.map((r, idx) => (
             <article key={r.slug} className="brutal-border-thick bg-paper">
               <div className="grid lg:grid-cols-12">
-                <div className={`lg:col-span-4 p-8 ${accentClasses(r.accent)} border-b-4 lg:border-b-0 lg:border-r-4 border-ink`}>
+                <div
+                  className={`lg:col-span-4 p-8 ${accentClasses(r.accent)} border-b-4 lg:border-b-0 lg:border-r-4 border-ink`}
+                >
                   <div className="label-stamp opacity-80 mb-2">REPORT {String(idx + 1).padStart(2, "0")}</div>
-                  <div className="font-mono text-xs mb-4 opacity-90">{r.date} · {r.classification} · {r.pages}</div>
+                  <div className="font-mono text-xs mb-4 opacity-90">
+                    {r.date} · {r.classification} · {r.pages}
+                  </div>
                   <h2 className="text-3xl sm:text-4xl mb-6 leading-tight">{r.title}</h2>
                   <div className="flex flex-wrap gap-2">
                     <a
@@ -318,7 +355,9 @@ function Reports() {
                   <ul className="space-y-2">
                     {r.takeaways.map((t, i) => (
                       <li key={i} className="flex gap-3">
-                        <span className="font-mono text-warning bg-ink px-1.5 py-0.5 text-xs shrink-0 self-start mt-1">{String(i + 1).padStart(2, "0")}</span>
+                        <span className="font-mono text-warning bg-ink px-1.5 py-0.5 text-xs shrink-0 self-start mt-1">
+                          {String(i + 1).padStart(2, "0")}
+                        </span>
                         <span>{t}</span>
                       </li>
                     ))}
@@ -334,13 +373,22 @@ function Reports() {
         <div className="max-w-[1400px] mx-auto px-4 py-16">
           <h2 className="text-4xl mb-4">Use them.</h2>
           <p className="opacity-80 mb-6 max-w-2xl">
-            Journalists, attorneys, legislators, and affected residents are free to redistribute,
-            quote, and build on every report here. CC BY-SA 4.0. Cite us, link the source, and tell
-            us what you find.
+            Journalists, attorneys, legislators, and affected residents are free to redistribute, quote, and build on
+            every report here. CC BY-SA 4.0. Cite us, link the source, and tell us what you find.
           </p>
           <div className="flex flex-wrap gap-3">
-            <Link to="/act" className="label-stamp bg-warning text-ink brutal-border px-5 py-3 hover:bg-alert hover:text-paper">Take action →</Link>
-            <Link to="/findings" className="label-stamp brutal-border border-paper px-5 py-3 hover:bg-paper hover:text-ink">Live findings archive</Link>
+            <Link
+              to="/act"
+              className="label-stamp bg-warning text-ink brutal-border px-5 py-3 hover:bg-alert hover:text-paper"
+            >
+              Take action →
+            </Link>
+            <Link
+              to="/findings"
+              className="label-stamp brutal-border border-paper px-5 py-3 hover:bg-paper hover:text-ink"
+            >
+              Live findings archive
+            </Link>
           </div>
         </div>
       </section>
