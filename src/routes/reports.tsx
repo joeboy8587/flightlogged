@@ -53,31 +53,6 @@ type Report = {
 
 const REPORTS: Report[] = [
   {
-    slug: "bpd-vs-kcso-comparison",
-    file: "/reports/watchtower-bpd-vs-kcso-comparison-may2026.docx",
-    date: "May 2026",
-    classification: "Comparative Reform Analysis",
-    pages: "11 pp",
-    title: "BPD vs. KCSO: Two Agencies, Opposite Results",
-    blurb:
-      "Bakersfield Police and the Kern County Sheriff signed materially identical DOJ stipulated judgments in the same investigation cycle, in the same city, under the same monitor framework. Five years in, BPD is in effective compliance across five reform areas and moving into training implementation. KCSO took a two-year extension over its own objection — then killed three people in eight days.",
-    highlights: [
-      { label: "Reform areas BPD: effective", value: "5 / equivalent" },
-      { label: "Reform areas KCSO: deficient", value: "5 / 8" },
-      { label: "DOJ extension", value: "BPD: none · KCSO: +2 yrs" },
-      { label: "Killings post-extension (KCSO)", value: "3 in 8 days" },
-      { label: "BPD OIS trend 2023→2024", value: "7 → 3" },
-      { label: "KCSO aerial surveillance spend", value: "$4.1M / yr" },
-    ],
-    takeaways: [
-      "The reform requirements are not impossible — BPD is proving they are achievable next door, with less than half the budget.",
-      "Leadership posture is the dominant variable: BPD framed reform as a path to a model agency; KCSO denied the underlying findings.",
-      "BPD's Community Advisory Panel is functioning and reviewing policy. KCSO's council was driven to resignation.",
-      "KCSO's continued failure under the same legal framework is a choice, not a structural inevitability.",
-    ],
-    accent: "warning",
-  },
-  {
     slug: "porterville-critical-incident",
     file: "/reports/2026-04-09-porterville-critical-incident.pdf",
     date: "April 9, 2026",
@@ -85,7 +60,7 @@ const REPORTS: Report[] = [
     pages: "5 pp",
     title: "Porterville BearCat Killing — Source Documents",
     blurb:
-      "The official KCSO incident release for the April 9, 2026 use-of-force event on W. Bryan Avenue: timeline, SWAT vehicle deployment (BearCat and Rook), the three-stage run-over sequence, and the in-house review board determination of 'within policy.'",
+      "The official KCSO incident release for the April 9, 2026 use-of-force event on W. Bryan Avenue: timeline, SWAT vehicle deployment (BearCat and Rook), the three-stage run-over sequence, and [...]",
     highlights: [
       { label: "Reviewing body", value: "KCSO Incident Review Board" },
       { label: "Review determination", value: "Within policy" },
@@ -145,7 +120,7 @@ const REPORTS: Report[] = [
     pages: "—",
     title: "Police Vehicle Use of Force — Doctrinal Reference",
     blurb:
-      "Legal and policy reference on the use of motor vehicles — including armored vehicles — as instruments of force. Underpins the Graham v. Connor analysis applied to the Porterville incident.",
+      "Legal and policy reference on the use of motor vehicles — including armored vehicles — as instruments of force. Underpins the Graham v. Connor analysis applied to the Porterville incid[...]",
     highlights: [
       { label: "Controlling framework", value: "Graham v. Connor" },
       { label: "Open question", value: "Armored vehicle as deadly weapon" },
@@ -164,7 +139,7 @@ const REPORTS: Report[] = [
     pages: "—",
     title: "California DOJ Report on KCSO — Source Filing",
     blurb:
-      "The California Department of Justice findings underlying the 2020 KCSO stipulated judgment. Mirrored here to keep the controlling document one click away from every downstream finding on this site.",
+      "The California Department of Justice findings underlying the 2020 KCSO stipulated judgment. Mirrored here to keep the controlling document one click away from every downstream finding on t[...]",
     highlights: [
       { label: "Issuing body", value: "California DOJ" },
       { label: "Investigation period", value: "2016 onward" },
@@ -183,7 +158,7 @@ const REPORTS: Report[] = [
     pages: "50+ pp",
     title: "Dismantling the Architecture",
     blurb:
-      "A 12-dimension deep-research investigation of the Kern County Sheriff's Office. Five years into a DOJ stipulated judgment, KCSO remains non-compliant in 5 of 8 reform areas — while building out the surveillance and armored capacity the judgment never touched.",
+      "A 12-dimension deep-research investigation of the Kern County Sheriff's Office. Five years into a DOJ stipulated judgment, KCSO remains non-compliant in 5 of 8 reform areas — while build[...]",
     highlights: [
       { label: "Settlements paid (taxpayer)", value: "$57.8M+" },
       { label: "Lewis verdict (2nd largest CA OIS)", value: "$30.5M" },
@@ -209,7 +184,7 @@ const REPORTS: Report[] = [
     pages: "50+ pp",
     title: "KCSO Comprehensive Audit",
     blurb:
-      "The full evidentiary record: court filings, DOJ documents, FAA registry data, pension-fund agendas, and official monitor reports — cross-referenced into ten domains of systemic accountability evasion.",
+      "The full evidentiary record: court filings, DOJ documents, FAA registry data, pension-fund agendas, and official monitor reports — cross-referenced into ten domains of systemic accountab[...]",
     highlights: [
       { label: "Independent searches", value: "200+" },
       { label: "Research dimensions", value: "12" },
@@ -233,7 +208,7 @@ const REPORTS: Report[] = [
     pages: "9 pp",
     title: "Evidence: Survey Discrepancy Analysis",
     blurb:
-      "The court-mandated KCSO community survey produced a '66% feel safe' headline. We audited the sample. It is not a survey of Kern County — it is a survey of a different county that does not exist.",
+      "The court-mandated KCSO community survey produced a '66% feel safe' headline. We audited the sample. It is not a survey of Kern County — it is a survey of a different county that does no[...]",
     highlights: [
       { label: "Hispanic/Latino under-representation", value: "−30.8 pp" },
       { label: "Bachelor's-or-higher over-representation", value: "+17.7 pp" },
