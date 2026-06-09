@@ -61,6 +61,29 @@ type Report = {
 
 const REPORTS: Report[] = [
   {
+    slug: "watchtower-report-june-2026",
+    file: "/reports/the-architecture-of-never-watchtower-report.pdf",
+    date: "June 2026",
+    classification: "Watchtower Project Report",
+    pages: "PDF",
+    title: "The Architecture of Never — Watchtower Report",
+    blurb:
+      "Consolidated public-source report: methodology, Watchtower Threat Index (WTI), shell-network linkage, ADS-B integrity failures, and the FAA enforcement demand. Redacted of survivor PII.",
+    highlights: [
+      { label: "Records cryptographically hashed", value: "100%" },
+      { label: "Chain", value: "SHA-256 + Merkle" },
+      { label: "Method version", value: "WTIv1_with_convergence" },
+      { label: "Survivor PII", value: "Redacted" },
+    ],
+    takeaways: [
+      "Every detection in the public dataset is SHA-256 fingerprinted and Merkle-chained — tamper-evident, reproducible, court-ready.",
+      "WTI is a statistical abnormality score derived from public ADS-B and FAA registry data; it is not a claim of intent.",
+      "ADS-B integrity failures (negative altitudes) violate 14 CFR § 91.227 and may implicate 18 U.S.C. § 1001.",
+      "Survivor identity is redacted from all public outputs. Author handle: Watchtower Project.",
+    ],
+    accent: "ink",
+  },
+  {
     slug: "porterville-critical-incident",
     file: "/reports/2026-04-09-porterville-critical-incident.pdf",
     date: "April 9, 2026",
