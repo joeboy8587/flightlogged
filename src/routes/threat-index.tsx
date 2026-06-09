@@ -120,6 +120,7 @@ function ThreatIndex() {
       <section className="border-b-4 border-ink">
         <div className="max-w-[1400px] mx-auto px-4 py-12">
           <h2 className="text-4xl sm:text-5xl mb-6">Distribution by tier</h2>
+          {/* sections injected above this header in patch */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
             {data.buckets.map((b, i) => (
               <div key={i} className={`brutal-border p-4 ${tierClass(b.tier)}`}>
