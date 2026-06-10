@@ -20,7 +20,7 @@ export function CoordinationGraph({ rows }: { rows: CoordinationRow[] }) {
   const nodes = useMemo(() => {
     const sorted = [...rows]
       .filter((r) => r.coordinationScore > 0 || r.kernPriority)
-      .sort((a, b) => b.coordinationScore - a.coordinationScore || b.totalDetections - a.totalDetections)
+      .sort((a, b) => b.coordinationScore - a.coordinationScore || b.detections - a.detections)
       .slice(0, 60);
 
     // Cluster by role: place each role group in its own angular wedge
@@ -50,7 +50,7 @@ export function CoordinationGraph({ rows }: { rows: CoordinationRow[] }) {
         const angle = gi * wedge + wedge * localAngle - Math.PI / 2;
         const x = cx + Math.cos(angle) * dist;
         const y = cy + Math.sin(angle) * dist;
-        const radius = 6 + Math.min(18, Math.sqrt(row.totalDetections) / 2);
+        const radius = 6 + Math.min(18, Math.sqrt(row.detections) / 2);
         positioned.push({ r: row, x, y, radius, color: ROLE_COLORS[role] ?? ROLE_COLORS.Independent });
       });
     });
@@ -145,7 +145,7 @@ export function CoordinationGraph({ rows }: { rows: CoordinationRow[] }) {
             <div className="grid grid-cols-2 gap-x-3 gap-y-1 mt-2">
               <span className="opacity-60">Role</span><span>{hoveredNode.r.operationalRole}</span>
               <span className="opacity-60">Score</span><span>{hoveredNode.r.coordinationScore} / 4</span>
-              <span className="opacity-60">Detections</span><span>{hoveredNode.r.totalDetections.toLocaleString()}</span>
+              <span className="opacity-60">Detections</span><span>{hoveredNode.r.detections.toLocaleString()}</span>
               <span className="opacity-60">Basis</span><span>{hoveredNode.r.classificationBasis}</span>
             </div>
           </div>
