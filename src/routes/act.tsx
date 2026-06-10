@@ -7,6 +7,8 @@ import { breadcrumbScript } from "@/lib/breadcrumbs";
 
 const crumbs = [{ label: "Home", href: "/" }, { label: "Take Action" }];
 const CONTACT = "watchtowerproject@proton.me";
+const LIVE_URL = "https://advocacywatch.live/live";
+const SHARE_MSG = "An autonomous civilian system has logged 13,000+ aircraft over Kern County. Shell companies, sheriff helicopters, and military airframes appear in coordinated patterns. The FAA has been notified. Watch the evidence:";
 
 export const Route = createFileRoute("/act")({
   head: () => ({
@@ -88,15 +90,97 @@ function Act() {
           <div className="label-stamp bg-warning inline-block px-2 py-1 mb-3">Take Action</div>
           <h1 className="text-5xl sm:text-7xl mb-6">Watch back.</h1>
           <p className="text-lg max-w-3xl">
-            Six things you can do in the next fifteen minutes. Pick one and start.
-            Every button below opens a pre-filled email to{" "}
-            <a className="underline" href={`mailto:${CONTACT}`}>{CONTACT}</a> — the only inbox we run.
+            Pick a tier. All three matter. Start at the one that fits your next fifteen minutes.
           </p>
         </div>
       </section>
 
+      {/* TIER 1 — 30 SECONDS */}
+      <section className="border-b-4 border-ink bg-warning">
+        <div className="max-w-[1400px] mx-auto px-4 py-12">
+          <div className="flex items-baseline justify-between flex-wrap gap-2 mb-2">
+            <div className="label-stamp bg-ink text-paper inline-block px-2 py-1">Tier 1 · 30 seconds</div>
+            <span className="font-mono text-xs opacity-70">No friction. One click.</span>
+          </div>
+          <h2 className="text-3xl sm:text-5xl mb-6">I have 30 seconds.</h2>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <a
+              href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(SHARE_MSG + " " + LIVE_URL)}`}
+              target="_blank" rel="noopener noreferrer"
+              className="brutal-border-thick p-5 bg-paper hover:bg-ink hover:text-paper transition-colors block"
+            >
+              <div className="label-stamp mb-2">01</div>
+              <div className="font-display text-2xl mb-1">Share on X / Twitter</div>
+              <p className="text-sm opacity-80">Pre-filled post with the live-feed link.</p>
+            </a>
+            <a
+              href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(LIVE_URL)}`}
+              target="_blank" rel="noopener noreferrer"
+              className="brutal-border-thick p-5 bg-paper hover:bg-ink hover:text-paper transition-colors block"
+            >
+              <div className="label-stamp mb-2">02</div>
+              <div className="font-display text-2xl mb-1">Share on Facebook</div>
+              <p className="text-sm opacity-80">Push the live feed to your neighborhood.</p>
+            </a>
+            <Link
+              to="/live"
+              className="brutal-border-thick p-5 bg-paper hover:bg-ink hover:text-paper transition-colors block"
+            >
+              <div className="label-stamp mb-2">03</div>
+              <div className="font-display text-2xl mb-1">Watch the live feed</div>
+              <p className="text-sm opacity-80">See what's overhead right now.</p>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* TIER 2 — 5 MINUTES */}
+      <section className="border-b-4 border-ink bg-alert text-paper">
+        <div className="max-w-[1400px] mx-auto px-4 py-12">
+          <div className="flex items-baseline justify-between flex-wrap gap-2 mb-2">
+            <div className="label-stamp bg-paper text-ink inline-block px-2 py-1">Tier 2 · 5 minutes</div>
+            <span className="font-mono text-xs opacity-70">Small lift. Real leverage.</span>
+          </div>
+          <h2 className="text-3xl sm:text-5xl mb-6">I have five minutes.</h2>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <Link
+              to="/toolkit/foia"
+              className="brutal-border-thick border-paper p-5 bg-ink hover:bg-paper hover:text-ink transition-colors block"
+            >
+              <div className="label-stamp mb-2">04</div>
+              <div className="font-display text-2xl mb-1">Generate a FOIA / CPRA</div>
+              <p className="text-sm opacity-80">Build a ready-to-send public records request in your browser. No data leaves your device.</p>
+            </Link>
+            <a
+              href="https://hotline.faa.gov/"
+              target="_blank" rel="noopener noreferrer"
+              className="brutal-border-thick border-paper p-5 bg-ink hover:bg-paper hover:text-ink transition-colors block"
+            >
+              <div className="label-stamp mb-2">05</div>
+              <div className="font-display text-2xl mb-1">File an FAA Safety report</div>
+              <p className="text-sm opacity-80">Use the citations from /violations as your supporting evidence.</p>
+            </a>
+            <Link
+              to="/violations"
+              className="brutal-border-thick border-paper p-5 bg-ink hover:bg-paper hover:text-ink transition-colors block"
+            >
+              <div className="label-stamp mb-2">06</div>
+              <div className="font-display text-2xl mb-1">Look up a tail or operator</div>
+              <p className="text-sm opacity-80">Browse documented violations, owners, and shell-company links.</p>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* TIER 3 — WANT TO HELP */}
       <section className="border-b-4 border-ink">
-        <div className="max-w-[1400px] mx-auto px-4 py-16 grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="max-w-[1400px] mx-auto px-4 py-12">
+          <div className="flex items-baseline justify-between flex-wrap gap-2 mb-2">
+            <div className="label-stamp bg-ink text-paper inline-block px-2 py-1">Tier 3 · I want to help</div>
+            <span className="font-mono text-xs opacity-70">Every button below opens a pre-filled email to <a className="underline" href={`mailto:${CONTACT}`}>{CONTACT}</a>.</span>
+          </div>
+          <h2 className="text-3xl sm:text-5xl mb-6">I want to build this with you.</h2>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {CARDS.map((c) => (
             <article key={c.tag} className="brutal-border-thick p-6 bg-paper brutal-shadow flex flex-col">
               <span className="label-stamp bg-ink text-paper px-2 py-1 self-start mb-3">{c.tag}</span>
@@ -110,6 +194,7 @@ function Act() {
               </a>
             </article>
           ))}
+          </div>
         </div>
       </section>
 
