@@ -5,6 +5,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
 import { breadcrumbScript } from "@/lib/breadcrumbs";
 import { getSnapshot, getRecentLowAltitude, getRepeatOffenders, getIdentifiedOperators, getLocalAgencyAircraft } from "@/lib/watchtower.functions";
+import { ShareRow } from "@/components/share-row";
 
 const snapQO = queryOptions({ queryKey: ["snapshot"], queryFn: () => getSnapshot(), refetchInterval: 30000 });
 const lowAltQO = queryOptions({ queryKey: ["low-alt"], queryFn: () => getRecentLowAltitude(), refetchInterval: 30000 });
@@ -60,10 +61,45 @@ function Live() {
   const { data: identified } = useSuspenseQuery(idQO);
   const { data: local } = useSuspenseQuery(localQO);
 
+  const anomalyPct = s.totalDetections > 0 ? Math.round((s.anomalyEvents / s.totalDetections) * 1000) / 10 : 0;
+
   return (
     <div className="min-h-screen bg-paper text-ink">
       <SiteHeader />
       <SiteBreadcrumbs items={crumbs} />
+
+      {/* STICKY RIGHTS STRIP — legal frame stays visible while scrolling the feed */}
+      <div className="sticky top-0 z-30 bg-ink text-paper border-b-4 border-warning">
+        <div className="max-w-[1400px] mx-auto px-4 py-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] font-mono">
+          <span className="label-stamp bg-warning text-ink px-2 py-0.5">YOUR RIGHTS</span>
+          <span><strong>4A:</strong> Patterned overflight is search by proxy.</span>
+          <span className="opacity-30">·</span>
+          <span><strong>1A:</strong> ADS-B is public broadcast — documenting is protected.</span>
+          <span className="opacity-30">·</span>
+          <a href="/legal" className="underline hover:text-warning">Constitutional framework →</a>
+        </div>
+      </div>
+
+      {/* EXECUTIVE SUMMARY BANNER — frames what a first-time visitor is seeing */}
+      <section className="border-b-4 border-ink bg-warning text-ink">
+        <div className="max-w-[1400px] mx-auto px-4 py-6 grid lg:grid-cols-[1fr_auto] gap-4 items-center">
+          <div>
+            <div className="label-stamp bg-ink text-paper inline-block px-2 py-0.5 mb-2">What you're looking at</div>
+            <p className="text-sm sm:text-base font-medium leading-relaxed max-w-4xl">
+              An autonomous monitoring system has tracked <strong>{fmt(s.uniqueAircraft)}</strong> unique aircraft
+              over <strong>{s.windowHours}h</strong> in Kern County and surrounding airspace.{" "}
+              <strong>{anomalyPct}%</strong> of detections triggered anomaly flags — persistent low-altitude loitering,
+              masked identities, and night operations inconsistent with normal traffic. Shell companies, law
+              enforcement helicopters, and military aircraft appear in coordinated patterns. The FAA has been
+              formally notified. <strong>This is the evidence.</strong>
+            </p>
+          </div>
+          <Link to="/methodology" className="label-stamp brutal-border bg-paper px-4 py-2 hover:bg-ink hover:text-paper whitespace-nowrap shrink-0">
+            How this works →
+          </Link>
+        </div>
+      </section>
+
       <section className="border-b-4 border-ink bg-ink text-paper">
         <div className="max-w-[1400px] mx-auto px-4 py-12">
           <div className="label-stamp text-warning mb-4 flex items-center gap-2"><span className="w-2 h-2 bg-alert blink" /> LIVE · Refresh every 30s</div>
