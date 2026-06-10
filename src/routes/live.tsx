@@ -196,10 +196,11 @@ function Live() {
                   <th className="text-left p-3 label-stamp">Rule</th>
                   <th className="text-right p-3 label-stamp">Speed</th>
                   <th className="text-left p-3 label-stamp">County</th>
+                  <th className="text-left p-3 label-stamp">Share</th>
                 </tr>
               </thead>
               <tbody className="font-mono">
-                {low.length === 0 && <tr><td colSpan={7} className="p-6 text-center">No low-altitude activity in the current window.</td></tr>}
+                {low.length === 0 && <tr><td colSpan={8} className="p-6 text-center">No low-altitude activity in the current window.</td></tr>}
                 {low.map((r) => (
                   <tr key={r.icao + r.capturedAt} className="border-t border-ink/20 hover:bg-warning/30">
                     <td className="p-3 whitespace-nowrap">{fmtTime(r.capturedAt)}</td>
@@ -224,6 +225,11 @@ function Live() {
                     </td>
                     <td className="p-3 text-right">{r.speed ? Math.round(r.speed) + " kts" : "—"}</td>
                     <td className="p-3 text-xs">{r.county || "—"}</td>
+                    <td className="p-3">
+                      <ShareRow
+                        text={`${r.identifiedName || r.owner || "Unidentified operator"} — ${r.registration || r.icao} at ${fmt(r.altitude)} ft over ${r.county || "Kern County area"} on ${fmtTime(r.capturedAt)}.${r.violationSource ? ` Flagged: ${r.violationSource}.` : ""} Source: Watchtower / The Architecture of Never — https://advocacywatch.live/live`}
+                      />
+                    </td>
                   </tr>
                 ))}
               </tbody>
