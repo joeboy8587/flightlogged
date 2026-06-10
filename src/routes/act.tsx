@@ -184,7 +184,7 @@ function Act() {
           {CARDS.map((c) => (
             <article key={c.tag} className="brutal-border-thick p-6 bg-paper brutal-shadow flex flex-col">
               <span className="label-stamp bg-ink text-paper px-2 py-1 self-start mb-3">{c.tag}</span>
-              <h2 className="text-3xl mb-3">{c.title}</h2>
+              <h3 className="text-3xl mb-3">{c.title}</h3>
               <p className="mb-5 flex-1">{c.body}</p>
               <a
                 href={c.href}
