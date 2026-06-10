@@ -5,6 +5,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
 import { breadcrumbScript } from "@/lib/breadcrumbs";
 import { getBehavioralCoordination, type CoordinationRow } from "@/lib/watchtower.functions";
+import { CoordinationGraph } from "@/components/coordination-graph";
 
 const coordQO = queryOptions({
   queryKey: ["behavioral-coordination"],
@@ -273,6 +274,21 @@ function Coordination() {
               </div>
             </div>
           )}
+        </div>
+      </section>
+
+      {/* NETWORK GRAPH */}
+      <section className="border-b-4 border-ink bg-ink/5">
+        <div className="max-w-[1400px] mx-auto px-4 py-12">
+          <div className="label-stamp text-alert mb-2">Visual proof · Coordination network</div>
+          <h2 className="text-3xl sm:text-4xl mb-2">The picture the registry doesn't show you.</h2>
+          <p className="text-sm opacity-70 max-w-3xl mb-6">
+            Every dot is an aircraft. Distance to center is how closely its telemetry matches the
+            state-actor baseline (closer = tighter coordination). Color is the operational-role
+            bucket. Size is total detections in the current window. Hover any node for the tail's
+            registry owner and signals.
+          </p>
+          <CoordinationGraph rows={rows} />
         </div>
       </section>
 
