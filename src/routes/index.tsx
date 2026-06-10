@@ -48,6 +48,9 @@ function Home() {
             <div className="label-stamp inline-flex items-center gap-2 bg-warning px-2 py-1 mb-6">
               <span className="w-2 h-2 bg-ink blink" /> System online · Baseline learning · {s.windowHours}h observed
             </div>
+            <p className="font-display text-2xl sm:text-3xl mb-4 italic opacity-80">
+              They don't cause fear anymore. They build evidence.
+            </p>
             <h1 className="text-5xl sm:text-7xl lg:text-8xl mb-6">
               The machine watches.<br />
               <span className="bg-ink text-paper px-2">The math chooses.</span><br />
