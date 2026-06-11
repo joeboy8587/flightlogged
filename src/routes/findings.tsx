@@ -6,7 +6,6 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
 import { breadcrumbScript } from "@/lib/breadcrumbs";
 import { getAnomalies } from "@/lib/watchtower.functions";
-import { FindingsTimeline } from "@/components/findings-timeline";
 
 const anomQO = queryOptions({ queryKey: ["anomalies"], queryFn: () => getAnomalies() });
 
