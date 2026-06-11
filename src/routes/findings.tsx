@@ -79,19 +79,6 @@ function Findings() {
         </div>
       </section>
 
-      {/* INVESTIGATION TIMELINE */}
-      <section className="border-b-4 border-ink bg-ink/5">
-        <div className="max-w-[1400px] mx-auto px-4 py-16">
-          <div className="label-stamp text-alert mb-2">Investigation timeline · 2014 → 2026</div>
-          <h2 className="text-4xl sm:text-5xl mb-3">The arc of the case.</h2>
-          <p className="max-w-3xl text-sm opacity-80 mb-8">
-            Twelve years from the first sheriff/military airframe link to a live public dataset
-            tracking 13,000+ aircraft. Click any entry to expand the evidence summary.
-          </p>
-          <FindingsTimeline />
-        </div>
-      </section>
-
       <section className="border-b-4 border-ink">
         <div className="max-w-[1400px] mx-auto px-4 py-16">
           <h2 className="text-4xl sm:text-5xl mb-6">Anomaly events</h2>
