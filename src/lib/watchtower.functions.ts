@@ -1087,6 +1087,150 @@ export const getBehavioralCoordination = createServerFn({ method: "GET" }).handl
 );
 
 // ============================================================
+// FOREIGN-REGISTERED AIRCRAFT
+// ============================================================
+
+export type ForeignAircraft = {
+  registration: string;
+  icao: string | null;
+  countryCode: string;
+  country: string;
+  totalDetections: number;
+  minAltitude: number | null;
+  avgAltitude: number | null;
+  maxAltitude: number | null;
+  nightPct: number | null;
+  anomalyScore: number | null;
+  firstSeen: string | null;
+  lastSeen: string | null;
+  owner: string | null;
+  model: string | null;
+};
+
+export type ForeignAircraftSummary = {
+  totalAircraft: number;
+  totalDetections: number;
+  byCountry: { country: string; code: string; aircraft: number; detections: number }[];
+  aircraft: ForeignAircraft[];
+};
+
+// ICAO civil-registration prefix → country (subset; broadest first).
+// Order matters: longer/specific prefixes must be tested before single-letter ones.
+const REG_PREFIX_COUNTRY: { prefix: string; code: string; country: string }[] = [
+  { prefix: "XA-", code: "MX", country: "Mexico" },
+  { prefix: "XB-", code: "MX", country: "Mexico" },
+  { prefix: "XC-", code: "MX", country: "Mexico" },
+  { prefix: "VH-", code: "AU", country: "Australia" },
+  { prefix: "VT-", code: "IN", country: "India" },
+  { prefix: "VP-", code: "GB", country: "UK Overseas Territory" },
+  { prefix: "VQ-", code: "GB", country: "UK Overseas Territory" },
+  { prefix: "PH-", code: "NL", country: "Netherlands" },
+  { prefix: "PK-", code: "ID", country: "Indonesia" },
+  { prefix: "PT-", code: "BR", country: "Brazil" },
+  { prefix: "PP-", code: "BR", country: "Brazil" },
+  { prefix: "PR-", code: "BR", country: "Brazil" },
+  { prefix: "PS-", code: "BR", country: "Brazil" },
+  { prefix: "JA",  code: "JP", country: "Japan" },
+  { prefix: "HL",  code: "KR", country: "South Korea" },
+  { prefix: "HB-", code: "CH", country: "Switzerland" },
+  { prefix: "HK-", code: "CO", country: "Colombia" },
+  { prefix: "HZ-", code: "SA", country: "Saudi Arabia" },
+  { prefix: "OE-", code: "AT", country: "Austria" },
+  { prefix: "OO-", code: "BE", country: "Belgium" },
+  { prefix: "OY-", code: "DK", country: "Denmark" },
+  { prefix: "OH-", code: "FI", country: "Finland" },
+  { prefix: "EI-", code: "IE", country: "Ireland" },
+  { prefix: "EC-", code: "ES", country: "Spain" },
+  { prefix: "EP-", code: "IR", country: "Iran" },
+  { prefix: "TC-", code: "TR", country: "Turkey" },
+  { prefix: "TF-", code: "IS", country: "Iceland" },
+  { prefix: "LV-", code: "AR", country: "Argentina" },
+  { prefix: "LN-", code: "NO", country: "Norway" },
+  { prefix: "SE-", code: "SE", country: "Sweden" },
+  { prefix: "SP-", code: "PL", country: "Poland" },
+  { prefix: "SX-", code: "GR", country: "Greece" },
+  { prefix: "ZK-", code: "NZ", country: "New Zealand" },
+  { prefix: "ZS-", code: "ZA", country: "South Africa" },
+  { prefix: "CC-", code: "CL", country: "Chile" },
+  { prefix: "5N-", code: "NG", country: "Nigeria" },
+  { prefix: "9V-", code: "SG", country: "Singapore" },
+  { prefix: "9M-", code: "MY", country: "Malaysia" },
+  { prefix: "A6-", code: "AE", country: "United Arab Emirates" },
+  { prefix: "A7-", code: "QA", country: "Qatar" },
+  { prefix: "A9C-", code: "BH", country: "Bahrain" },
+  { prefix: "B-",  code: "CN", country: "China / Taiwan / Hong Kong" },
+  { prefix: "C-",  code: "CA", country: "Canada" },
+  { prefix: "CF-", code: "CA", country: "Canada" },
+  { prefix: "D-",  code: "DE", country: "Germany" },
+  { prefix: "F-",  code: "FR", country: "France" },
+  { prefix: "G-",  code: "GB", country: "United Kingdom" },
+  { prefix: "I-",  code: "IT", country: "Italy" },
+];
+
+function classifyForeign(reg: string | null): { code: string; country: string } | null {
+  if (!reg) return null;
+  const s = reg.trim().toUpperCase();
+  if (!s) return null;
+  // U.S. registrations always start with N + digit.
+  if (/^N\d/.test(s)) return null;
+  for (const p of REG_PREFIX_COUNTRY) {
+    if (s.startsWith(p.prefix)) return { code: p.code, country: p.country };
+  }
+  // Heuristic: any registration containing a '-' that isn't N-prefixed is non-US civil.
+  if (s.includes("-") || /^[A-Z]{2,}/.test(s)) return { code: "??", country: "Foreign (unmapped)" };
+  return null;
+}
+
+export const getForeignAircraft = createServerFn({ method: "GET" }).handler(
+  async (): Promise<ForeignAircraftSummary> => {
+    const w = watchtower();
+    const rows = await w`
+      SELECT icao_hex, observed_registration, registered_owner, aircraft_model,
+             total_detections, min_altitude, avg_altitude, max_altitude,
+             night_pct, anomaly_score, first_seen, last_seen
+      FROM aircraft_profiles
+      WHERE observed_registration IS NOT NULL
+        AND observed_registration !~ '^[Nn][0-9]'
+      ORDER BY total_detections DESC NULLS LAST
+      LIMIT 500
+    `;
+    const aircraft: ForeignAircraft[] = [];
+    const countryAgg = new Map<string, { code: string; aircraft: number; detections: number }>();
+    for (const r of rows as any[]) {
+      const cls = classifyForeign(r.observed_registration);
+      if (!cls) continue;
+      const rawMin = r.min_altitude == null ? null : Number(r.min_altitude);
+      const minAlt = rawMin != null && rawMin < -100 ? null : rawMin;
+      aircraft.push({
+        registration: r.observed_registration,
+        icao: r.icao_hex,
+        countryCode: cls.code,
+        country: cls.country,
+        totalDetections: Number(r.total_detections ?? 0),
+        minAltitude: minAlt,
+        avgAltitude: r.avg_altitude != null ? Number(r.avg_altitude) : null,
+        maxAltitude: r.max_altitude != null ? Number(r.max_altitude) : null,
+        nightPct: r.night_pct != null ? Number(r.night_pct) : null,
+        anomalyScore: r.anomaly_score != null ? Number(r.anomaly_score) : null,
+        firstSeen: r.first_seen ? new Date(r.first_seen).toISOString() : null,
+        lastSeen: r.last_seen ? new Date(r.last_seen).toISOString() : null,
+        owner: r.registered_owner,
+        model: r.aircraft_model,
+      });
+      const agg = countryAgg.get(cls.country) ?? { code: cls.code, aircraft: 0, detections: 0 };
+      agg.aircraft += 1;
+      agg.detections += Number(r.total_detections ?? 0);
+      countryAgg.set(cls.country, agg);
+    }
+    const byCountry = Array.from(countryAgg.entries())
+      .map(([country, v]) => ({ country, code: v.code, aircraft: v.aircraft, detections: v.detections }))
+      .sort((a, b) => b.detections - a.detections);
+    const totalDetections = aircraft.reduce((acc, a) => acc + a.totalDetections, 0);
+    return { totalAircraft: aircraft.length, totalDetections, byCountry, aircraft };
+  },
+);
+
+// ============================================================
 // /citations — Rule → CFR/USC + Consent Decree mapping
 // ============================================================
 export type CitationRow = {
