@@ -84,6 +84,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:description", content: "The first civilian-led, AI-assisted watchdog institution for airspace accountability. The machine watches. The math chooses. The record stands." },
       { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/qmphGRbN6JQbNjLQFqwhEQIV7Zd2/social-images/social-1780217456191-1000033052.webp" },
       { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/qmphGRbN6JQbNjLQFqwhEQIV7Zd2/social-images/social-1780217456191-1000033052.webp" },
+      { name: "twitter:image:alt", content: "The Architecture of Never — civilian airspace accountability dashboard" },
+      { name: "twitter:creator", content: "@Lovable" },
+      { property: "og:site_name", content: "The Architecture of Never" },
+      { property: "og:locale", content: "en_US" },
     ],
     links: [
       {
@@ -99,13 +103,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           {
             "@type": "Organization",
             name: "The Architecture of Never",
-            url: "https://flightlogged.lovable.app",
+            url: "https://advocacywatch.live",
             description: "Civilian-led, AI-assisted airspace accountability. Population-scale ADS-B detection with SHA-256 chain of custody.",
+            email: "watchtowerproject@proton.me",
           },
           {
             "@type": "WebSite",
             name: "The Architecture of Never",
-            url: "https://flightlogged.lovable.app",
+            url: "https://advocacywatch.live",
             description: "The machine watches. The math chooses. The record stands.",
           },
         ],

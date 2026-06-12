@@ -14,6 +14,13 @@ export function SiteFooter() {
           <p className="mt-3 text-sm">
             Contact: <a className="text-warning underline" href="mailto:watchtowerproject@proton.me">watchtowerproject@proton.me</a>
           </p>
+          <ul className="mt-4 flex flex-wrap gap-3 text-xs label-stamp">
+            <li><a className="underline hover:text-warning" href="https://github.com/watchtowerproject" rel="me noopener" target="_blank">GitHub</a></li>
+            <li><a className="underline hover:text-warning" href="https://bsky.app/profile/advocacywatch.live" rel="me noopener" target="_blank">Bluesky</a></li>
+            <li><a className="underline hover:text-warning" href="https://mastodon.social/@advocacywatch" rel="me noopener" target="_blank">Mastodon</a></li>
+            <li><a className="underline hover:text-warning" href="/sitemap.xml">Sitemap</a></li>
+            <li><a className="underline hover:text-warning" href="/llms.txt">llms.txt</a></li>
+          </ul>
         </div>
         <div>
           <h4 className="label-stamp text-warning mb-3">The Work</h4>
