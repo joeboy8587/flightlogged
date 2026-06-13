@@ -239,6 +239,21 @@ function Coordination() {
       <section className="border-b-4 border-ink bg-warning/30">
         <div className="max-w-[1400px] mx-auto px-4 py-10">
           <div className="label-stamp text-alert mb-2">Read this before you read the table</div>
+          <p className="text-xl sm:text-2xl font-bold leading-snug mb-6 max-w-4xl">
+            <span className="bg-ink text-warning px-1">{rows.length}</span> aircraft classified.{" "}
+            <span className="bg-alert text-paper px-1">{countByRole["Direct State Patrol"]}</span>{" "}
+            are direct government.{" "}
+            <span className="bg-warning text-ink px-1 brutal-border">{countByRole["Contractor State Function"]}</span>{" "}
+            are private entities flying government patrol patterns.{" "}
+            <span className="bg-ink text-paper px-1">{countByRole["Enterprise Auxiliary"]}</span>{" "}
+            are shell / auxiliary entities coordinated with the state-actor cluster.{" "}
+            {shellNetCount > 0 && (
+              <>
+                <span className="opacity-90">Grouped, those contractors and shells trace back to roughly{" "}
+                <span className="bg-ink text-warning px-1">{shellNetCount}</span> known LLC families.</span>
+              </>
+            )}
+          </p>
           <h2 className="text-2xl sm:text-3xl mb-4">How an aircraft lands in a bucket.</h2>
           <div className="grid md:grid-cols-3 gap-4 text-sm">
             <div className="brutal-border p-4 bg-paper">
@@ -290,7 +305,8 @@ function Coordination() {
                 <strong>Telemetry confirms:</strong> government orbit, altitude, timing.
               </p>
               <p className="text-xs opacity-80 font-mono">
-                § 1983 slam dunk. State actor by ownership. No public-function analysis required.
+                <a href="https://www.law.cornell.edu/uscode/text/42/1983" target="_blank" rel="noopener noreferrer" className="underline">42 U.S.C. § 1983</a>{" "}
+                slam dunk. State actor by ownership. No public-function analysis required.
               </p>
             </div>
             <div className="brutal-border p-5 bg-warning/40">
@@ -302,8 +318,10 @@ function Coordination() {
                 <strong>Telemetry proves:</strong> identical orbit, altitude, timing to direct state actor.
               </p>
               <p className="text-xs opacity-80 font-mono">
-                § 1983 via public-function test (Marsh v. Alabama). A private entity performing a
-                traditional government function — aerial law enforcement patrol — is a state actor.
+                <a href="https://www.law.cornell.edu/uscode/text/42/1983" target="_blank" rel="noopener noreferrer" className="underline">§ 1983</a>{" "}
+                via public-function test (
+                <a href="https://supreme.justia.com/cases/federal/us/326/501/" target="_blank" rel="noopener noreferrer" className="underline">Marsh v. Alabama, 326 U.S. 501 (1946)</a>
+                ). A private entity performing a traditional government function — aerial law enforcement patrol — is a state actor.
               </p>
             </div>
             <div className="brutal-border p-5 bg-ink text-paper">
@@ -315,7 +333,10 @@ function Coordination() {
                 <strong>Telemetry proves:</strong> coordinated with state-actor cluster.
               </p>
               <p className="text-xs opacity-80 font-mono">
-                RICO predicate signal. 18 U.S.C. § 1962(c) — "association in fact" per § 1961(4).
+                RICO predicate signal.{" "}
+                <a href="https://www.law.cornell.edu/uscode/text/18/1962" target="_blank" rel="noopener noreferrer" className="underline text-paper">18 U.S.C. § 1962(c)</a>
+                {" "}— "association in fact" per{" "}
+                <a href="https://www.law.cornell.edu/uscode/text/18/1961" target="_blank" rel="noopener noreferrer" className="underline text-paper">§ 1961(4)</a>.
                 Pattern of coordinated conduct = enterprise.
               </p>
             </div>
