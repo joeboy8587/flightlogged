@@ -1,11 +1,59 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
 import { breadcrumbScript } from "@/lib/breadcrumbs";
 import { getBehavioralCoordination, type CoordinationRow } from "@/lib/watchtower.functions";
 import { CoordinationGraph } from "@/components/coordination-graph";
+
+// Known shell-network families (owner-string match → display label).
+// Pure presentation grouping — does NOT change classification logic.
+const SHELL_NETWORKS: { label: string; rx: RegExp }[] = [
+  { label: "Christiansen Aviation", rx: /christiansen\s+aviation/i },
+  { label: "MH Aviation",           rx: /\bmh\s+aviation\b/i },
+  { label: "BFL Aviation",          rx: /\bbfl\s+aviation\b/i },
+  { label: "Aero Equities",         rx: /aero\s+equities/i },
+  { label: "ALF IX",                rx: /\balf\s*ix\b/i },
+  { label: "9K Air",                rx: /\b9k\s+air\b/i },
+  { label: "Bank of Utah Trustee",  rx: /bank\s+of\s+utah/i },
+  { label: "Wells Fargo Trustee",   rx: /wells\s+fargo/i },
+];
+function shellNetwork(owner: string | null | undefined): string | null {
+  if (!owner) return null;
+  for (const n of SHELL_NETWORKS) if (n.rx.test(owner)) return n.label;
+  return null;
+}
+
+async function sha256Hex(s: string): Promise<string> {
+  const buf = new TextEncoder().encode(s);
+  const hash = await crypto.subtle.digest("SHA-256", buf);
+  return Array.from(new Uint8Array(hash)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function rowsToCsv(rows: CoordinationRow[]): string {
+  const headers = [
+    "tail","icao","registry_owner","shell_network","operational_role","classification_basis",
+    "coordination_score","altitude_match","county_overlap","hour_overlap","low_orbit",
+    "median_altitude_ft","min_altitude_ft","night_pct","darkness_flag","detections",
+    "kern_priority","last_seen","legal_theory",
+  ];
+  const esc = (v: unknown) => {
+    const s = v == null ? "" : String(v);
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const lines = [headers.join(",")];
+  for (const r of rows) {
+    lines.push([
+      r.registration ?? "", r.icao, r.registryOwner ?? "", shellNetwork(r.registryOwner) ?? "",
+      r.operationalRole, r.classificationBasis, r.coordinationScore, r.altitudeMatch,
+      r.countyOverlap, r.hourOverlap, r.lowOrbit, r.medianAltitude ?? "", r.minAltitude ?? "",
+      r.nightPct ?? "", r.darknessFlag, r.detections, r.kernPriority, r.lastSeen, r.legalTheory,
+    ].map(esc).join(","));
+  }
+  return lines.join("\n");
+}
 
 const coordQO = queryOptions({
   queryKey: ["behavioral-coordination"],
@@ -95,6 +143,61 @@ function Coordination() {
   const { data } = useSuspenseQuery(coordQO);
   const { baseline, rows, countByRole } = data;
   const kernCount = rows.filter((r) => r.kernPriority).length;
+  const [minScore, setMinScore] = useState<number>(0);
+  const [groupShells, setGroupShells] = useState<boolean>(false);
+  const [csvStatus, setCsvStatus] = useState<string | null>(null);
+
+  const shellNetCount = useMemo(
+    () => new Set(rows.map((r) => shellNetwork(r.registryOwner)).filter(Boolean)).size,
+    [rows],
+  );
+
+  // Group rows by shell network for display when toggle is on
+  const tableRows = useMemo(() => {
+    if (!groupShells) return rows.map((r) => ({ kind: "row" as const, row: r }));
+    type Out = { kind: "row"; row: CoordinationRow } | { kind: "group"; label: string; count: number };
+    const out: Out[] = [];
+    const buckets = new Map<string, CoordinationRow[]>();
+    const ungrouped: CoordinationRow[] = [];
+    for (const r of rows) {
+      const n = shellNetwork(r.registryOwner);
+      if (n) (buckets.get(n) ?? buckets.set(n, []).get(n)!).push(r);
+      else ungrouped.push(r);
+    }
+    const sortedBuckets = Array.from(buckets.entries()).sort((a, b) => b[1].length - a[1].length);
+    for (const [label, list] of sortedBuckets) {
+      out.push({ kind: "group", label, count: list.length });
+      for (const r of list) out.push({ kind: "row", row: r });
+    }
+    if (ungrouped.length) {
+      out.push({ kind: "group", label: "Unaffiliated / not in known network", count: ungrouped.length });
+      for (const r of ungrouped) out.push({ kind: "row", row: r });
+    }
+    return out;
+  }, [rows, groupShells]);
+
+  async function downloadCsv() {
+    setCsvStatus("hashing…");
+    const csv = rowsToCsv(rows);
+    const hash = await sha256Hex(csv);
+    const stamped =
+      `# The Architecture of Never — Behavioral Coordination Index\n` +
+      `# Exported: ${new Date().toISOString()}\n` +
+      `# Rows: ${rows.length}\n` +
+      `# SHA-256 (of CSV body below): ${hash}\n` +
+      `# Source: https://advocacywatch.live/coordination\n` +
+      csv + "\n";
+    const blob = new Blob([stamped], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `coordination-network-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    setCsvStatus(`sha256: ${hash.slice(0, 12)}…`);
+  }
 
   return (
     <div className="min-h-screen bg-paper text-ink">
