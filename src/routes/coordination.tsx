@@ -412,7 +412,23 @@ function Coordination() {
             bucket. Size is total detections in the current window. Hover any node for the tail's
             registry owner and signals.
           </p>
-          <CoordinationGraph rows={rows} />
+          <div className="brutal-border p-3 bg-paper mb-3 flex flex-wrap items-center gap-2">
+            <span className="label-stamp">Coordination signal strength ≥</span>
+            {[0, 1, 2, 3, 4].map((n) => (
+              <button
+                key={n}
+                type="button"
+                onClick={() => setMinScore(n)}
+                className={`label-stamp brutal-border px-3 py-1 text-xs ${minScore === n ? "bg-ink text-paper" : "bg-paper hover:bg-warning"}`}
+              >
+                {n === 0 ? "All" : `${n}+ signals`}
+              </button>
+            ))}
+            <span className="ml-auto text-[10px] font-mono opacity-60">
+              4 = full match · 3 = strong contractor pattern · 2 = edge · 1–0 = independent
+            </span>
+          </div>
+          <CoordinationGraph rows={rows} minScore={minScore} />
         </div>
       </section>
 
@@ -422,30 +438,65 @@ function Coordination() {
           <div className="label-stamp text-alert mb-2">
             Operators classified by behavior · {rows.length} aircraft · Kern-priority sort active
           </div>
-          <h2 className="text-3xl sm:text-4xl mb-6">Tail-by-tail.</h2>
+          <h2 className="text-3xl sm:text-4xl mb-4">Tail-by-tail.</h2>
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            <button
+              type="button"
+              onClick={() => setGroupShells((v) => !v)}
+              className={`label-stamp brutal-border px-3 py-1 text-xs ${groupShells ? "bg-ink text-paper" : "bg-paper hover:bg-warning"}`}
+            >
+              {groupShells ? "Ungroup shells" : "Group by shell network"}
+            </button>
+            <button
+              type="button"
+              onClick={downloadCsv}
+              className="label-stamp brutal-border px-3 py-1 text-xs bg-warning hover:bg-ink hover:text-paper"
+            >
+              ⬇ Download CSV (SHA-256 stamped)
+            </button>
+            {csvStatus && <span className="font-mono text-[10px] opacity-70">{csvStatus}</span>}
+          </div>
           <div className="overflow-x-auto brutal-border-thick">
             <table className="w-full text-sm">
+              <caption className="sr-only">Aircraft classified by operational role with coordination signals, night-ops share, and shell-network grouping.</caption>
               <thead className="bg-ink text-paper">
                 <tr>
                   <th className="text-left p-3 label-stamp">Tail</th>
                   <th className="text-left p-3 label-stamp">Registry owner</th>
+                  <th className="text-left p-3 label-stamp">Shell network</th>
                   <th className="text-left p-3 label-stamp">Operational role</th>
                   <th className="text-left p-3 label-stamp">Basis</th>
                   <th className="text-left p-3 label-stamp">Coordination signals</th>
                   <th className="text-right p-3 label-stamp">Score</th>
                   <th className="text-right p-3 label-stamp">Median alt</th>
+                  <th className="text-right p-3 label-stamp">Night %</th>
                   <th className="text-right p-3 label-stamp">Detections</th>
                 </tr>
               </thead>
               <tbody className="font-mono">
-                {rows.length === 0 && (
+                {tableRows.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="p-6 text-center">
+                    <td colSpan={10} className="p-6 text-center">
                       No coordinating aircraft on record yet.
                     </td>
                   </tr>
                 )}
-                {rows.map((r) => (
+                {tableRows.map((entry, idx) => {
+                  if (entry.kind === "group") {
+                    return (
+                      <tr key={`g-${idx}-${entry.label}`} className="bg-ink text-paper">
+                        <td colSpan={10} className="p-3">
+                          <span className="label-stamp bg-warning text-ink px-2 py-0.5">Shell network</span>{" "}
+                          <strong>{entry.label}</strong>{" "}
+                          <span className="opacity-70">· {entry.count} tail{entry.count === 1 ? "" : "s"}</span>
+                        </td>
+                      </tr>
+                    );
+                  }
+                  const r = entry.row;
+                  const net = shellNetwork(r.registryOwner);
+                  const nightPctNum = r.nightPct != null ? Math.round(r.nightPct * 100) : null;
+                  return (
                   <tr
                     key={r.icao}
                     className={`border-t border-ink/20 hover:bg-warning/30 align-top ${r.kernPriority ? "bg-alert/5" : ""}`}
@@ -458,6 +509,13 @@ function Coordination() {
                             KERN
                           </span>
                         )}
+                        {r.darknessFlag && (
+                          <span
+                            title="Darkness audit: night-dominant ≥70%. Concealment signature."
+                            aria-label="Darkness audit positive"
+                            className="label-stamp bg-ink text-warning px-1.5 py-0.5 text-[9px]"
+                          >⚠ DARK</span>
+                        )}
                       </div>
                       <div className="text-xs opacity-50">{r.icao}</div>
                     </td>
@@ -467,6 +525,13 @@ function Coordination() {
                         <div className="opacity-60">{[r.city, r.state].filter(Boolean).join(", ")}</div>
                       )}
                       {r.registrantType && <div className="opacity-50">{r.registrantType}</div>}
+                    </td>
+                    <td className="p-3 text-xs">
+                      {net ? (
+                        <span className="label-stamp bg-warning text-ink brutal-border px-2 py-0.5">{net}</span>
+                      ) : (
+                        <span className="opacity-30">—</span>
+                      )}
                     </td>
                     <td className="p-3">
                       <span className={`label-stamp inline-block px-2 py-1 ${roleClass(r.operationalRole)}`}>
@@ -512,9 +577,27 @@ function Coordination() {
                         <div className="text-[10px] opacity-50">min {Math.round(r.minAltitude)} ft</div>
                       )}
                     </td>
+                    <td className="p-3 text-right">
+                      {nightPctNum == null ? (
+                        <span className="opacity-30">—</span>
+                      ) : (
+                        <span
+                          className={`label-stamp inline-block px-2 py-1 ${
+                            nightPctNum >= 75
+                              ? "bg-alert text-paper"
+                              : nightPctNum >= 50
+                                ? "bg-warning text-ink brutal-border"
+                                : "bg-paper text-ink brutal-border"
+                          }`}
+                        >
+                          {nightPctNum}%
+                        </span>
+                      )}
+                    </td>
                     <td className="p-3 text-right font-bold">{r.detections.toLocaleString()}</td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
