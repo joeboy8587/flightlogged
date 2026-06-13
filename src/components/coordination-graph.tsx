@@ -8,7 +8,7 @@ const ROLE_COLORS: Record<string, string> = {
   "Independent": "hsl(0 0% 70%)",
 };
 
-export function CoordinationGraph({ rows }: { rows: CoordinationRow[] }) {
+export function CoordinationGraph({ rows, minScore = 0 }: { rows: CoordinationRow[]; minScore?: number }) {
   const [hover, setHover] = useState<string | null>(null);
 
   const W = 900;
@@ -19,7 +19,7 @@ export function CoordinationGraph({ rows }: { rows: CoordinationRow[] }) {
   // Filter to coordinating-ish rows; keep manageable
   const nodes = useMemo(() => {
     const sorted = [...rows]
-      .filter((r) => r.coordinationScore > 0 || r.kernPriority)
+      .filter((r) => (r.coordinationScore > 0 || r.kernPriority) && r.coordinationScore >= minScore)
       .sort((a, b) => b.coordinationScore - a.coordinationScore || b.detections - a.detections)
       .slice(0, 60);
 
@@ -55,7 +55,7 @@ export function CoordinationGraph({ rows }: { rows: CoordinationRow[] }) {
       });
     });
     return positioned;
-  }, [rows]);
+  }, [rows, minScore]);
 
   const hoveredNode = hover ? nodes.find((n) => n.r.icao === hover) : null;
 

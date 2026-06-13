@@ -849,6 +849,8 @@ export type CoordinationRow = {
   detections: number;
   medianAltitude: number | null;
   minAltitude: number | null;
+  nightPct: number | null;        // 0..1 share of detections at night
+  darknessFlag: boolean;          // night-dominant ≥70% (concealment signature)
   countiesSeen: string[];
   hoursSeen: number[];
   countyOverlap: number;        // 0..1
@@ -908,9 +910,11 @@ export const getBehavioralCoordination = createServerFn({ method: "GET" }).handl
              MIN(d.altitude_ft) AS min_alt,
              ARRAY_AGG(DISTINCT d.county) FILTER (WHERE d.county IS NOT NULL) AS counties,
              ARRAY_AGG(DISTINCT EXTRACT(HOUR FROM d.captured_at)::int) AS hours,
-             MAX(d.captured_at) AS last_seen
+             MAX(d.captured_at) AS last_seen,
+             MAX(ap.night_pct) AS night_pct
       FROM detections d
       LEFT JOIN faa_master m ON UPPER(m.mode_s_code_hex) = UPPER(d.icao_hex)
+      LEFT JOIN aircraft_profiles ap ON UPPER(ap.icao_hex) = UPPER(d.icao_hex)
       WHERE d.altitude_ft IS NOT NULL
         AND d.altitude_ft >= -100
         AND d.on_ground = false
@@ -933,6 +937,7 @@ export const getBehavioralCoordination = createServerFn({ method: "GET" }).handl
       counties: string[] | null;
       hours: number[] | null;
       last_seen: string;
+      night_pct: number | null;
     };
     const all = (rows as any[]) as Raw[];
 
@@ -1028,6 +1033,8 @@ export const getBehavioralCoordination = createServerFn({ method: "GET" }).handl
         detections: r.detections,
         medianAltitude: med,
         minAltitude: r.min_alt != null ? Number(r.min_alt) : null,
+        nightPct: r.night_pct != null ? Number(r.night_pct) : null,
+        darknessFlag: r.night_pct != null && Number(r.night_pct) >= 0.7,
         countiesSeen: counties,
         hoursSeen: hours,
         countyOverlap: Math.round(countyOverlap * 100) / 100,

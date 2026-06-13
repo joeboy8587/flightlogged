@@ -1,11 +1,59 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
 import { breadcrumbScript } from "@/lib/breadcrumbs";
 import { getBehavioralCoordination, type CoordinationRow } from "@/lib/watchtower.functions";
 import { CoordinationGraph } from "@/components/coordination-graph";
+
+// Known shell-network families (owner-string match → display label).
+// Pure presentation grouping — does NOT change classification logic.
+const SHELL_NETWORKS: { label: string; rx: RegExp }[] = [
+  { label: "Christiansen Aviation", rx: /christiansen\s+aviation/i },
+  { label: "MH Aviation",           rx: /\bmh\s+aviation\b/i },
+  { label: "BFL Aviation",          rx: /\bbfl\s+aviation\b/i },
+  { label: "Aero Equities",         rx: /aero\s+equities/i },
+  { label: "ALF IX",                rx: /\balf\s*ix\b/i },
+  { label: "9K Air",                rx: /\b9k\s+air\b/i },
+  { label: "Bank of Utah Trustee",  rx: /bank\s+of\s+utah/i },
+  { label: "Wells Fargo Trustee",   rx: /wells\s+fargo/i },
+];
+function shellNetwork(owner: string | null | undefined): string | null {
+  if (!owner) return null;
+  for (const n of SHELL_NETWORKS) if (n.rx.test(owner)) return n.label;
+  return null;
+}
+
+async function sha256Hex(s: string): Promise<string> {
+  const buf = new TextEncoder().encode(s);
+  const hash = await crypto.subtle.digest("SHA-256", buf);
+  return Array.from(new Uint8Array(hash)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function rowsToCsv(rows: CoordinationRow[]): string {
+  const headers = [
+    "tail","icao","registry_owner","shell_network","operational_role","classification_basis",
+    "coordination_score","altitude_match","county_overlap","hour_overlap","low_orbit",
+    "median_altitude_ft","min_altitude_ft","night_pct","darkness_flag","detections",
+    "kern_priority","last_seen","legal_theory",
+  ];
+  const esc = (v: unknown) => {
+    const s = v == null ? "" : String(v);
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const lines = [headers.join(",")];
+  for (const r of rows) {
+    lines.push([
+      r.registration ?? "", r.icao, r.registryOwner ?? "", shellNetwork(r.registryOwner) ?? "",
+      r.operationalRole, r.classificationBasis, r.coordinationScore, r.altitudeMatch,
+      r.countyOverlap, r.hourOverlap, r.lowOrbit, r.medianAltitude ?? "", r.minAltitude ?? "",
+      r.nightPct ?? "", r.darknessFlag, r.detections, r.kernPriority, r.lastSeen, r.legalTheory,
+    ].map(esc).join(","));
+  }
+  return lines.join("\n");
+}
 
 const coordQO = queryOptions({
   queryKey: ["behavioral-coordination"],
@@ -95,6 +143,61 @@ function Coordination() {
   const { data } = useSuspenseQuery(coordQO);
   const { baseline, rows, countByRole } = data;
   const kernCount = rows.filter((r) => r.kernPriority).length;
+  const [minScore, setMinScore] = useState<number>(0);
+  const [groupShells, setGroupShells] = useState<boolean>(false);
+  const [csvStatus, setCsvStatus] = useState<string | null>(null);
+
+  const shellNetCount = useMemo(
+    () => new Set(rows.map((r) => shellNetwork(r.registryOwner)).filter(Boolean)).size,
+    [rows],
+  );
+
+  // Group rows by shell network for display when toggle is on
+  const tableRows = useMemo(() => {
+    if (!groupShells) return rows.map((r) => ({ kind: "row" as const, row: r }));
+    type Out = { kind: "row"; row: CoordinationRow } | { kind: "group"; label: string; count: number };
+    const out: Out[] = [];
+    const buckets = new Map<string, CoordinationRow[]>();
+    const ungrouped: CoordinationRow[] = [];
+    for (const r of rows) {
+      const n = shellNetwork(r.registryOwner);
+      if (n) (buckets.get(n) ?? buckets.set(n, []).get(n)!).push(r);
+      else ungrouped.push(r);
+    }
+    const sortedBuckets = Array.from(buckets.entries()).sort((a, b) => b[1].length - a[1].length);
+    for (const [label, list] of sortedBuckets) {
+      out.push({ kind: "group", label, count: list.length });
+      for (const r of list) out.push({ kind: "row", row: r });
+    }
+    if (ungrouped.length) {
+      out.push({ kind: "group", label: "Unaffiliated / not in known network", count: ungrouped.length });
+      for (const r of ungrouped) out.push({ kind: "row", row: r });
+    }
+    return out;
+  }, [rows, groupShells]);
+
+  async function downloadCsv() {
+    setCsvStatus("hashing…");
+    const csv = rowsToCsv(rows);
+    const hash = await sha256Hex(csv);
+    const stamped =
+      `# The Architecture of Never — Behavioral Coordination Index\n` +
+      `# Exported: ${new Date().toISOString()}\n` +
+      `# Rows: ${rows.length}\n` +
+      `# SHA-256 (of CSV body below): ${hash}\n` +
+      `# Source: https://advocacywatch.live/coordination\n` +
+      csv + "\n";
+    const blob = new Blob([stamped], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `coordination-network-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    setCsvStatus(`sha256: ${hash.slice(0, 12)}…`);
+  }
 
   return (
     <div className="min-h-screen bg-paper text-ink">
@@ -136,6 +239,21 @@ function Coordination() {
       <section className="border-b-4 border-ink bg-warning/30">
         <div className="max-w-[1400px] mx-auto px-4 py-10">
           <div className="label-stamp text-alert mb-2">Read this before you read the table</div>
+          <p className="text-xl sm:text-2xl font-bold leading-snug mb-6 max-w-4xl">
+            <span className="bg-ink text-warning px-1">{rows.length}</span> aircraft classified.{" "}
+            <span className="bg-alert text-paper px-1">{countByRole["Direct State Patrol"]}</span>{" "}
+            are direct government.{" "}
+            <span className="bg-warning text-ink px-1 brutal-border">{countByRole["Contractor State Function"]}</span>{" "}
+            are private entities flying government patrol patterns.{" "}
+            <span className="bg-ink text-paper px-1">{countByRole["Enterprise Auxiliary"]}</span>{" "}
+            are shell / auxiliary entities coordinated with the state-actor cluster.{" "}
+            {shellNetCount > 0 && (
+              <>
+                <span className="opacity-90">Grouped, those contractors and shells trace back to roughly{" "}
+                <span className="bg-ink text-warning px-1">{shellNetCount}</span> known LLC families.</span>
+              </>
+            )}
+          </p>
           <h2 className="text-2xl sm:text-3xl mb-4">How an aircraft lands in a bucket.</h2>
           <div className="grid md:grid-cols-3 gap-4 text-sm">
             <div className="brutal-border p-4 bg-paper">
@@ -187,7 +305,8 @@ function Coordination() {
                 <strong>Telemetry confirms:</strong> government orbit, altitude, timing.
               </p>
               <p className="text-xs opacity-80 font-mono">
-                § 1983 slam dunk. State actor by ownership. No public-function analysis required.
+                <a href="https://www.law.cornell.edu/uscode/text/42/1983" target="_blank" rel="noopener noreferrer" className="underline">42 U.S.C. § 1983</a>{" "}
+                slam dunk. State actor by ownership. No public-function analysis required.
               </p>
             </div>
             <div className="brutal-border p-5 bg-warning/40">
@@ -199,8 +318,10 @@ function Coordination() {
                 <strong>Telemetry proves:</strong> identical orbit, altitude, timing to direct state actor.
               </p>
               <p className="text-xs opacity-80 font-mono">
-                § 1983 via public-function test (Marsh v. Alabama). A private entity performing a
-                traditional government function — aerial law enforcement patrol — is a state actor.
+                <a href="https://www.law.cornell.edu/uscode/text/42/1983" target="_blank" rel="noopener noreferrer" className="underline">§ 1983</a>{" "}
+                via public-function test (
+                <a href="https://supreme.justia.com/cases/federal/us/326/501/" target="_blank" rel="noopener noreferrer" className="underline">Marsh v. Alabama, 326 U.S. 501 (1946)</a>
+                ). A private entity performing a traditional government function — aerial law enforcement patrol — is a state actor.
               </p>
             </div>
             <div className="brutal-border p-5 bg-ink text-paper">
@@ -212,7 +333,10 @@ function Coordination() {
                 <strong>Telemetry proves:</strong> coordinated with state-actor cluster.
               </p>
               <p className="text-xs opacity-80 font-mono">
-                RICO predicate signal. 18 U.S.C. § 1962(c) — "association in fact" per § 1961(4).
+                RICO predicate signal.{" "}
+                <a href="https://www.law.cornell.edu/uscode/text/18/1962" target="_blank" rel="noopener noreferrer" className="underline text-paper">18 U.S.C. § 1962(c)</a>
+                {" "}— "association in fact" per{" "}
+                <a href="https://www.law.cornell.edu/uscode/text/18/1961" target="_blank" rel="noopener noreferrer" className="underline text-paper">§ 1961(4)</a>.
                 Pattern of coordinated conduct = enterprise.
               </p>
             </div>
@@ -288,7 +412,23 @@ function Coordination() {
             bucket. Size is total detections in the current window. Hover any node for the tail's
             registry owner and signals.
           </p>
-          <CoordinationGraph rows={rows} />
+          <div className="brutal-border p-3 bg-paper mb-3 flex flex-wrap items-center gap-2">
+            <span className="label-stamp">Coordination signal strength ≥</span>
+            {[0, 1, 2, 3, 4].map((n) => (
+              <button
+                key={n}
+                type="button"
+                onClick={() => setMinScore(n)}
+                className={`label-stamp brutal-border px-3 py-1 text-xs ${minScore === n ? "bg-ink text-paper" : "bg-paper hover:bg-warning"}`}
+              >
+                {n === 0 ? "All" : `${n}+ signals`}
+              </button>
+            ))}
+            <span className="ml-auto text-[10px] font-mono opacity-60">
+              4 = full match · 3 = strong contractor pattern · 2 = edge · 1–0 = independent
+            </span>
+          </div>
+          <CoordinationGraph rows={rows} minScore={minScore} />
         </div>
       </section>
 
@@ -298,30 +438,65 @@ function Coordination() {
           <div className="label-stamp text-alert mb-2">
             Operators classified by behavior · {rows.length} aircraft · Kern-priority sort active
           </div>
-          <h2 className="text-3xl sm:text-4xl mb-6">Tail-by-tail.</h2>
+          <h2 className="text-3xl sm:text-4xl mb-4">Tail-by-tail.</h2>
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            <button
+              type="button"
+              onClick={() => setGroupShells((v) => !v)}
+              className={`label-stamp brutal-border px-3 py-1 text-xs ${groupShells ? "bg-ink text-paper" : "bg-paper hover:bg-warning"}`}
+            >
+              {groupShells ? "Ungroup shells" : "Group by shell network"}
+            </button>
+            <button
+              type="button"
+              onClick={downloadCsv}
+              className="label-stamp brutal-border px-3 py-1 text-xs bg-warning hover:bg-ink hover:text-paper"
+            >
+              ⬇ Download CSV (SHA-256 stamped)
+            </button>
+            {csvStatus && <span className="font-mono text-[10px] opacity-70">{csvStatus}</span>}
+          </div>
           <div className="overflow-x-auto brutal-border-thick">
             <table className="w-full text-sm">
+              <caption className="sr-only">Aircraft classified by operational role with coordination signals, night-ops share, and shell-network grouping.</caption>
               <thead className="bg-ink text-paper">
                 <tr>
                   <th className="text-left p-3 label-stamp">Tail</th>
                   <th className="text-left p-3 label-stamp">Registry owner</th>
+                  <th className="text-left p-3 label-stamp">Shell network</th>
                   <th className="text-left p-3 label-stamp">Operational role</th>
                   <th className="text-left p-3 label-stamp">Basis</th>
                   <th className="text-left p-3 label-stamp">Coordination signals</th>
                   <th className="text-right p-3 label-stamp">Score</th>
                   <th className="text-right p-3 label-stamp">Median alt</th>
+                  <th className="text-right p-3 label-stamp">Night %</th>
                   <th className="text-right p-3 label-stamp">Detections</th>
                 </tr>
               </thead>
               <tbody className="font-mono">
-                {rows.length === 0 && (
+                {tableRows.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="p-6 text-center">
+                    <td colSpan={10} className="p-6 text-center">
                       No coordinating aircraft on record yet.
                     </td>
                   </tr>
                 )}
-                {rows.map((r) => (
+                {tableRows.map((entry, idx) => {
+                  if (entry.kind === "group") {
+                    return (
+                      <tr key={`g-${idx}-${entry.label}`} className="bg-ink text-paper">
+                        <td colSpan={10} className="p-3">
+                          <span className="label-stamp bg-warning text-ink px-2 py-0.5">Shell network</span>{" "}
+                          <strong>{entry.label}</strong>{" "}
+                          <span className="opacity-70">· {entry.count} tail{entry.count === 1 ? "" : "s"}</span>
+                        </td>
+                      </tr>
+                    );
+                  }
+                  const r = entry.row;
+                  const net = shellNetwork(r.registryOwner);
+                  const nightPctNum = r.nightPct != null ? Math.round(r.nightPct * 100) : null;
+                  return (
                   <tr
                     key={r.icao}
                     className={`border-t border-ink/20 hover:bg-warning/30 align-top ${r.kernPriority ? "bg-alert/5" : ""}`}
@@ -334,6 +509,13 @@ function Coordination() {
                             KERN
                           </span>
                         )}
+                        {r.darknessFlag && (
+                          <span
+                            title="Darkness audit: night-dominant ≥70%. Concealment signature."
+                            aria-label="Darkness audit positive"
+                            className="label-stamp bg-ink text-warning px-1.5 py-0.5 text-[9px]"
+                          >⚠ DARK</span>
+                        )}
                       </div>
                       <div className="text-xs opacity-50">{r.icao}</div>
                     </td>
@@ -343,6 +525,13 @@ function Coordination() {
                         <div className="opacity-60">{[r.city, r.state].filter(Boolean).join(", ")}</div>
                       )}
                       {r.registrantType && <div className="opacity-50">{r.registrantType}</div>}
+                    </td>
+                    <td className="p-3 text-xs">
+                      {net ? (
+                        <span className="label-stamp bg-warning text-ink brutal-border px-2 py-0.5">{net}</span>
+                      ) : (
+                        <span className="opacity-30">—</span>
+                      )}
                     </td>
                     <td className="p-3">
                       <span className={`label-stamp inline-block px-2 py-1 ${roleClass(r.operationalRole)}`}>
@@ -388,9 +577,27 @@ function Coordination() {
                         <div className="text-[10px] opacity-50">min {Math.round(r.minAltitude)} ft</div>
                       )}
                     </td>
+                    <td className="p-3 text-right">
+                      {nightPctNum == null ? (
+                        <span className="opacity-30">—</span>
+                      ) : (
+                        <span
+                          className={`label-stamp inline-block px-2 py-1 ${
+                            nightPctNum >= 75
+                              ? "bg-alert text-paper"
+                              : nightPctNum >= 50
+                                ? "bg-warning text-ink brutal-border"
+                                : "bg-paper text-ink brutal-border"
+                          }`}
+                        >
+                          {nightPctNum}%
+                        </span>
+                      )}
+                    </td>
                     <td className="p-3 text-right font-bold">{r.detections.toLocaleString()}</td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
