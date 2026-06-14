@@ -12,11 +12,13 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as ViolationsRouteImport } from './routes/violations'
 import { Route as ToolkitRouteImport } from './routes/toolkit'
 import { Route as ThreatIndexRouteImport } from './routes/threat-index'
+import { Route as TailSearchRouteImport } from './routes/tail-search'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as RulesRouteImport } from './routes/rules'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as OperatorsRouteImport } from './routes/operators'
 import { Route as MlDetectionsRouteImport } from './routes/ml-detections'
+import { Route as MilitaryRouteImport } from './routes/military'
 import { Route as MethodologyRouteImport } from './routes/methodology'
 import { Route as LiveRouteImport } from './routes/live'
 import { Route as LegalRouteImport } from './routes/legal'
@@ -46,6 +48,11 @@ const ThreatIndexRoute = ThreatIndexRouteImport.update({
   path: '/threat-index',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TailSearchRoute = TailSearchRouteImport.update({
+  id: '/tail-search',
+  path: '/tail-search',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
   path: '/sitemap.xml',
@@ -69,6 +76,11 @@ const OperatorsRoute = OperatorsRouteImport.update({
 const MlDetectionsRoute = MlDetectionsRouteImport.update({
   id: '/ml-detections',
   path: '/ml-detections',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MilitaryRoute = MilitaryRouteImport.update({
+  id: '/military',
+  path: '/military',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MethodologyRoute = MethodologyRouteImport.update({
@@ -149,11 +161,13 @@ export interface FileRoutesByFullPath {
   '/legal': typeof LegalRoute
   '/live': typeof LiveRoute
   '/methodology': typeof MethodologyRoute
+  '/military': typeof MilitaryRoute
   '/ml-detections': typeof MlDetectionsRoute
   '/operators': typeof OperatorsRoute
   '/reports': typeof ReportsRoute
   '/rules': typeof RulesRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/tail-search': typeof TailSearchRoute
   '/threat-index': typeof ThreatIndexRoute
   '/toolkit': typeof ToolkitRouteWithChildren
   '/violations': typeof ViolationsRoute
@@ -172,11 +186,13 @@ export interface FileRoutesByTo {
   '/legal': typeof LegalRoute
   '/live': typeof LiveRoute
   '/methodology': typeof MethodologyRoute
+  '/military': typeof MilitaryRoute
   '/ml-detections': typeof MlDetectionsRoute
   '/operators': typeof OperatorsRoute
   '/reports': typeof ReportsRoute
   '/rules': typeof RulesRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/tail-search': typeof TailSearchRoute
   '/threat-index': typeof ThreatIndexRoute
   '/violations': typeof ViolationsRoute
   '/toolkit/foia': typeof ToolkitFoiaRoute
@@ -195,11 +211,13 @@ export interface FileRoutesById {
   '/legal': typeof LegalRoute
   '/live': typeof LiveRoute
   '/methodology': typeof MethodologyRoute
+  '/military': typeof MilitaryRoute
   '/ml-detections': typeof MlDetectionsRoute
   '/operators': typeof OperatorsRoute
   '/reports': typeof ReportsRoute
   '/rules': typeof RulesRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/tail-search': typeof TailSearchRoute
   '/threat-index': typeof ThreatIndexRoute
   '/toolkit': typeof ToolkitRouteWithChildren
   '/violations': typeof ViolationsRoute
@@ -220,11 +238,13 @@ export interface FileRouteTypes {
     | '/legal'
     | '/live'
     | '/methodology'
+    | '/military'
     | '/ml-detections'
     | '/operators'
     | '/reports'
     | '/rules'
     | '/sitemap.xml'
+    | '/tail-search'
     | '/threat-index'
     | '/toolkit'
     | '/violations'
@@ -243,11 +263,13 @@ export interface FileRouteTypes {
     | '/legal'
     | '/live'
     | '/methodology'
+    | '/military'
     | '/ml-detections'
     | '/operators'
     | '/reports'
     | '/rules'
     | '/sitemap.xml'
+    | '/tail-search'
     | '/threat-index'
     | '/violations'
     | '/toolkit/foia'
@@ -265,11 +287,13 @@ export interface FileRouteTypes {
     | '/legal'
     | '/live'
     | '/methodology'
+    | '/military'
     | '/ml-detections'
     | '/operators'
     | '/reports'
     | '/rules'
     | '/sitemap.xml'
+    | '/tail-search'
     | '/threat-index'
     | '/toolkit'
     | '/violations'
@@ -289,11 +313,13 @@ export interface RootRouteChildren {
   LegalRoute: typeof LegalRoute
   LiveRoute: typeof LiveRoute
   MethodologyRoute: typeof MethodologyRoute
+  MilitaryRoute: typeof MilitaryRoute
   MlDetectionsRoute: typeof MlDetectionsRoute
   OperatorsRoute: typeof OperatorsRoute
   ReportsRoute: typeof ReportsRoute
   RulesRoute: typeof RulesRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  TailSearchRoute: typeof TailSearchRoute
   ThreatIndexRoute: typeof ThreatIndexRoute
   ToolkitRoute: typeof ToolkitRouteWithChildren
   ViolationsRoute: typeof ViolationsRoute
@@ -320,6 +346,13 @@ declare module '@tanstack/react-router' {
       path: '/threat-index'
       fullPath: '/threat-index'
       preLoaderRoute: typeof ThreatIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tail-search': {
+      id: '/tail-search'
+      path: '/tail-search'
+      fullPath: '/tail-search'
+      preLoaderRoute: typeof TailSearchRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sitemap.xml': {
@@ -355,6 +388,13 @@ declare module '@tanstack/react-router' {
       path: '/ml-detections'
       fullPath: '/ml-detections'
       preLoaderRoute: typeof MlDetectionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/military': {
+      id: '/military'
+      path: '/military'
+      fullPath: '/military'
+      preLoaderRoute: typeof MilitaryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/methodology': {
@@ -476,11 +516,13 @@ const rootRouteChildren: RootRouteChildren = {
   LegalRoute: LegalRoute,
   LiveRoute: LiveRoute,
   MethodologyRoute: MethodologyRoute,
+  MilitaryRoute: MilitaryRoute,
   MlDetectionsRoute: MlDetectionsRoute,
   OperatorsRoute: OperatorsRoute,
   ReportsRoute: ReportsRoute,
   RulesRoute: RulesRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  TailSearchRoute: TailSearchRoute,
   ThreatIndexRoute: ThreatIndexRoute,
   ToolkitRoute: ToolkitRouteWithChildren,
   ViolationsRoute: ViolationsRoute,
