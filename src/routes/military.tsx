@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { SiteHeader } from "@/components/site-header";
@@ -204,11 +204,7 @@ function MilitaryPage() {
                 )}
                 {rows.map((a) => (
                   <tr key={a.icao + (a.registration ?? "")} className="border-t border-ink/20 hover:bg-warning/30">
-                    <td className="p-3 font-bold">
-                      {a.registration ? (
-                        <Link to="/tail-search" className="underline" search={{}}>{a.registration}</Link>
-                      ) : "—"}
-                    </td>
+                    <td className="p-3 font-bold">{a.registration ?? "—"}</td>
                     <td className="p-3">{a.icao}</td>
                     <td className="p-3"><span className="label-stamp bg-alert text-paper px-2 py-0.5">{a.branch}</span></td>
                     <td className="p-3">{a.owner ?? a.model ?? "—"}</td>
