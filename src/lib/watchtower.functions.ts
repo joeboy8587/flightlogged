@@ -1341,3 +1341,192 @@ export const getCitationsMap = createServerFn({ method: "GET" }).handler(
     };
   },
 );
+
+// ============================================================
+// TAIL-NUMBER SEARCH
+// ============================================================
+export type TailDetection = {
+  capturedAt: string;
+  altitude: number | null;
+  speed: number | null;
+  county: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  onGround: boolean;
+};
+export type TailSearchResult = {
+  registration: string;
+  icao: string | null;
+  owner: string | null;
+  model: string | null;
+  total: number;
+  minAlt: number | null;
+  avgAlt: number | null;
+  maxAlt: number | null;
+  nightPct: number | null;
+  firstSeen: string | null;
+  lastSeen: string | null;
+  identifiedName: string | null;
+  registrantCity: string | null;
+  registrantState: string | null;
+  detections: TailDetection[];
+};
+
+export const searchByTail = createServerFn({ method: "GET" })
+  .inputValidator((d: { tail: string }) => ({
+    tail: String(d?.tail ?? "").trim().toUpperCase().slice(0, 20).replace(/[^A-Z0-9-]/g, ""),
+  }))
+  .handler(async ({ data }): Promise<TailSearchResult | null> => {
+    if (!data.tail) return null;
+    const w = watchtower();
+    const tail = data.tail;
+    const [profile, dets] = await Promise.all([
+      w`SELECT p.icao_hex, p.observed_registration, p.registered_owner, p.aircraft_model,
+               p.total_detections, p.min_altitude, p.avg_altitude, p.max_altitude,
+               p.night_pct, p.first_seen, p.last_seen,
+               m.name AS reg_name, m.city AS reg_city, m.state AS reg_state
+        FROM aircraft_profiles p
+        LEFT JOIN faa_master m ON UPPER(m.mode_s_code_hex) = UPPER(p.icao_hex)
+        WHERE UPPER(p.observed_registration) = ${tail}
+           OR UPPER(p.icao_hex) = ${tail}
+        LIMIT 1`,
+      w`SELECT captured_at, altitude_ft, speed_kts, county, latitude, longitude, on_ground
+        FROM detections
+        WHERE UPPER(registration) = ${tail} OR UPPER(icao_hex) = ${tail}
+        ORDER BY captured_at DESC
+        LIMIT 1000`,
+    ]);
+    const pArr = profile as any[];
+    const dArr = dets as any[];
+    if (pArr.length === 0 && dArr.length === 0) return null;
+    const p = pArr[0] ?? {};
+    const rawMin = p.min_altitude == null ? null : Number(p.min_altitude);
+    return {
+      registration: p.observed_registration ?? tail,
+      icao: p.icao_hex ?? null,
+      owner: p.registered_owner ?? null,
+      model: p.aircraft_model ?? null,
+      total: Number(p.total_detections ?? dArr.length),
+      minAlt: rawMin != null && rawMin < -100 ? null : rawMin,
+      avgAlt: p.avg_altitude != null ? Number(p.avg_altitude) : null,
+      maxAlt: p.max_altitude != null ? Number(p.max_altitude) : null,
+      nightPct: p.night_pct != null ? Number(p.night_pct) : null,
+      firstSeen: p.first_seen ? new Date(p.first_seen).toISOString() : null,
+      lastSeen: p.last_seen ? new Date(p.last_seen).toISOString() : null,
+      identifiedName: p.reg_name ?? null,
+      registrantCity: p.reg_city ?? null,
+      registrantState: p.reg_state ?? null,
+      detections: dArr.map((d) => ({
+        capturedAt: new Date(d.captured_at).toISOString(),
+        altitude: d.altitude_ft,
+        speed: d.speed_kts != null ? Number(d.speed_kts) : null,
+        county: d.county,
+        latitude: d.latitude != null ? Number(d.latitude) : null,
+        longitude: d.longitude != null ? Number(d.longitude) : null,
+        onGround: !!d.on_ground,
+      })),
+    };
+  });
+
+// ============================================================
+// MILITARY AIRCRAFT
+// ============================================================
+export type MilitaryAircraft = {
+  registration: string | null;
+  icao: string;
+  owner: string | null;
+  model: string | null;
+  branch: string;
+  totalDetections: number;
+  minAltitude: number | null;
+  avgAltitude: number | null;
+  nightPct: number | null;
+  firstSeen: string | null;
+  lastSeen: string | null;
+  countiesSeen: string[];
+};
+export type MilitarySummary = {
+  totalAircraft: number;
+  totalDetections: number;
+  byBranch: { branch: string; aircraft: number; detections: number }[];
+  aircraft: MilitaryAircraft[];
+};
+
+function classifyBranch(owner: string | null, icao: string | null): string {
+  const o = (owner ?? "").toUpperCase();
+  if (/\b(US NAVY|U\.S\. NAVY|DEPARTMENT OF NAVY|NAVAIR|NAVAL)\b/.test(o)) return "U.S. Navy";
+  if (/\b(US ARMY|U\.S\. ARMY|DEPARTMENT OF ARMY)\b/.test(o)) return "U.S. Army";
+  if (/\b(AIR FORCE|USAF)\b/.test(o)) return "U.S. Air Force";
+  if (/\b(MARINE CORPS|USMC|MARINES)\b/.test(o)) return "U.S. Marines";
+  if (/\b(COAST GUARD|USCG)\b/.test(o)) return "U.S. Coast Guard";
+  if (/\bNATIONAL GUARD\b/.test(o)) return "National Guard";
+  if (/\b(DEPARTMENT OF DEFENSE|DEPT OF DEFENSE|\bDOD\b)\b/.test(o)) return "DoD (unspecified)";
+  const h = (icao ?? "").toUpperCase();
+  if (/^AE[0-9A-F]{4}$/.test(h)) return "U.S. Military (ICAO AE-range)";
+  return "Military (unclassified)";
+}
+
+export const getMilitaryAircraft = createServerFn({ method: "GET" }).handler(
+  async (): Promise<MilitarySummary> => {
+    const w = watchtower();
+    const rows = await w`
+      SELECT p.icao_hex, p.observed_registration, p.registered_owner, p.aircraft_model,
+             p.total_detections, p.min_altitude, p.avg_altitude, p.night_pct,
+             p.first_seen, p.last_seen,
+             m.name AS reg_name
+      FROM aircraft_profiles p
+      LEFT JOIN faa_master m ON UPPER(m.mode_s_code_hex) = UPPER(p.icao_hex)
+      WHERE UPPER(p.icao_hex) LIKE 'AE%'
+         OR UPPER(COALESCE(p.registered_owner, m.name, '')) ~ '(NAVY|ARMY|AIR FORCE|USAF|MARINE CORPS|USMC|COAST GUARD|USCG|NATIONAL GUARD|DEPARTMENT OF DEFENSE|DEPT OF DEFENSE)'
+      ORDER BY p.total_detections DESC NULLS LAST
+      LIMIT 500
+    `;
+    const icaos = (rows as any[]).map((r) => String(r.icao_hex ?? "").toUpperCase()).filter(Boolean);
+    const countyMap = new Map<string, string[]>();
+    if (icaos.length > 0) {
+      const cRows = await w`
+        SELECT icao_hex, ARRAY_AGG(DISTINCT county) FILTER (WHERE county IS NOT NULL) AS counties
+        FROM detections WHERE UPPER(icao_hex) = ANY(${icaos}::text[])
+        GROUP BY icao_hex
+      `;
+      for (const r of cRows as any[]) {
+        countyMap.set(String(r.icao_hex).toUpperCase(), (r.counties ?? []).filter(Boolean));
+      }
+    }
+    const aircraft: MilitaryAircraft[] = [];
+    const branchAgg = new Map<string, { aircraft: number; detections: number }>();
+    for (const r of rows as any[]) {
+      const ownerLabel = r.registered_owner ?? r.reg_name ?? null;
+      const branch = classifyBranch(ownerLabel, r.icao_hex);
+      const rawMin = r.min_altitude == null ? null : Number(r.min_altitude);
+      const total = Number(r.total_detections ?? 0);
+      aircraft.push({
+        registration: r.observed_registration,
+        icao: r.icao_hex,
+        owner: ownerLabel,
+        model: r.aircraft_model,
+        branch,
+        totalDetections: total,
+        minAltitude: rawMin != null && rawMin < -100 ? null : rawMin,
+        avgAltitude: r.avg_altitude != null ? Number(r.avg_altitude) : null,
+        nightPct: r.night_pct != null ? Number(r.night_pct) : null,
+        firstSeen: r.first_seen ? new Date(r.first_seen).toISOString() : null,
+        lastSeen: r.last_seen ? new Date(r.last_seen).toISOString() : null,
+        countiesSeen: countyMap.get(String(r.icao_hex ?? "").toUpperCase()) ?? [],
+      });
+      const agg = branchAgg.get(branch) ?? { aircraft: 0, detections: 0 };
+      agg.aircraft += 1;
+      agg.detections += total;
+      branchAgg.set(branch, agg);
+    }
+    const byBranch = Array.from(branchAgg.entries())
+      .map(([branch, v]) => ({ branch, aircraft: v.aircraft, detections: v.detections }))
+      .sort((a, b) => b.detections - a.detections);
+    return {
+      totalAircraft: aircraft.length,
+      totalDetections: aircraft.reduce((a, x) => a + x.totalDetections, 0),
+      byBranch,
+      aircraft,
+    };
+  },
+);
