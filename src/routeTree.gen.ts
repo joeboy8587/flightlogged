@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as ViolationsRouteImport } from './routes/violations'
 import { Route as ToolkitRouteImport } from './routes/toolkit'
 import { Route as ThreatIndexRouteImport } from './routes/threat-index'
+import { Route as TailSearchRouteImport } from './routes/tail-search'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as RulesRouteImport } from './routes/rules'
 import { Route as ReportsRouteImport } from './routes/reports'
@@ -44,6 +45,11 @@ const ToolkitRoute = ToolkitRouteImport.update({
 const ThreatIndexRoute = ThreatIndexRouteImport.update({
   id: '/threat-index',
   path: '/threat-index',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TailSearchRoute = TailSearchRouteImport.update({
+  id: '/tail-search',
+  path: '/tail-search',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
@@ -154,6 +160,7 @@ export interface FileRoutesByFullPath {
   '/reports': typeof ReportsRoute
   '/rules': typeof RulesRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/tail-search': typeof TailSearchRoute
   '/threat-index': typeof ThreatIndexRoute
   '/toolkit': typeof ToolkitRouteWithChildren
   '/violations': typeof ViolationsRoute
@@ -177,6 +184,7 @@ export interface FileRoutesByTo {
   '/reports': typeof ReportsRoute
   '/rules': typeof RulesRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/tail-search': typeof TailSearchRoute
   '/threat-index': typeof ThreatIndexRoute
   '/violations': typeof ViolationsRoute
   '/toolkit/foia': typeof ToolkitFoiaRoute
@@ -200,6 +208,7 @@ export interface FileRoutesById {
   '/reports': typeof ReportsRoute
   '/rules': typeof RulesRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/tail-search': typeof TailSearchRoute
   '/threat-index': typeof ThreatIndexRoute
   '/toolkit': typeof ToolkitRouteWithChildren
   '/violations': typeof ViolationsRoute
@@ -225,6 +234,7 @@ export interface FileRouteTypes {
     | '/reports'
     | '/rules'
     | '/sitemap.xml'
+    | '/tail-search'
     | '/threat-index'
     | '/toolkit'
     | '/violations'
@@ -248,6 +258,7 @@ export interface FileRouteTypes {
     | '/reports'
     | '/rules'
     | '/sitemap.xml'
+    | '/tail-search'
     | '/threat-index'
     | '/violations'
     | '/toolkit/foia'
@@ -270,6 +281,7 @@ export interface FileRouteTypes {
     | '/reports'
     | '/rules'
     | '/sitemap.xml'
+    | '/tail-search'
     | '/threat-index'
     | '/toolkit'
     | '/violations'
@@ -294,6 +306,7 @@ export interface RootRouteChildren {
   ReportsRoute: typeof ReportsRoute
   RulesRoute: typeof RulesRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  TailSearchRoute: typeof TailSearchRoute
   ThreatIndexRoute: typeof ThreatIndexRoute
   ToolkitRoute: typeof ToolkitRouteWithChildren
   ViolationsRoute: typeof ViolationsRoute
@@ -320,6 +333,13 @@ declare module '@tanstack/react-router' {
       path: '/threat-index'
       fullPath: '/threat-index'
       preLoaderRoute: typeof ThreatIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tail-search': {
+      id: '/tail-search'
+      path: '/tail-search'
+      fullPath: '/tail-search'
+      preLoaderRoute: typeof TailSearchRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sitemap.xml': {
@@ -481,6 +501,7 @@ const rootRouteChildren: RootRouteChildren = {
   ReportsRoute: ReportsRoute,
   RulesRoute: RulesRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  TailSearchRoute: TailSearchRoute,
   ThreatIndexRoute: ThreatIndexRoute,
   ToolkitRoute: ToolkitRouteWithChildren,
   ViolationsRoute: ViolationsRoute,
