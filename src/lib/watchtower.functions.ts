@@ -1530,3 +1530,84 @@ export const getMilitaryAircraft = createServerFn({ method: "GET" }).handler(
     };
   },
 );
+
+// ============================================================
+// DEAD MAN'S CURVE — height/velocity exposure
+// Detections that put the aircraft inside the helicopter
+// height-velocity (Dead Man's Curve) hazard envelope:
+//   altitude AGL ≤ 500 ft, airborne, speed under 60 kts where known.
+// We approximate AGL with reported ADS-B altitude (MSL) ≤ 500 ft and
+// exclude negative/transponder anomalies so the count is conservative.
+// ============================================================
+
+export type DeadMansCurveTop = {
+  icao: string;
+  registration: string | null;
+  count: number;
+  minAltitude: number | null;
+};
+
+export type DeadMansCurveStats = {
+  totalDetections: number;
+  uniqueAircraft: number;
+  underBelowSlowCount: number; // detections under 500 ft AND under 60 kts
+  firstSeen: string | null;
+  lastSeen: string | null;
+  top: DeadMansCurveTop[];
+};
+
+export const getDeadMansCurveStats = createServerFn({ method: "GET" }).handler(
+  async (): Promise<DeadMansCurveStats> => {
+    const w = watchtower();
+    const [agg, slow, top] = await Promise.all([
+      w`
+        SELECT COUNT(*)::int AS c,
+               COUNT(DISTINCT icao_hex)::int AS u,
+               MIN(captured_at) AS first_seen,
+               MAX(captured_at) AS last_seen
+        FROM detections
+        WHERE altitude_ft IS NOT NULL
+          AND altitude_ft <= 500
+          AND altitude_ft >= 0
+          AND on_ground = false
+      `,
+      w`
+        SELECT COUNT(*)::int AS c
+        FROM detections
+        WHERE altitude_ft IS NOT NULL
+          AND altitude_ft <= 500
+          AND altitude_ft >= 0
+          AND on_ground = false
+          AND speed_kts IS NOT NULL
+          AND speed_kts < 60
+      `,
+      w`
+        SELECT icao_hex,
+               MAX(registration) AS registration,
+               COUNT(*)::int AS c,
+               MIN(altitude_ft)::int AS min_alt
+        FROM detections
+        WHERE altitude_ft IS NOT NULL
+          AND altitude_ft <= 500
+          AND altitude_ft >= 0
+          AND on_ground = false
+        GROUP BY icao_hex
+        ORDER BY c DESC
+        LIMIT 5
+      `,
+    ]);
+    return {
+      totalDetections: agg[0].c,
+      uniqueAircraft: agg[0].u,
+      underBelowSlowCount: slow[0].c,
+      firstSeen: agg[0].first_seen ? new Date(agg[0].first_seen).toISOString() : null,
+      lastSeen: agg[0].last_seen ? new Date(agg[0].last_seen).toISOString() : null,
+      top: (top as any[]).map((r) => ({
+        icao: r.icao_hex,
+        registration: r.registration,
+        count: r.c,
+        minAltitude: r.min_alt,
+      })),
+    };
+  },
+);
