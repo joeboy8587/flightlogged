@@ -6,6 +6,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
 import { breadcrumbScript } from "@/lib/breadcrumbs";
 import { getAnomalies } from "@/lib/watchtower.functions";
+import { DeadMansCurveTiles, dmcQO } from "@/components/dead-mans-curve";
 
 const anomQO = queryOptions({ queryKey: ["anomalies"], queryFn: () => getAnomalies() });
 
@@ -37,7 +38,10 @@ export const Route = createFileRoute("/findings")({
       },
     ],
   }),
-  loader: ({ context }) => context.queryClient.ensureQueryData(anomQO),
+  loader: ({ context }) => Promise.all([
+    context.queryClient.ensureQueryData(anomQO),
+    context.queryClient.ensureQueryData(dmcQO),
+  ]),
   component: Findings,
   errorComponent: ({ reset }) => (
     <div className="min-h-screen bg-paper"><SiteHeader />
@@ -78,6 +82,8 @@ function Findings() {
           </div>
         </div>
       </section>
+
+      <DeadMansCurveTiles />
 
       <section className="border-b-4 border-ink">
         <div className="max-w-[1400px] mx-auto px-4 py-16">
