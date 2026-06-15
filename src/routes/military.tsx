@@ -6,6 +6,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
 import { breadcrumbScript } from "@/lib/breadcrumbs";
 import { getMilitaryAircraft } from "@/lib/watchtower.functions";
+import { fmtPct } from "@/lib/format";
 
 const qo = queryOptions({ queryKey: ["military-aircraft"], queryFn: () => getMilitaryAircraft() });
 const crumbs = [{ label: "Home", href: "/" }, { label: "Military" }];
