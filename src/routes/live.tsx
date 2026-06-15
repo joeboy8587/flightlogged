@@ -6,6 +6,7 @@ import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
 import { breadcrumbScript } from "@/lib/breadcrumbs";
 import { getSnapshot, getRecentLowAltitude, getRepeatOffenders, getIdentifiedOperators, getLocalAgencyAircraft } from "@/lib/watchtower.functions";
 import { ShareRow } from "@/components/share-row";
+import { fmtPct } from "@/lib/format";
 
 const snapQO = queryOptions({ queryKey: ["snapshot"], queryFn: () => getSnapshot(), refetchInterval: 30000 });
 const lowAltQO = queryOptions({ queryKey: ["low-alt"], queryFn: () => getRecentLowAltitude(), refetchInterval: 30000 });
@@ -388,7 +389,7 @@ function Live() {
                     <div className="font-bold">{r.minAltitude == null ? "—" : `${fmt(r.minAltitude)} ft`}</div>
                   </div>
                   <div><div className="opacity-60 label-stamp">AVG ALT</div><div className="font-bold">{r.avgAltitude ? Math.round(r.avgAltitude) : "—"} ft</div></div>
-                  <div><div className="opacity-60 label-stamp">NIGHT</div><div className="font-bold">{r.nightPct != null ? Math.round(r.nightPct) + "%" : "—"}</div></div>
+                  <div><div className="opacity-60 label-stamp">NIGHT</div><div className="font-bold">{fmtPct(r.nightPct)}</div></div>
                 </div>
                 {r.transponderAnomaly && (
                   <div className="mt-2 text-[10px] font-mono label-stamp bg-warning text-ink inline-block px-2 py-0.5">

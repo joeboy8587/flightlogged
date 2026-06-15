@@ -7,6 +7,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
 import { breadcrumbScript } from "@/lib/breadcrumbs";
 import { searchByTail, type TailSearchResult } from "@/lib/watchtower.functions";
+import { fmtPct } from "@/lib/format";
 
 const crumbs = [{ label: "Home", href: "/" }, { label: "Tail Search" }];
 
@@ -143,7 +144,7 @@ function TailSearch() {
                   <Stat label="Total detections" value={r.total.toLocaleString()} />
                   <Stat label="Min altitude" value={r.minAlt != null ? `${r.minAlt} ft` : "—"} />
                   <Stat label="Avg altitude" value={r.avgAlt != null ? `${Math.round(r.avgAlt)} ft` : "—"} />
-                  <Stat label="Night share" value={r.nightPct != null ? `${Math.round(r.nightPct * 100)}%` : "—"} />
+                  <Stat label="Night share" value={fmtPct(r.nightPct)} />
                   <Stat label="Last seen" value={r.lastSeen ? new Date(r.lastSeen).toLocaleDateString() : "—"} />
                 </div>
               </div>

@@ -7,6 +7,7 @@ import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
 import { breadcrumbScript } from "@/lib/breadcrumbs";
 import { ShareRow } from "@/components/share-row";
 import { getForeignAircraft } from "@/lib/watchtower.functions";
+import { fmtPct } from "@/lib/format";
 
 const qo = queryOptions({ queryKey: ["foreign-aircraft"], queryFn: () => getForeignAircraft() });
 
@@ -207,7 +208,7 @@ function ForeignPage() {
                     <td className="p-3 text-right font-bold">{fmt(a.totalDetections)}</td>
                     <td className="p-3 text-right">{a.minAltitude != null ? fmt(a.minAltitude) : "—"}</td>
                     <td className="p-3 text-right">{a.avgAltitude != null ? fmt(Math.round(a.avgAltitude)) : "—"}</td>
-                    <td className="p-3 text-right">{a.nightPct != null ? `${Math.round(a.nightPct * 100)}%` : "—"}</td>
+                    <td className="p-3 text-right">{fmtPct(a.nightPct)}</td>
                     <td className="p-3 whitespace-nowrap text-xs">{a.lastSeen ? new Date(a.lastSeen).toLocaleDateString() : "—"}</td>
                     <td className="p-3">
                       <ShareRow

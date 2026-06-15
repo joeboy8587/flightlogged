@@ -495,7 +495,11 @@ function Coordination() {
                   }
                   const r = entry.row;
                   const net = shellNetwork(r.registryOwner);
-                  const nightPctNum = r.nightPct != null ? Math.round(r.nightPct * 100) : null;
+                  const nightPctNum = (() => {
+                    if (r.nightPct == null) return null;
+                    const v = Math.abs(r.nightPct) <= 1 ? r.nightPct * 100 : r.nightPct;
+                    return Math.round(Math.max(0, Math.min(100, v)));
+                  })();
                   return (
                   <tr
                     key={r.icao}
