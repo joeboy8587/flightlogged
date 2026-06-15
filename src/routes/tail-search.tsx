@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { SiteHeader } from "@/components/site-header";
@@ -11,6 +11,9 @@ import { searchByTail, type TailSearchResult } from "@/lib/watchtower.functions"
 const crumbs = [{ label: "Home", href: "/" }, { label: "Tail Search" }];
 
 export const Route = createFileRoute("/tail-search")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    tail: typeof search.tail === "string" ? search.tail : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Tail Number Search — The Architecture of Never" },
@@ -42,10 +45,21 @@ function downloadCsv(filename: string, rows: (string | number | null)[][]) {
 
 function TailSearch() {
   const fn = useServerFn(searchByTail);
-  const [q, setQ] = useState("");
+  const { tail: initial } = Route.useSearch();
+  const [q, setQ] = useState(initial ?? "");
   const m = useMutation<TailSearchResult | null, Error, string>({
     mutationFn: (tail) => fn({ data: { tail } }),
   });
+
+  // Deep-link: auto-search when ?tail=... is present (or changes).
+  useEffect(() => {
+    const t = (initial ?? "").trim();
+    if (t) {
+      setQ(t);
+      m.mutate(t);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initial]);
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();

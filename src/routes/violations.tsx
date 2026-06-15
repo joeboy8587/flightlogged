@@ -6,6 +6,7 @@ import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
 import { breadcrumbScript } from "@/lib/breadcrumbs";
 import { getSentinelViolations, getNeonViolations } from "@/lib/watchtower.functions";
 import { UndergroundClub } from "@/components/underground-club";
+import { DeadMansCurveTiles, dmcQO } from "@/components/dead-mans-curve";
 
 const vQO = queryOptions({ queryKey: ["sentinel-violations"], queryFn: () => getSentinelViolations() });
 const nQO = queryOptions({ queryKey: ["neon-violations"], queryFn: () => getNeonViolations() });
@@ -44,6 +45,7 @@ export const Route = createFileRoute("/violations")({
   loader: ({ context }) => Promise.all([
     context.queryClient.ensureQueryData(vQO),
     context.queryClient.ensureQueryData(nQO),
+    context.queryClient.ensureQueryData(dmcQO),
   ]),
   component: Violations,
   errorComponent: ({ reset }) => (
@@ -82,6 +84,8 @@ function Violations() {
       </section>
 
       <UndergroundClub />
+
+      <DeadMansCurveTiles />
 
       {/* Neon-side fresh violations summary */}
       <section className="border-b-4 border-ink">
