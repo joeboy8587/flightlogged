@@ -259,6 +259,29 @@ function Home() {
             <Link to="/reports" className="label-stamp bg-alert text-paper px-6 py-4 brutal-shadow-warning">Read the reports</Link>
             <Link to="/legal" className="label-stamp brutal-border px-6 py-4 hover:bg-warning">Know your protections</Link>
           </div>
+
+          <div className="mt-12 grid sm:grid-cols-2 lg:grid-cols-4 gap-3 text-left">
+            <Link to="/military" className="brutal-border p-4 hover:bg-warning/40">
+              <div className="label-stamp text-alert mb-1">Branch · Posse Comitatus</div>
+              <div className="font-display text-2xl mb-1">Military aircraft</div>
+              <p className="text-xs font-mono opacity-70">U.S. military hex range (AE0000–AFFFFF) tracked by branch, altitude, and night ops.</p>
+            </Link>
+            <Link to="/foreign" className="brutal-border p-4 hover:bg-warning/40">
+              <div className="label-stamp text-alert mb-1">Country of registry</div>
+              <div className="font-display text-2xl mb-1">Foreign aircraft</div>
+              <p className="text-xs font-mono opacity-70">Non-U.S. civil registrations operating in domestic airspace.</p>
+            </Link>
+            <Link to="/coordination" className="brutal-border p-4 hover:bg-warning/40">
+              <div className="label-stamp text-alert mb-1">Hub-and-spoke</div>
+              <div className="font-display text-2xl mb-1">Coordination graph</div>
+              <p className="text-xs font-mono opacity-70">Shell networks coordinating state-actor patrol patterns.</p>
+            </Link>
+            <Link to="/tail-search" className="brutal-border p-4 hover:bg-warning/40">
+              <div className="label-stamp text-alert mb-1">Operator lookup</div>
+              <div className="font-display text-2xl mb-1">Tail number search</div>
+              <p className="text-xs font-mono opacity-70">Pull every detection for a tail number. Export forensic CSV.</p>
+            </Link>
+          </div>
         </div>
       </section>
 
