@@ -3,11 +3,16 @@ import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { PullQuote } from "@/components/pull-quote";
-import { getSnapshot } from "@/lib/watchtower.functions";
+import { StoryCard } from "@/components/story-card";
+import { getSnapshot, getRecentLowAltitude } from "@/lib/watchtower.functions";
 
 const snapshotQO = queryOptions({
   queryKey: ["snapshot"],
   queryFn: () => getSnapshot(),
+});
+const lowAltQO = queryOptions({
+  queryKey: ["low-alt"],
+  queryFn: () => getRecentLowAltitude(),
 });
 
 export const Route = createFileRoute("/")({
@@ -20,7 +25,10 @@ export const Route = createFileRoute("/")({
       { property: "og:url", content: "https://flightlogged.lovable.app/" },
     ],
   }),
-  loader: ({ context }) => context.queryClient.ensureQueryData(snapshotQO),
+  loader: ({ context }) => Promise.all([
+    context.queryClient.ensureQueryData(snapshotQO),
+    context.queryClient.ensureQueryData(lowAltQO),
+  ]),
   component: Home,
   errorComponent: ({ reset }) => (
     <div className="p-10"><h1 className="text-4xl mb-4">Signal lost.</h1><p className="mb-4">Data temporarily unavailable. Please try again.</p><button onClick={reset} className="brutal-border px-4 py-2 label-stamp bg-warning">Retry</button></div>
@@ -31,6 +39,12 @@ function fmt(n: number) { return n.toLocaleString(); }
 
 function Home() {
   const { data: s } = useSuspenseQuery(snapshotQO);
+  const { data: low } = useSuspenseQuery(lowAltQO);
+  // Top 3 stories — pick the lowest-altitude airborne detections first.
+  const stories = [...low]
+    .filter((r) => r.altitude != null)
+    .sort((a, b) => (a.altitude ?? 99999) - (b.altitude ?? 99999))
+    .slice(0, 3);
   const stats = [
     { label: "Detections logged", value: fmt(s.totalDetections), accent: false },
     { label: "Unique aircraft", value: fmt(s.uniqueAircraft), accent: false },
@@ -49,17 +63,20 @@ function Home() {
               <span className="w-2 h-2 bg-ink blink" /> System online · Baseline learning · {s.windowHours}h observed
             </div>
             <p className="font-display text-2xl sm:text-3xl mb-4 italic opacity-80">
-              They don't cause fear anymore. They build evidence.
+              They don&apos;t cause fear anymore. They build evidence.
             </p>
             <h1 className="text-5xl sm:text-7xl lg:text-8xl mb-6">
-              The machine watches.<br />
-              <span className="bg-ink text-paper px-2">The math chooses.</span><br />
-              The record stands.
+              The sky over Kern County<br />
+              <span className="bg-ink text-paper px-2">is not normal.</span>
             </h1>
             <p className="text-lg sm:text-xl max-w-2xl mb-8 font-medium">
-              Civilian-led, AI-assisted airspace accountability — built to the evidentiary standard a court requires
-              and the public deserves. Every aircraft. Every altitude. Every hour.{" "}
-              <strong>Population-scale data. Hashed chain of custody. Reproducible findings.</strong>
+              We watched the sky for <strong>{s.windowHours} hours</strong>. We logged{" "}
+              <strong>{fmt(s.totalDetections)}</strong> detections across{" "}
+              <strong>{fmt(s.uniqueAircraft)}</strong> aircraft.{" "}
+              <strong>{fmt(s.anomalyEvents)}</strong> of those detections triggered anomaly flags —
+              persistent low-altitude loitering, masked identities, night operations that don&apos;t match normal traffic.
+              Every record is SHA-256 hashed, Merkle-chained, and independently verifiable.{" "}
+              <strong>The machine watches. The math chooses. The record stands.</strong>
             </p>
             <div className="flex flex-wrap gap-3">
               <Link to="/live" className="label-stamp bg-ink text-paper px-5 py-3 brutal-shadow-warning hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all">
@@ -86,6 +103,71 @@ function Home() {
           </div>
         </div>
       </section>
+
+      {/* THE BLIND MACHINE — anti-bias hero */}
+      <section className="border-b-4 border-ink bg-ink text-paper">
+        <div className="max-w-[1400px] mx-auto px-4 py-16 sm:py-20 grid lg:grid-cols-12 gap-10">
+          <div className="lg:col-span-7">
+            <div className="label-stamp bg-warning text-ink inline-block px-2 py-1 mb-4">The Blind Machine</div>
+            <h2 className="text-4xl sm:text-6xl mb-6 leading-tight">
+              The machine doesn&apos;t know who it&apos;s watching.<br />
+              <span className="text-warning">That&apos;s the point.</span>
+            </h2>
+            <p className="text-lg mb-4 opacity-90">
+              For the first 48 hours after a sensor comes online, Watchtower flags{" "}
+              <strong className="text-warning">zero aircraft</strong>. It is learning what normal looks like.
+              No allow-list. No watch-list. No human judgment about who counts as suspicious.
+            </p>
+            <p className="text-lg mb-4 opacity-90">
+              After baseline, the math chooses. A sheriff&apos;s helicopter loitering at 400 ft and a private
+              LLC loitering at 400 ft trigger the same flag. The system has no opinion about either of them.
+              It only knows that 400 ft is below the FAA floor and that loitering for 90 minutes is not transit.
+            </p>
+            <p className="text-lg opacity-90">
+              That&apos;s why the record survives cross-examination.{" "}
+              <strong className="text-warning">Math chose it. Not a human.</strong>
+            </p>
+          </div>
+          <aside className="lg:col-span-5 brutal-border-thick border-paper bg-paper text-ink p-6 self-start">
+            <div className="label-stamp bg-alert text-paper inline-block px-2 py-1 mb-3">What counts as low?</div>
+            <ul className="space-y-3 text-sm font-medium">
+              <li><strong className="font-mono">1,500 ft</strong> — a helicopter can see your backyard.</li>
+              <li><strong className="font-mono">1,000 ft</strong> — it can read your license plate.</li>
+              <li><strong className="font-mono">500 ft</strong> — it can see through your windows.</li>
+              <li><strong className="font-mono">Below 500 ft</strong> — it&apos;s inside the Dead Man&apos;s Curve. If the engine fails, there is not enough altitude for the rotor to autorotate.</li>
+            </ul>
+            <p className="mt-4 text-xs opacity-70 font-mono">
+              Source: FAA AC 90-87C (Helicopter Height-Velocity Diagram), 14 CFR § 91.119 (minimum safe altitudes).
+            </p>
+          </aside>
+        </div>
+      </section>
+
+      {/* RECENT STORIES — top 3 cards translated from the raw feed */}
+      {stories.length > 0 && (
+        <section className="border-b-4 border-ink bg-paper">
+          <div className="max-w-[1400px] mx-auto px-4 py-16">
+            <div className="flex items-end justify-between gap-4 flex-wrap mb-6">
+              <div>
+                <div className="label-stamp bg-alert text-paper inline-block px-2 py-1 mb-2">Recent events · in plain English</div>
+                <h2 className="text-3xl sm:text-5xl">Three things the machine saw this week.</h2>
+              </div>
+              <Link to="/live" className="label-stamp brutal-border bg-ink text-paper px-4 py-2 hover:bg-warning hover:text-ink">
+                See the full live feed →
+              </Link>
+            </div>
+            <div className="grid md:grid-cols-3 gap-4">
+              {stories.map((row) => (
+                <StoryCard key={row.icao + row.capturedAt} row={row} />
+              ))}
+            </div>
+            <p className="mt-4 text-xs font-mono opacity-70 max-w-3xl">
+              Each card is a verbatim translation of one detection row. Every claim links back to the raw,
+              hashed record. You don&apos;t have to take our word for it — check the math.
+            </p>
+          </div>
+        </section>
+      )}
 
       {/* TICKER */}
       <div className="bg-warning text-ink border-b-4 border-ink overflow-hidden">
