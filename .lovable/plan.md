@@ -1,85 +1,140 @@
+# Plan — Fix Preview, Harden Military, Ship Waves 1 + 3, Scaffold Visual Library
 
-# Breadcrumbs + Schema-Aware Data Expansion
+Four parallel tracks. Each ends in something you can see in preview. The Visual Library is the biggest lift and gets staged so you see progress before all 80,000 screenshots have been processed.
 
-## Part 1 — Breadcrumb Navigation (sitewide)
+---
 
-**Goal:** Every non-home route shows a visible breadcrumb trail AND emits `BreadcrumbList` JSON-LD for Google's SERP breadcrumb feature.
+## Track A — Fix the "Preview has not been built yet" error
+
+The dev server is healthy, so the error is in the production/SSR build, not in local Vite. The most likely cause: the Military and Foreign route loaders call Neon at prerender time, and any DB miss (cold connection, missing column, query timeout) crashes the SSR build and the preview never finishes.
 
 Steps:
-1. Create `src/components/site-breadcrumbs.tsx` — a small component built on the existing shadcn `breadcrumb.tsx`. It takes `items: { label, href? }[]` and renders the trail in the site's brutalist style (mono uppercase, ink-on-paper).
-2. Create `src/lib/breadcrumbs.ts` — helper `buildBreadcrumbJsonLd(items, baseUrl)` returning the schema.org object so each route can drop it into `head().scripts`.
-3. Mount the breadcrumbs at the top of each route's main `<div>` (just under `SiteHeader`) for: `/live`, `/findings`, `/reports`, `/rules`, `/methodology`, `/legal`, `/act`, `/about`, and the 4 new routes below. Home (`/`) gets no breadcrumb (per SEO convention).
-4. In each route's `head()`, add a `scripts` entry with `application/ld+json` containing the `BreadcrumbList` for that page, using absolute `https://advocacywatch.live` URLs (matches existing canonical/og:url convention).
+1. Run a production build locally and capture the failing route + stack trace from the daemon log.
+2. Wrap `getMilitaryAircraft`, `getDeadMansCurveStats`, `getForeignAircraft`, and any other loader-reachable server fn in a typed try/catch that returns a safe empty shape (`{ totalAircraft: 0, totalDetections: 0, byBranch: [], aircraft: [] }`) instead of throwing during SSR.
+3. Confirm the route's `errorComponent` is still there as a second safety net, and verify the `__root.tsx` shell still renders `<Outlet />`.
+4. Re-run build, then preview. Done when both `/` and `/military` prerender cleanly.
 
-## Part 2 — Schema-Aware DB Analysis (findings)
+---
 
-Surveyed both Neon databases:
+## Track B — Military page polish (in the same pass as Track A)
 
-- **watchtower** — 17 tables, ~600K rows. Already fully surfaced (`detections`, `aircraft_profiles`, `anomaly_events`, `convergence_events`, `faa_master`, `faa_regulations`, `faa_airspace`, `regulatory_baselines`).
-- **evidence** — 816 public tables + 15+ schemas, **20M+ rows**. Most are intermediate/forensic. After ranking by size, recency, and public-interest signal, the highest-value tables NOT yet on the site are:
+1. **Empty-state copy.** When no rows come back, replace the bare "No military aircraft in the current window" with a real explainer card: what the query asked, why nothing matched, and a "View raw data" link.
+2. **Dead Man's Curve tiles** at the top of `/military`, scoped to military-flagged airframes (re-use the existing component, add a `branch` filter).
+3. **Posse Comitatus pull-quote** styled like the Foreign page header so the legal frame leads.
+4. **Tail-search deep links.** Each row's registration becomes a link to `/tail-search?tail=<reg>` so you can pivot from the branch table to the full forensic profile.
 
-| Table | Rows | What it adds |
-|---|---|---|
-| `canonical_operator_profiles` | 33K | Resolved operator identities w/ shell-company links, KCSO/military/medical flags — perfect for an "Operators" directory |
-| `sentinel_violations` | 125K | Timestamped airspace violations w/ severity + lat/lon + SHA-256 hash — perfect for a "Violations log" |
-| `threat_tiers` | 2.8M | WTI threat scores per detection w/ tier 1–5 — perfect for a "Threat index" summary |
-| `ml_anomaly_detections` | 432K | ML-classified anomalies w/ model name/version, confidence, validation status — perfect for an "ML detections" page |
-| `aircraft_master_profile` | 63K | Per-aircraft rollups (avg/max altitude, threat score, spoofing events) — enriches existing `/findings` |
-| `was_threat_assessments` | 43K | Narrative threat assessments w/ Bradford-Hill + legal exposure — feeds `/legal` |
+---
 
-Tables intentionally excluded: anything with biometric/personal data (`legal_ada_violations_proper`, `exhibit_d_biometric_harm`, `biometric_correlations_*`) — these contain individual harm records and don't belong on a public site even with hashing. They stay internal.
+## Track C — Wave 1: Homepage + Live Feed (story-driven rewrite)
 
-## Part 3 — New Public Routes
+Two-layer cake: stories on top, raw data underneath. No data model changes.
 
-Add 4 new routes, each backed by a new `createServerFn` in `src/lib/watchtower.functions.ts` (extended to also query the evidence DB via the existing `evidence()` client):
+### Homepage (`src/routes/index.tsx`)
+- New H1: **"The sky over Kern County is not normal."**
+- New lede paragraph: the "We watched the sky for 624 hours…" block, pulled live from the existing observation-window stats so the number stays honest.
+- **The Blind Machine** hero section — single column, large body type, no chart. Ends with a "Read the methodology" link.
+- **Three story cards** generated from the latest top anomalies (one Dead Man's Curve, one "going dark," one "ghost"), each with timestamp · tail · altitude · one-sentence translation · "Verify this →" link to raw detection row.
+- Keep the four-card dataset row (Military, Foreign, Coordination, Tail Search) below the stories.
+- Rewrites for "Your Rights" and "What Counts as Low?" using the plain-English language you drafted.
 
-1. **`/operators`** — Canonical Operators Directory
-   - Server fn: `getCanonicalOperators` → top 50 by `occurrences_total`, columns: registration, operator_resolved, aircraft_model, flags (shell/KCSO/military), confidence, last_seen.
-   - JSON-LD: `ItemList` of operators.
+### Live Feed (`src/routes/live.tsx`)
+- Above the table: top 5 latest detections rendered as story cards (same component as the homepage).
+- Each card auto-refreshes with the table.
+- Add a "Show raw feed" toggle so the table can collapse for first-time visitors but stays one click away for researchers.
+- No change to the underlying query or refresh interval.
 
-2. **`/violations`** — Sentinel Violations Log
-   - Server fn: `getSentinelViolations` → latest 100, columns: timestamp, registration, violation_type, severity, altitude, lat/lon, evidence_hash (truncated).
-   - JSON-LD: `Dataset` schema (this IS a public dataset).
+### Shared component
+- New `src/components/story-card.tsx` — takes a detection row + an optional override headline, formats the human story, and renders the "Verify" link. Re-used by homepage, Live Feed, Findings, and Violations later.
 
-3. **`/threat-index`** — WTI Threat Tier Summary
-   - Server fn: `getThreatTierSummary` → aggregate counts by `tier_level` + `threat_level`, plus top 25 highest WTI-score detections joined to aircraft.
-   - JSON-LD: `Dataset` + summary `Table`.
+---
 
-4. **`/ml-detections`** — ML Anomaly Detections
-   - Server fn: `getMlAnomalies` → latest 50, columns: detected_at, registration, anomaly_type, confidence_level, model_name/version, validated.
-   - JSON-LD: `Dataset` schema.
+## Track D — Wave 3: Operators Hall of Shame + Coordination + Ghost framing
 
-## Part 4 — Wire-up
+### `/operators`
+- Rename header to **"The Hall of Shame"** and add subhead: "These are the 200 most-detected operators in the window. Sorted by detections, flagged by behavior."
+- Rich flag badge component (`<OperatorFlag />`) with six pills: `SHELL`, `LAW_ENFORCEMENT`, `MILITARY`, `MEDICAL_COVER`, `DARK`, `MASKED`. Colors mapped to existing semantic tokens. Driven by existing `operator_flags` columns (no new server work).
+- Add CSV export parity with `/military`.
 
-- Add the 4 new routes to `NAV` in `src/components/site-header.tsx` (nav is already responsive/overflow-scroll, so 4 more items fit). Add to mobile nav too.
-- Add to `src/routes/sitemap[.]xml.ts` so they get crawled.
-- Add to `public/llms.txt` summary.
-- Update `/findings` to include a small "See also" section linking to all 4 new pages (improves internal linking — direct SEO benefit).
-- Each new route gets full `head()` meta: title, description, og:title, og:description, og:url, canonical (leaf only), BreadcrumbList JSON-LD, plus Dataset/ItemList JSON-LD as listed above.
-- Error/notFound boundaries on each (static user-friendly message — matches the security pattern already enforced).
+### `/coordination`
+- Plain-English summary box above the graph: "We found N private companies flying government patrol patterns. They aren't N independent businesses — they trace back to M LLC families. The picture below proves they're working together." Numbers come from existing aggregation; no new query.
 
-## Files (technical)
+### `/foreign` and `/military`
+- Add a **Ghost** callout component above the country/branch breakdown: "N aircraft have no country we can identify. Many are U.S. military operating under non-public callsigns. We don't know who they are. The U.S. government does. They aren't telling."
 
-**Created:**
-- `src/components/site-breadcrumbs.tsx`
-- `src/lib/breadcrumbs.ts`
-- `src/routes/operators.tsx`
-- `src/routes/violations.tsx`
-- `src/routes/threat-index.tsx`
-- `src/routes/ml-detections.tsx`
+---
 
-**Edited:**
-- `src/lib/watchtower.functions.ts` (+4 server fns, querying evidence DB)
-- `src/components/site-header.tsx` (NAV entries)
-- `src/routes/sitemap[.]xml.ts` (+4 URLs)
-- `src/routes/findings.tsx` (See-also block)
-- `public/llms.txt`
-- All existing routes (`live`, `findings`, `reports`, `rules`, `methodology`, `legal`, `act`, `about`) — add breadcrumb component + BreadcrumbList JSON-LD in `head().scripts`
+## Track E — Visual Library scaffold (Google Drive cron mirror + EXIF strip + OCR)
 
-## Out of scope (flagged for future)
+This is the biggest piece. Stage it so you see something live within the first ship, even before 80,000 images are imported.
 
-- Biometric/ADA harm tables — kept internal due to personal-data sensitivity.
-- The 200+ legacy/forensic/backup schemas (`forensic_oct2025`, `archive_legacy`, etc.) — appear to be historical snapshots; not public-facing.
-- Per-operator detail pages (e.g. `/operators/$registration`) — possible follow-up if you want SEO long-tail pages; not in this pass.
+### E1. Link the Google Drive connector
+- Link the existing **My Google Drive** connection to the project so server code can call the connector gateway.
 
-Approve and I'll build it.
+### E2. Database (one migration)
+- `flight_screenshots` table:
+  - `id uuid pk`
+  - `drive_file_id text unique` (idempotency key)
+  - `original_name text`
+  - `captured_at timestamptz` (from OCR; null until OCR runs)
+  - `tail_number text` (from OCR; null until OCR runs)
+  - `altitude_ft int` (from OCR; null until OCR runs)
+  - `sha256_pixel_hash text` (hash of pixel data, post-strip)
+  - `bytes int`, `width int`, `height int`, `mime text`
+  - `storage_path text` (path in Lovable Cloud Storage to the stripped image)
+  - `category text` ("smoking_gun" | "night_shift" | "low_flyer" | "ghost" | null)
+  - `detection_id uuid null` (correlated row in `detections`, set after OCR + join)
+  - `imported_at timestamptz default now()`
+  - `processing_state text default 'pending'` ('pending' | 'stripped' | 'ocr_done' | 'correlated' | 'failed')
+- GRANTs for `authenticated`, `service_role`, narrow `anon` SELECT of stripped/correlated rows only.
+- Cloud Storage bucket `flight-screenshots` (private bucket; public reads via signed URLs only).
+
+### E3. Cron-pulled mirror (server route)
+- `src/routes/api/public/screenshot-sync.ts` — POST endpoint guarded by a shared secret.
+  - Lists files in the configured Drive folder via the Google Drive gateway.
+  - Skips any `drive_file_id` already present.
+  - Streams new files, strips EXIF (sharp is incompatible with the Worker runtime — use a pure-JS EXIF stripper like `piexifjs` for JPEG or rebuild PNG chunks dropping `tEXt`/`iTXt`/`zTXt`/`eXIf`).
+  - Computes SHA-256 over the stripped pixel bytes.
+  - Uploads stripped bytes to Cloud Storage; inserts `flight_screenshots` row at `stripped`.
+- Scheduled via pg_cron hitting the stable preview/published URL every 10 minutes.
+
+### E4. OCR correlation worker (separate server route, same auth)
+- `src/routes/api/public/screenshot-ocr.ts` — pulls up to N rows with `processing_state='stripped'`, runs OCR via Lovable AI Gateway (vision model), parses tail/altitude/UTC timestamp out of the FR24 chrome.
+- Joins to `detections` within ±60 s of the parsed timestamp and matching `icao_hex`/registration; sets `detection_id` and bumps state to `correlated`.
+- Failed rows go to `failed` with an error column for the curator UI.
+
+### E5. Public galleries (`src/routes/visuals/*`)
+- `/visuals` index with five tiles: Smoking Guns, Night Shift, Low Flyers, Ghosts, Full Archive.
+- Each list page reads from `flight_screenshots` with filters (category or computed filter on the correlated `detections` row).
+- Image cards show: signed Cloud URL, human headline, one-sentence story, SHA-256 hash (mono), "Verify this →" link to the detection profile.
+- Full archive page has search by tail, date range, altitude range, anomaly flag, and "has biometric correlation" toggle (placeholder until biometric table lands).
+- Homepage gets a "80,000 receipts" callout linking to `/visuals`.
+
+### E6. Curator surface (`/_authenticated/curator`)
+- Authenticated-only page (role-gated via existing `has_role`).
+- Inbox of `processing_state in ('ocr_done','failed')` rows: review OCR result, override tail/timestamp, assign category, publish.
+- No public-facing exposure until a row is `correlated` AND has a category set.
+
+### Ship order inside Track E
+1. E1 + E2 (connector + schema). Nothing visible yet.
+2. E3 (cron mirror, no OCR). `/visuals` shows stripped images by import time.
+3. E4 (OCR + correlation). Cards get tails + altitudes + verify links.
+4. E5 (curated galleries) and E6 (curator inbox) ship together.
+
+---
+
+## What I'll need from you before Track E starts
+
+- The exact Google Drive folder ID for the FR24 screenshots.
+- Confirmation I should link the existing **My Google Drive** connection to this project.
+- A shared secret name I can add (e.g. `SCREENSHOT_SYNC_SECRET`) for the sync + OCR endpoints.
+
+## Technical notes (skip if you want)
+
+- All new server fns must follow the modern stack rules: `*.functions.ts` for app-internal RPCs, `src/routes/api/public/*` for the Drive webhook/cron callers, request-time `process.env.*`, no `supabaseAdmin` at module scope.
+- EXIF stripping must happen in the Worker — `sharp` and `canvas` are banned. JPEG via `piexifjs`, PNG via manual chunk filter, HEIC rejected with a clear error.
+- OCR uses Lovable AI Gateway (Gemini vision) — no Tesseract dependency.
+- Story cards reuse the existing `detections` query; no new tables for Waves 1 and 3.
+
+---
+
+**Ship sequence I'd recommend:** Track A + B + C this turn (preview is fixable, Military hardening is small, Wave 1 is the highest-impact public change). Track D as the immediate follow-up. Track E as a dedicated build once you confirm the Drive folder ID and secret.
