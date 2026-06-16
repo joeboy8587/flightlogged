@@ -76,33 +76,47 @@ export type WatchSnapshot = {
 };
 
 export const getSnapshot = createServerFn({ method: "GET" }).handler(async (): Promise<WatchSnapshot> => {
-  const w = watchtower();
-  const e = evidence();
-  const [d, a, an, cv, e1, e2, e3, e4] = await Promise.all([
-    w`SELECT COUNT(*)::int AS c, MAX(captured_at) AS last, MIN(captured_at) AS first FROM detections`,
-    w`SELECT COUNT(*)::int AS c FROM aircraft_profiles`,
-    w`SELECT COUNT(*)::int AS c FROM anomaly_events`,
-    w`SELECT COUNT(*)::int AS c FROM convergence_events`,
-    e`SELECT COUNT(*)::int AS c FROM court_evidence.flight_detections`,
-    e`SELECT COUNT(*)::int AS c FROM court_evidence.biometric_events`,
-    e`SELECT COUNT(*)::int AS c FROM court_evidence.biometric_events WHERE related_surveillance = true`,
-    e`SELECT COUNT(*)::int AS c FROM court_evidence.unified_events`,
-  ]);
-  const last = d[0].last ? new Date(d[0].last).toISOString() : null;
-  const first = d[0].first ? new Date(d[0].first) : null;
-  const windowHours = first && d[0].last ? Math.round(((new Date(d[0].last).getTime() - first.getTime()) / 36e5) * 10) / 10 : 0;
-  return {
-    totalDetections: d[0].c,
-    uniqueAircraft: a[0].c,
-    anomalyEvents: an[0].c,
-    convergenceEvents: cv[0].c,
-    lastDetectionAt: last,
-    windowHours,
-    flightDetections: e1[0].c,
-    biometricEvents: e2[0].c,
-    correlatedEvents: e3[0].c,
-    unifiedEvents: e4[0].c,
+  const empty: WatchSnapshot = {
+    totalDetections: 0, uniqueAircraft: 0, anomalyEvents: 0, convergenceEvents: 0,
+    lastDetectionAt: null, windowHours: 0,
+    flightDetections: 0, biometricEvents: 0, correlatedEvents: 0, unifiedEvents: 0,
   };
+  try {
+    const w = watchtower();
+    const e = evidence();
+    const [d, a, an, cv, e1, e2, e3, e4] = await Promise.all([
+      w`SELECT COUNT(*)::int AS c, MAX(captured_at) AS last, MIN(captured_at) AS first FROM detections`,
+      w`SELECT COUNT(*)::int AS c FROM aircraft_profiles`,
+      w`SELECT COUNT(*)::int AS c FROM anomaly_events`,
+      w`SELECT COUNT(*)::int AS c FROM convergence_events`,
+      e`SELECT COUNT(*)::int AS c FROM court_evidence.flight_detections`,
+      e`SELECT COUNT(*)::int AS c FROM court_evidence.biometric_events`,
+      e`SELECT COUNT(*)::int AS c FROM court_evidence.biometric_events WHERE related_surveillance = true`,
+      e`SELECT COUNT(*)::int AS c FROM court_evidence.unified_events`,
+    ]);
+    const lastRaw = d[0]?.last ?? null;
+    const firstRaw = d[0]?.first ?? null;
+    const last = lastRaw ? new Date(lastRaw).toISOString() : null;
+    const first = firstRaw ? new Date(firstRaw) : null;
+    const windowHours = first && lastRaw
+      ? Math.round(((new Date(lastRaw).getTime() - first.getTime()) / 36e5) * 10) / 10
+      : 0;
+    return {
+      totalDetections: d[0]?.c ?? 0,
+      uniqueAircraft: a[0]?.c ?? 0,
+      anomalyEvents: an[0]?.c ?? 0,
+      convergenceEvents: cv[0]?.c ?? 0,
+      lastDetectionAt: last,
+      windowHours,
+      flightDetections: e1[0]?.c ?? 0,
+      biometricEvents: e2[0]?.c ?? 0,
+      correlatedEvents: e3[0]?.c ?? 0,
+      unifiedEvents: e4[0]?.c ?? 0,
+    };
+  } catch (err) {
+    console.error("getSnapshot failed, returning empty snapshot:", err);
+    return empty;
+  }
 });
 
 export type LowAltDescent = {
@@ -1468,6 +1482,8 @@ function classifyBranch(owner: string | null, icao: string | null): string {
 
 export const getMilitaryAircraft = createServerFn({ method: "GET" }).handler(
   async (): Promise<MilitarySummary> => {
+    const empty: MilitarySummary = { totalAircraft: 0, totalDetections: 0, byBranch: [], aircraft: [] };
+    try {
     const w = watchtower();
     const rows = await w`
       SELECT p.icao_hex, p.observed_registration, p.registered_owner, p.aircraft_model,
@@ -1528,6 +1544,10 @@ export const getMilitaryAircraft = createServerFn({ method: "GET" }).handler(
       byBranch,
       aircraft,
     };
+    } catch (err) {
+      console.error("getMilitaryAircraft failed:", err);
+      return empty;
+    }
   },
 );
 
@@ -1558,8 +1578,13 @@ export type DeadMansCurveStats = {
 
 export const getDeadMansCurveStats = createServerFn({ method: "GET" }).handler(
   async (): Promise<DeadMansCurveStats> => {
-    const w = watchtower();
-    const [agg, slow, top] = await Promise.all([
+    const empty: DeadMansCurveStats = {
+      totalDetections: 0, uniqueAircraft: 0, underBelowSlowCount: 0,
+      firstSeen: null, lastSeen: null, top: [],
+    };
+    try {
+      const w = watchtower();
+      const [agg, slow, top] = await Promise.all([
       w`
         SELECT COUNT(*)::int AS c,
                COUNT(DISTINCT icao_hex)::int AS u,
@@ -1595,19 +1620,23 @@ export const getDeadMansCurveStats = createServerFn({ method: "GET" }).handler(
         ORDER BY c DESC
         LIMIT 5
       `,
-    ]);
-    return {
-      totalDetections: agg[0].c,
-      uniqueAircraft: agg[0].u,
-      underBelowSlowCount: slow[0].c,
-      firstSeen: agg[0].first_seen ? new Date(agg[0].first_seen).toISOString() : null,
-      lastSeen: agg[0].last_seen ? new Date(agg[0].last_seen).toISOString() : null,
-      top: (top as any[]).map((r) => ({
-        icao: r.icao_hex,
-        registration: r.registration,
-        count: r.c,
-        minAltitude: r.min_alt,
-      })),
-    };
+      ]);
+      return {
+        totalDetections: agg[0]?.c ?? 0,
+        uniqueAircraft: agg[0]?.u ?? 0,
+        underBelowSlowCount: slow[0]?.c ?? 0,
+        firstSeen: agg[0]?.first_seen ? new Date(agg[0].first_seen).toISOString() : null,
+        lastSeen: agg[0]?.last_seen ? new Date(agg[0].last_seen).toISOString() : null,
+        top: (top as any[]).map((r) => ({
+          icao: r.icao_hex,
+          registration: r.registration,
+          count: r.c,
+          minAltitude: r.min_alt,
+        })),
+      };
+    } catch (err) {
+      console.error("getDeadMansCurveStats failed:", err);
+      return empty;
+    }
   },
 );

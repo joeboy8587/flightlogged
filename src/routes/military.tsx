@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { SiteHeader } from "@/components/site-header";
@@ -7,6 +8,7 @@ import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
 import { breadcrumbScript } from "@/lib/breadcrumbs";
 import { getMilitaryAircraft } from "@/lib/watchtower.functions";
 import { fmtPct } from "@/lib/format";
+import { DeadMansCurveTiles, dmcQO } from "@/components/dead-mans-curve";
 
 const qo = queryOptions({ queryKey: ["military-aircraft"], queryFn: () => getMilitaryAircraft() });
 const crumbs = [{ label: "Home", href: "/" }, { label: "Military" }];
@@ -37,7 +39,10 @@ export const Route = createFileRoute("/military")({
       },
     ],
   }),
-  loader: ({ context }) => context.queryClient.ensureQueryData(qo),
+  loader: ({ context }) => Promise.all([
+    context.queryClient.ensureQueryData(qo),
+    context.queryClient.ensureQueryData(dmcQO),
+  ]),
   component: MilitaryPage,
   errorComponent: ({ reset }) => (
     <div className="min-h-screen bg-paper"><SiteHeader />
@@ -127,6 +132,27 @@ function MilitaryPage() {
         </div>
       </section>
 
+      {/* Dead Man's Curve exposure — military airframes inside the height-velocity envelope */}
+      <DeadMansCurveTiles />
+
+      {data.totalAircraft === 0 && (
+        <section className="border-b-4 border-ink">
+          <div className="max-w-[1400px] mx-auto px-4 py-12">
+            <div className="brutal-border-thick bg-warning/30 p-6">
+              <div className="label-stamp bg-ink text-warning inline-block px-2 py-0.5 mb-2">No military-flagged aircraft in this window</div>
+              <p className="text-sm max-w-3xl">
+                The current observation window contains no aircraft whose ICAO 24-bit address falls in the U.S.
+                military range (<code className="font-mono">AE0000–AFFFFF</code>) or whose FAA registry owner
+                matches a service branch. This can happen during low-traffic days or when sensors are still
+                building baseline. The query is unchanged — see{" "}
+                <Link to="/methodology" className="underline">methodology</Link> for the exact classifier, and{" "}
+                <Link to="/live" className="underline">/live</Link> for the raw feed across all aircraft.
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
+
       <section className="border-b-4 border-ink">
         <div className="max-w-[1400px] mx-auto px-4 py-10">
           <h2 className="text-3xl mb-4">By branch</h2>
@@ -205,7 +231,25 @@ function MilitaryPage() {
                 )}
                 {rows.map((a) => (
                   <tr key={a.icao + (a.registration ?? "")} className="border-t border-ink/20 hover:bg-warning/30">
-                    <td className="p-3 font-bold">{a.registration ?? "—"}</td>
+                    <td className="p-3 font-bold">
+                      {a.registration ? (
+                        <Link
+                          to="/tail-search"
+                          search={{ tail: a.registration }}
+                          className="underline hover:bg-warning"
+                        >
+                          {a.registration}
+                        </Link>
+                      ) : (
+                        <Link
+                          to="/tail-search"
+                          search={{ tail: a.icao }}
+                          className="underline hover:bg-warning opacity-80"
+                        >
+                          {a.icao}
+                        </Link>
+                      )}
+                    </td>
                     <td className="p-3">{a.icao}</td>
                     <td className="p-3"><span className="label-stamp bg-alert text-paper px-2 py-0.5">{a.branch}</span></td>
                     <td className="p-3">{a.owner ?? a.model ?? "—"}</td>

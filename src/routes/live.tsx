@@ -7,6 +7,7 @@ import { breadcrumbScript } from "@/lib/breadcrumbs";
 import { getSnapshot, getRecentLowAltitude, getRepeatOffenders, getIdentifiedOperators, getLocalAgencyAircraft } from "@/lib/watchtower.functions";
 import { ShareRow } from "@/components/share-row";
 import { fmtPct } from "@/lib/format";
+import { StoryCard } from "@/components/story-card";
 
 const snapQO = queryOptions({ queryKey: ["snapshot"], queryFn: () => getSnapshot(), refetchInterval: 30000 });
 const lowAltQO = queryOptions({ queryKey: ["low-alt"], queryFn: () => getRecentLowAltitude(), refetchInterval: 30000 });
@@ -64,6 +65,9 @@ function Live() {
 
   const anomalyPct = s.totalDetections > 0 ? Math.round((s.anomalyEvents / s.totalDetections) * 1000) / 10 : 0;
 
+  // Top 5 plain-English stories — the most recent low-altitude detections.
+  const stories = low.slice(0, 5);
+
   return (
     <div className="min-h-screen bg-paper text-ink">
       <SiteHeader />
@@ -101,6 +105,32 @@ function Live() {
         </div>
       </section>
 
+      {/* STORY STRIP — what the machine saw, translated */}
+      {stories.length > 0 && (
+        <section className="border-b-4 border-ink bg-paper">
+          <div className="max-w-[1400px] mx-auto px-4 py-12">
+            <div className="flex items-end justify-between gap-4 flex-wrap mb-5">
+              <div>
+                <div className="label-stamp bg-alert text-paper inline-block px-2 py-0.5 mb-2">Latest events · in plain English</div>
+                <h2 className="text-3xl sm:text-4xl">The five most recent things the sky did.</h2>
+              </div>
+              <a href="#raw-feed" className="label-stamp brutal-border bg-ink text-paper px-3 py-2 hover:bg-warning hover:text-ink">
+                Jump to raw feed ↓
+              </a>
+            </div>
+            <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {stories.map((row) => (
+                <StoryCard key={row.icao + row.capturedAt} row={row} />
+              ))}
+            </div>
+            <p className="mt-3 text-xs font-mono opacity-70">
+              Each card translates one row from the raw feed below. No editorializing — every claim links
+              back to the hashed detection record. Verify any of them.
+            </p>
+          </div>
+        </section>
+      )}
+
       <section className="border-b-4 border-ink bg-ink text-paper">
         <div className="max-w-[1400px] mx-auto px-4 py-12">
           <div className="label-stamp text-warning mb-4 flex items-center gap-2"><span className="w-2 h-2 bg-alert blink" /> LIVE · Refresh every 30s</div>
@@ -137,7 +167,7 @@ function Live() {
       </section>
 
       {/* LOW ALTITUDE */}
-      <section className="border-b-4 border-ink">
+      <section id="raw-feed" className="border-b-4 border-ink">
         <div className="max-w-[1400px] mx-auto px-4 py-16">
           <div className="flex items-end justify-between mb-6 gap-4 flex-wrap">
             <div>
