@@ -1486,15 +1486,46 @@ export const getMilitaryAircraft = createServerFn({ method: "GET" }).handler(
     try {
     const w = watchtower();
     const rows = await w`
-      SELECT p.icao_hex, p.observed_registration, p.registered_owner, p.aircraft_model,
-             p.total_detections, p.min_altitude, p.avg_altitude, p.night_pct,
-             p.first_seen, p.last_seen,
+      WITH det_mil AS (
+        SELECT UPPER(icao_hex) AS icao_hex,
+               COUNT(*)::int AS d_count,
+               MIN(altitude_ft)::int AS d_min_alt,
+               AVG(altitude_ft)::float AS d_avg_alt,
+               MIN(captured_at) AS d_first,
+               MAX(captured_at) AS d_last,
+               MAX(registration) AS d_reg
+        FROM detections
+        WHERE UPPER(icao_hex) LIKE 'AE%'
+        GROUP BY 1
+      ),
+      profile_mil AS (
+        SELECT UPPER(p.icao_hex) AS icao_hex
+        FROM aircraft_profiles p
+        LEFT JOIN faa_master m ON UPPER(m.mode_s_code_hex) = UPPER(p.icao_hex)
+        WHERE UPPER(p.icao_hex) LIKE 'AE%'
+           OR UPPER(COALESCE(p.registered_owner, m.name, '')) ~ '(NAVY|ARMY|AIR FORCE|USAF|MARINE CORPS|USMC|COAST GUARD|USCG|NATIONAL GUARD|DEPARTMENT OF DEFENSE|DEPT OF DEFENSE)'
+      ),
+      all_mil AS (
+        SELECT icao_hex FROM det_mil
+        UNION
+        SELECT icao_hex FROM profile_mil
+      )
+      SELECT al.icao_hex,
+             COALESCE(p.observed_registration, d.d_reg) AS observed_registration,
+             COALESCE(p.registered_owner, m.name) AS registered_owner,
+             p.aircraft_model,
+             COALESCE(p.total_detections, d.d_count, 0) AS total_detections,
+             COALESCE(p.min_altitude, d.d_min_alt) AS min_altitude,
+             COALESCE(p.avg_altitude, d.d_avg_alt) AS avg_altitude,
+             p.night_pct,
+             COALESCE(p.first_seen, d.d_first) AS first_seen,
+             COALESCE(p.last_seen, d.d_last) AS last_seen,
              m.name AS reg_name
-      FROM aircraft_profiles p
-      LEFT JOIN faa_master m ON UPPER(m.mode_s_code_hex) = UPPER(p.icao_hex)
-      WHERE UPPER(p.icao_hex) LIKE 'AE%'
-         OR UPPER(COALESCE(p.registered_owner, m.name, '')) ~ '(NAVY|ARMY|AIR FORCE|USAF|MARINE CORPS|USMC|COAST GUARD|USCG|NATIONAL GUARD|DEPARTMENT OF DEFENSE|DEPT OF DEFENSE)'
-      ORDER BY p.total_detections DESC NULLS LAST
+      FROM all_mil al
+      LEFT JOIN det_mil d ON d.icao_hex = al.icao_hex
+      LEFT JOIN aircraft_profiles p ON UPPER(p.icao_hex) = al.icao_hex
+      LEFT JOIN faa_master m ON UPPER(m.mode_s_code_hex) = al.icao_hex
+      ORDER BY total_detections DESC NULLS LAST
       LIMIT 500
     `;
     const icaos = (rows as any[]).map((r) => String(r.icao_hex ?? "").toUpperCase()).filter(Boolean);
