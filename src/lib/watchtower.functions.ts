@@ -1671,3 +1671,107 @@ export const getDeadMansCurveStats = createServerFn({ method: "GET" }).handler(
     }
   },
 );
+
+// ============================================================
+// CONVERGENCE EVENT — the loudest cluster
+// Surfaces the single most concentrated multi-aircraft window from
+// public.convergence_events. Schema is variable across snapshots so we
+// fetch each row as JSON and pick the row with the largest aircraft set.
+// ============================================================
+
+export type ConvergenceEventCard = {
+  available: boolean;
+  id: string | null;
+  eventTime: string | null;
+  aircraftCount: number;
+  detectionCount: number | null;
+  avgWti: number | null;
+  maxWti: number | null;
+  county: string | null;
+  tails: string[];
+  icaos: string[];
+  raw: Record<string, unknown> | null;
+};
+
+function pickArrayField(row: Record<string, any>, keys: string[]): any[] {
+  for (const k of keys) {
+    const v = row[k];
+    if (Array.isArray(v)) return v;
+    if (typeof v === "string" && v.startsWith("[")) {
+      try { const p = JSON.parse(v); if (Array.isArray(p)) return p; } catch {}
+    }
+  }
+  return [];
+}
+function pickNum(row: Record<string, any>, keys: string[]): number | null {
+  for (const k of keys) {
+    const v = row[k];
+    if (typeof v === "number") return v;
+    if (typeof v === "string" && v !== "" && !isNaN(Number(v))) return Number(v);
+  }
+  return null;
+}
+function pickStr(row: Record<string, any>, keys: string[]): string | null {
+  for (const k of keys) {
+    const v = row[k];
+    if (typeof v === "string" && v) return v;
+  }
+  return null;
+}
+
+export const getConvergenceEvent = createServerFn({ method: "GET" }).handler(
+  async (): Promise<ConvergenceEventCard> => {
+    const empty: ConvergenceEventCard = {
+      available: false, id: null, eventTime: null, aircraftCount: 0,
+      detectionCount: null, avgWti: null, maxWti: null, county: null,
+      tails: [], icaos: [], raw: null,
+    };
+    try {
+      const w = watchtower();
+      const rows = await w`
+        SELECT to_jsonb(c.*) AS row
+        FROM convergence_events c
+        LIMIT 500
+      `;
+      if (!rows || rows.length === 0) return empty;
+
+      // Score each row by the size of any aircraft/tail/icao array field.
+      let best: { row: Record<string, any>; size: number } | null = null;
+      for (const r of rows as any[]) {
+        const row = (r.row ?? r) as Record<string, any>;
+        const arr = pickArrayField(row, ["aircraft", "tails", "icaos", "icao_hexes", "participants", "members"]);
+        const explicit = pickNum(row, ["aircraft_count", "tail_count", "n_aircraft", "participant_count"]) ?? 0;
+        const size = Math.max(arr.length, explicit);
+        if (!best || size > best.size) best = { row, size };
+      }
+      if (!best) return empty;
+      const row = best.row;
+
+      const tailsRaw = pickArrayField(row, ["aircraft", "tails", "registrations", "participants", "members"]);
+      const icaosRaw = pickArrayField(row, ["icaos", "icao_hexes", "icao24s"]);
+      const tails = tailsRaw.map((x) => (typeof x === "string" ? x : x?.registration ?? x?.tail ?? x?.icao_hex ?? "")).filter(Boolean);
+      const icaos = icaosRaw.map((x) => String(x)).filter(Boolean);
+
+      const tEvent = pickStr(row, ["event_time", "occurred_at", "captured_at", "window_start", "start_time", "created_at"]);
+      return {
+        available: true,
+        id: pickStr(row, ["id", "event_id", "convergence_id"]),
+        eventTime: tEvent ? new Date(tEvent).toISOString() : null,
+        aircraftCount: Math.max(best.size, tails.length, icaos.length),
+        detectionCount: pickNum(row, ["detection_count", "detections", "n_detections", "row_count"]),
+        avgWti: pickNum(row, ["avg_wti", "mean_wti", "avg_wti_score"]),
+        maxWti: pickNum(row, ["max_wti", "max_wti_score", "wti_score"]),
+        county: pickStr(row, ["county", "primary_county"]),
+        tails: tails.slice(0, 40),
+        icaos: icaos.slice(0, 40),
+        raw: row,
+      };
+    } catch (err) {
+      console.error("getConvergenceEvent failed:", err);
+      return empty;
+    }
+  },
+);
+
+// trailing newline kept intentionally
+);
