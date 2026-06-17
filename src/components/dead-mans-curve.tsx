@@ -1,10 +1,11 @@
 import { Link } from "@tanstack/react-router";
-import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 import { getDeadMansCurveStats } from "@/lib/watchtower.functions";
 
 export const dmcQO = queryOptions({
   queryKey: ["dead-mans-curve"],
   queryFn: () => getDeadMansCurveStats(),
+  staleTime: 60_000,
 });
 
 /**
@@ -13,7 +14,19 @@ export const dmcQO = queryOptions({
  * height/velocity hazard envelope. Cites FAA AC 90-87C.
  */
 export function DeadMansCurveTiles() {
-  const { data } = useSuspenseQuery(dmcQO);
+  const { data, isLoading } = useQuery(dmcQO);
+  if (isLoading || !data) {
+    return (
+      <section className="border-b-4 border-ink bg-paper">
+        <div className="max-w-[1400px] mx-auto px-4 py-10">
+          <div className="label-stamp bg-alert text-paper inline-block px-2 py-1 mb-2">
+            Dead Man&apos;s Curve · public-safety exposure
+          </div>
+          <p className="text-sm opacity-60 font-mono">Loading height-velocity exposure…</p>
+        </div>
+      </section>
+    );
+  }
   return (
     <section className="border-b-4 border-ink bg-paper">
       <div className="max-w-[1400px] mx-auto px-4 py-10">
