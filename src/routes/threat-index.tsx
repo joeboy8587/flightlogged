@@ -5,6 +5,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
 import { breadcrumbScript } from "@/lib/breadcrumbs";
 import { getThreatIndex } from "@/lib/watchtower.functions";
+import { ConvergenceEventCard } from "@/components/convergence-event-card";
 
 const tiQO = queryOptions({ queryKey: ["threat-index"], queryFn: () => getThreatIndex() });
 
@@ -64,6 +65,7 @@ function ThreatIndex() {
     <div className="min-h-screen bg-paper text-ink">
       <SiteHeader />
       <SiteBreadcrumbs items={crumbs} />
+      <ConvergenceEventCard />
       <section className="border-b-4 border-ink bg-ink text-paper">
         <div className="max-w-[1400px] mx-auto px-4 py-12">
           <div className="label-stamp text-warning mb-4">WTI · {data.methodVersion ?? "method"} · {data.total.toLocaleString()} scored events</div>
