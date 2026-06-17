@@ -61,6 +61,28 @@ type Report = {
 
 const REPORTS: Report[] = [
   {
+    slug: "when-government-becomes-destructive-june-2026",
+    file: "/reports/when-government-becomes-destructive-june2026.docx",
+    date: "June 2026",
+    classification: "Constitutional Accountability Series",
+    pages: "DOCX",
+    title: "When Government Becomes Destructive",
+    blurb:
+      "The Declaration of Independence, civil liberties, and the militarization of American cities. A constitutional reading of standing armies, Posse Comitatus, and the September 30, 2025 generals' summons — sourced and footnoted.",
+    highlights: [
+      { label: "Generals & admirals summoned", value: "~800" },
+      { label: "Speech duration (Sept 30, 2025)", value: "73 min" },
+      { label: "Posse Comitatus Act age", value: "147 yrs" },
+      { label: "Cities named as targets", value: "6" },
+    ],
+    takeaways: [
+      "The Founders' grievances against standing armies in peacetime are not historical curiosities — they are the legal architecture being tested in 2025–2026.",
+      "Posse Comitatus (18 U.S.C. § 1385) is the statutory firewall; this report walks the public through what the firewall actually says.",
+      "Pairs with the Watchtower Military page: pattern of military airframes over civilian counties, named and counted.",
+    ],
+    accent: "ink",
+  },
+  {
     slug: "watchtower-report-june-2026",
     file: "/reports/the-architecture-of-never-watchtower-report.pdf",
     date: "June 2026",
