@@ -1,16 +1,20 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
 import { breadcrumbScript } from "@/lib/breadcrumbs";
 import { getMilitaryAircraft } from "@/lib/watchtower.functions";
 import { fmtPct } from "@/lib/format";
-import { DeadMansCurveTiles, dmcQO } from "@/components/dead-mans-curve";
+import { DeadMansCurveTiles } from "@/components/dead-mans-curve";
 
-const qo = queryOptions({ queryKey: ["military-aircraft"], queryFn: () => getMilitaryAircraft() });
+const qo = queryOptions({
+  queryKey: ["military-aircraft"],
+  queryFn: () => getMilitaryAircraft(),
+  staleTime: 60_000,
+});
 const crumbs = [{ label: "Home", href: "/" }, { label: "Military" }];
 
 export const Route = createFileRoute("/military")({
@@ -39,10 +43,6 @@ export const Route = createFileRoute("/military")({
       },
     ],
   }),
-  loader: ({ context }) => Promise.all([
-    context.queryClient.ensureQueryData(qo),
-    context.queryClient.ensureQueryData(dmcQO),
-  ]),
   component: MilitaryPage,
   errorComponent: ({ reset }) => (
     <div className="min-h-screen bg-paper"><SiteHeader />
@@ -70,13 +70,32 @@ function downloadCsv(filename: string, rows: (string | number | null)[][]) {
 }
 
 function MilitaryPage() {
-  const { data } = useSuspenseQuery(qo);
+  const { data, isLoading, error } = useQuery(qo);
   const [branch, setBranch] = useState<string>("all");
 
   const rows = useMemo(
-    () => (branch === "all" ? data.aircraft : data.aircraft.filter((a) => a.branch === branch)),
+    () => {
+      if (!data) return [];
+      return branch === "all" ? data.aircraft : data.aircraft.filter((a) => a.branch === branch);
+    },
     [data, branch],
   );
+
+  if (isLoading || !data) {
+    return (
+      <div className="min-h-screen bg-paper text-ink">
+        <SiteHeader />
+        <SiteBreadcrumbs items={crumbs} />
+        <div className="max-w-[1400px] mx-auto px-4 py-20">
+          <div className="label-stamp text-alert mb-3">Loading military registry match…</div>
+          <p className="text-sm opacity-60 font-mono">
+            {error ? "Connection slow — retrying." : "Pulling ICAO AE-range aircraft from the sensor window."}
+          </p>
+        </div>
+        <SiteFooter />
+      </div>
+    );
+  }
 
   const exportCsv = () => {
     const header = ["registration", "icao", "branch", "owner", "model", "total_detections", "min_altitude_ft", "avg_altitude_ft", "night_pct", "counties", "first_seen", "last_seen"];
