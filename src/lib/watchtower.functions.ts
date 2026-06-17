@@ -1774,4 +1774,3 @@ export const getConvergenceEvent = createServerFn({ method: "GET" }).handler(
 );
 
 // trailing newline kept intentionally
-);
