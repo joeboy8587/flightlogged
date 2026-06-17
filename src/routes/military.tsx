@@ -9,6 +9,7 @@ import { breadcrumbScript } from "@/lib/breadcrumbs";
 import { getMilitaryAircraft } from "@/lib/watchtower.functions";
 import { fmtPct } from "@/lib/format";
 import { DeadMansCurveTiles } from "@/components/dead-mans-curve";
+import { ConvergenceEventCard } from "@/components/convergence-event-card";
 
 const qo = queryOptions({
   queryKey: ["military-aircraft"],
@@ -153,6 +154,7 @@ function MilitaryPage() {
 
       {/* Dead Man's Curve exposure — military airframes inside the height-velocity envelope */}
       <DeadMansCurveTiles />
+      <ConvergenceEventCard />
 
       {data.totalAircraft === 0 && (
         <section className="border-b-4 border-ink">
