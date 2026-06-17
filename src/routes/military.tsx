@@ -8,7 +8,7 @@ import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
 import { breadcrumbScript } from "@/lib/breadcrumbs";
 import { getMilitaryAircraft } from "@/lib/watchtower.functions";
 import { fmtPct } from "@/lib/format";
-import { DeadMansCurveTiles, dmcQO } from "@/components/dead-mans-curve";
+import { DeadMansCurveTiles } from "@/components/dead-mans-curve";
 
 const qo = queryOptions({
   queryKey: ["military-aircraft"],
