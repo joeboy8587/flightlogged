@@ -1690,7 +1690,6 @@ export type ConvergenceEventCard = {
   county: string | null;
   tails: string[];
   icaos: string[];
-  raw: Record<string, unknown> | null;
 };
 
 function pickArrayField(row: Record<string, any>, keys: string[]): any[] {
@@ -1764,7 +1763,6 @@ export const getConvergenceEvent = createServerFn({ method: "GET" }).handler(
         county: pickStr(row, ["county", "primary_county"]),
         tails: tails.slice(0, 40),
         icaos: icaos.slice(0, 40),
-        raw: row,
       };
     } catch (err) {
       console.error("getConvergenceEvent failed:", err);
