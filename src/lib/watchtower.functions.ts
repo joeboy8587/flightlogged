@@ -1723,7 +1723,7 @@ export const getConvergenceEvent = createServerFn({ method: "GET" }).handler(
     const empty: ConvergenceEventCard = {
       available: false, id: null, eventTime: null, aircraftCount: 0,
       detectionCount: null, avgWti: null, maxWti: null, county: null,
-      tails: [], icaos: [], raw: null,
+      tails: [], icaos: [],
     };
     try {
       const w = watchtower();
