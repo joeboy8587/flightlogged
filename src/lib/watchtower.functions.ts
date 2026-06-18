@@ -456,21 +456,31 @@ export const getCanonicalOperators = createServerFn({ method: "GET" }).handler(a
     ORDER BY occurrences_total DESC NULLS LAST
     LIMIT 50
   `;
-  return rows.map((r: any) => ({
-    registration: r.registration,
-    icao24: r.icao24,
-    faaName: r.faa_registrant_name,
-    operatorResolved: r.operator_resolved,
-    aircraftModel: r.aircraft_model,
-    kcso: !!r.kcso_flag,
-    military: !!r.military_flag,
-    medical: !!r.medical_flag,
-    xpServices: !!r.xp_services_flag,
-    shellLinks: Array.isArray(r.shell_links) ? r.shell_links.length : (r.shell_links ? 1 : 0),
-    occurrences: Number(r.occurrences_total ?? 0),
-    confidence: r.confidence != null ? Number(r.confidence) : null,
-    lastSeen: r.last_seen ? new Date(r.last_seen).toISOString() : null,
-  }));
+  // Heuristic enrichment so counts on /operators don't contradict /military or
+  // miss obvious medical-cover operators when the canonical flag is null/false.
+  const MIL_RX = /\b(US ?NAVY|U\.S\. NAVY|NAVAIR|NAVAL|US ?ARMY|U\.S\. ARMY|AIR FORCE|USAF|MARINE CORPS|USMC|MARINES|COAST GUARD|USCG|NATIONAL GUARD|DEPARTMENT OF DEFENSE|DEPT OF DEFENSE|\bDOD\b|DEPT OF THE ARMY|DEPT OF THE NAVY|DEPT OF THE AIR FORCE)\b/i;
+  const MED_RX = /\b(MERCY|MEDIVAC|MEDEVAC|MED ?FLIGHT|AIR ?MED|AIRMED|LIFEFLIGHT|LIFE ?FLIGHT|REACH AIR|CALSTAR|MEDICAL|HOSPITAL|EMS|AMR|GUARDIAN|ANGEL|SHANDS|AIR EVAC)\b/i;
+  return rows.map((r: any) => {
+    const nameBlob = `${r.operator_resolved ?? ""} ${r.faa_registrant_name ?? ""}`;
+    const icao = String(r.icao24 ?? "").toUpperCase();
+    const isMilHeuristic = MIL_RX.test(nameBlob) || /^AE[0-9A-F]{4}$/.test(icao);
+    const isMedHeuristic = MED_RX.test(nameBlob);
+    return {
+      registration: r.registration,
+      icao24: r.icao24,
+      faaName: r.faa_registrant_name,
+      operatorResolved: r.operator_resolved,
+      aircraftModel: r.aircraft_model,
+      kcso: !!r.kcso_flag,
+      military: !!r.military_flag || isMilHeuristic,
+      medical: !!r.medical_flag || isMedHeuristic,
+      xpServices: !!r.xp_services_flag,
+      shellLinks: Array.isArray(r.shell_links) ? r.shell_links.length : (r.shell_links ? 1 : 0),
+      occurrences: Number(r.occurrences_total ?? 0),
+      confidence: r.confidence != null ? Number(r.confidence) : null,
+      lastSeen: r.last_seen ? new Date(r.last_seen).toISOString() : null,
+    };
+  });
 });
 
 export type SentinelViolation = {
@@ -1752,6 +1762,46 @@ export const getConvergenceEvent = createServerFn({ method: "GET" }).handler(
       const icaos = icaosRaw.map((x) => String(x)).filter(Boolean);
 
       const tEvent = pickStr(row, ["event_time", "occurred_at", "captured_at", "window_start", "start_time", "created_at"]);
+      // Re-derive primary county from participants' actual detections rather than
+      // trusting whatever county happens to be stamped on the convergence row
+      // (the cluster row often carries an out-of-AOI county like "Los Angeles"
+      // even when most participating tails were over Kern).
+      let derivedCounty = pickStr(row, ["county", "primary_county"]);
+      try {
+        const icaoSet = Array.from(
+          new Set(
+            [
+              ...icaos.map((s) => String(s).toUpperCase()),
+              ...tails.map((s) => String(s).toUpperCase()),
+            ].filter(Boolean),
+          ),
+        );
+        if (icaoSet.length > 0 && tEvent) {
+          const ts = new Date(tEvent);
+          if (!isNaN(ts.getTime())) {
+            const start = new Date(ts.getTime() - 30 * 60_000).toISOString();
+            const end = new Date(ts.getTime() + 30 * 60_000).toISOString();
+            const cRows = await w`
+              SELECT county, COUNT(*)::int AS c
+              FROM detections
+              WHERE (UPPER(icao_hex) = ANY(${icaoSet}::text[])
+                  OR UPPER(registration) = ANY(${icaoSet}::text[]))
+                AND captured_at BETWEEN ${start}::timestamptz AND ${end}::timestamptz
+                AND county IS NOT NULL
+              GROUP BY county
+              ORDER BY c DESC
+            `;
+            if (cRows && cRows.length > 0) {
+              const kern = (cRows as any[]).find((x) =>
+                String(x.county ?? "").toLowerCase().includes("kern"),
+              );
+              derivedCounty = kern ? String(kern.county) : String((cRows as any[])[0].county);
+            }
+          }
+        }
+      } catch (e2) {
+        console.error("convergence county derivation failed:", e2);
+      }
       return {
         available: true,
         id: pickStr(row, ["id", "event_id", "convergence_id"]),
@@ -1760,7 +1810,7 @@ export const getConvergenceEvent = createServerFn({ method: "GET" }).handler(
         detectionCount: pickNum(row, ["detection_count", "detections", "n_detections", "row_count"]),
         avgWti: pickNum(row, ["avg_wti", "mean_wti", "avg_wti_score"]),
         maxWti: pickNum(row, ["max_wti", "max_wti_score", "wti_score"]),
-        county: pickStr(row, ["county", "primary_county"]),
+        county: derivedCounty,
         tails: tails.slice(0, 40),
         icaos: icaos.slice(0, 40),
       };
