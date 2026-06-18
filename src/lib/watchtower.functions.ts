@@ -1262,6 +1262,109 @@ export const getForeignAircraft = createServerFn({ method: "GET" }).handler(
 );
 
 // ============================================================
+// UNMAPPED-BUT-LIKELY-MILITARY
+// Surface aircraft whose registration is missing or doesn't resolve to a
+// known civil country, BUT whose ICAO 24-bit hex falls in a published
+// military allocation (or whose owner string contains a service keyword).
+// Sits on /foreign as the natural follow-on question: "what are these?"
+// ============================================================
+
+export type UnmappedMilSuspect = {
+  icao: string;
+  registration: string | null;
+  owner: string | null;
+  model: string | null;
+  totalDetections: number;
+  minAltitude: number | null;
+  avgAltitude: number | null;
+  nightPct: number | null;
+  firstSeen: string | null;
+  lastSeen: string | null;
+  suspectedCountry: string;
+  reason: string;
+};
+
+// Military ICAO 24-bit hex prefixes, sourced from public ICAO Annex 10 allocations.
+// Each entry matches when UPPER(icao_hex) starts with `hex`.
+const MIL_HEX_BLOCKS: { hex: string; country: string }[] = [
+  { hex: "AE",   country: "United States (mil)" },
+  { hex: "43C",  country: "United Kingdom (RAF)" },
+  { hex: "7CF",  country: "Australia (RAAF)" },
+  { hex: "738",  country: "Israel (IDF/AF)" },
+  { hex: "3F",   country: "Germany (Luftwaffe)" },
+  { hex: "33F",  country: "France (Armée de l'Air)" },
+  { hex: "C87",  country: "Canada (CAF)" },
+  { hex: "896",  country: "UAE (military)" },
+  { hex: "71C",  country: "South Korea (ROKAF)" },
+  { hex: "868",  country: "Japan (JASDF)" },
+];
+
+function classifyMilHex(icao: string | null | undefined): { country: string } | null {
+  if (!icao) return null;
+  const h = String(icao).toUpperCase().replace(/^0X/, "");
+  for (const b of MIL_HEX_BLOCKS) if (h.startsWith(b.hex)) return { country: b.country };
+  return null;
+}
+
+export const getUnmappedMilitarySuspects = createServerFn({ method: "GET" }).handler(
+  async (): Promise<UnmappedMilSuspect[]> => {
+    try {
+      const w = watchtower();
+      // Pull profiles that are NOT clearly US civil (N-prefix) and either have
+      // no registration at all, or a registration that won't map to a country
+      // (i.e. shows up as "Foreign (unmapped)").
+      const rows = await w`
+        SELECT p.icao_hex, p.observed_registration, p.registered_owner, p.aircraft_model,
+               p.total_detections, p.min_altitude, p.avg_altitude, p.night_pct,
+               p.first_seen, p.last_seen, m.name AS reg_name
+        FROM aircraft_profiles p
+        LEFT JOIN faa_master m ON UPPER(m.mode_s_code_hex) = UPPER(p.icao_hex)
+        WHERE COALESCE(p.observed_registration, '') !~ '^[Nn][0-9]'
+        ORDER BY p.total_detections DESC NULLS LAST
+        LIMIT 1500
+      `;
+      const MIL_NAME_RX = /\b(NAVY|ARMY|AIR FORCE|USAF|MARINE|USMC|COAST GUARD|USCG|NATIONAL GUARD|DEFENSE|DEFENCE|MOD\b|RAF|RAAF|ROKAF|JASDF|LUFTWAFFE|IDF|MILITARY)\b/i;
+      const out: UnmappedMilSuspect[] = [];
+      for (const r of rows as any[]) {
+        const reg = r.observed_registration as string | null;
+        // Skip rows where registration resolves to a normal civil country.
+        const civil = classifyForeign(reg);
+        if (civil && civil.country !== "Foreign (unmapped)") continue;
+
+        const hexMatch = classifyMilHex(r.icao_hex);
+        const nameBlob = `${r.registered_owner ?? ""} ${r.reg_name ?? ""}`;
+        const nameMatch = MIL_NAME_RX.test(nameBlob);
+        if (!hexMatch && !nameMatch) continue;
+
+        const reasons: string[] = [];
+        if (hexMatch) reasons.push(`ICAO hex in ${hexMatch.country} mil block`);
+        if (nameMatch) reasons.push("Owner name matches service keyword");
+
+        const rawMin = r.min_altitude == null ? null : Number(r.min_altitude);
+        out.push({
+          icao: r.icao_hex,
+          registration: reg,
+          owner: r.registered_owner ?? r.reg_name ?? null,
+          model: r.aircraft_model ?? null,
+          totalDetections: Number(r.total_detections ?? 0),
+          minAltitude: rawMin != null && rawMin < -100 ? null : rawMin,
+          avgAltitude: r.avg_altitude != null ? Number(r.avg_altitude) : null,
+          nightPct: r.night_pct != null ? Number(r.night_pct) : null,
+          firstSeen: r.first_seen ? new Date(r.first_seen).toISOString() : null,
+          lastSeen: r.last_seen ? new Date(r.last_seen).toISOString() : null,
+          suspectedCountry: hexMatch?.country ?? "Unknown (name-only match)",
+          reason: reasons.join(" · "),
+        });
+      }
+      return out.slice(0, 100);
+    } catch (err) {
+      console.error("getUnmappedMilitarySuspects failed:", err);
+      return [];
+    }
+  },
+);
+
+// ============================================================
 // /citations — Rule → CFR/USC + Consent Decree mapping
 // ============================================================
 export type CitationRow = {

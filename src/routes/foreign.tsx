@@ -1,15 +1,20 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
+import { queryOptions, useSuspenseQuery, useQuery } from "@tanstack/react-query";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
 import { breadcrumbScript } from "@/lib/breadcrumbs";
 import { ShareRow } from "@/components/share-row";
-import { getForeignAircraft } from "@/lib/watchtower.functions";
+import { getForeignAircraft, getUnmappedMilitarySuspects } from "@/lib/watchtower.functions";
 import { fmtPct } from "@/lib/format";
 
 const qo = queryOptions({ queryKey: ["foreign-aircraft"], queryFn: () => getForeignAircraft() });
+const milQO = queryOptions({
+  queryKey: ["unmapped-mil-suspects"],
+  queryFn: () => getUnmappedMilitarySuspects(),
+  staleTime: 60_000,
+});
 
 const crumbs = [
   { label: "Home", href: "/" },
@@ -58,6 +63,7 @@ function fmt(n: number) { return n.toLocaleString(); }
 
 function ForeignPage() {
   const { data } = useSuspenseQuery(qo);
+  const { data: suspects, isLoading: milLoading } = useQuery(milQO);
   const [country, setCountry] = useState<string>("all");
 
   const rows = useMemo(
@@ -106,6 +112,84 @@ function ForeignPage() {
           </p>
           <p className="mt-3 text-sm opacity-90">
             Where is the NOTAM? Where is the published clearance? The burden of explanation is no longer civilian.
+          </p>
+        </div>
+      </section>
+
+      {/* SUSPECTED MILITARY — unmapped tails whose ICAO hex or owner name signals military */}
+      <section className="border-b-4 border-ink bg-warning text-ink">
+        <div className="max-w-[1400px] mx-auto px-4 py-10">
+          <div className="flex flex-wrap items-baseline gap-3 mb-3">
+            <span className="label-stamp bg-ink text-warning px-2 py-0.5">Cross-check · Unmapped → Military?</span>
+            <span className="font-mono text-xs opacity-80">
+              {milLoading ? "scanning…" : `${(suspects ?? []).length} suspects`}
+            </span>
+          </div>
+          <h2 className="text-3xl sm:text-4xl mb-2">Unmapped registrations that look military.</h2>
+          <p className="max-w-3xl text-sm mb-4">
+            Some rows in the unmapped table aren't civil foreign carriers — they're aircraft whose 24-bit
+            ICAO hex falls in a published <strong>military allocation block</strong> (US AE-range, UK 43C,
+            Australia 7CF, Germany 3F, Israel 738, etc.) or whose owner string contains a service
+            keyword. Surfaced here so they stop hiding inside "Foreign (unmapped)".
+            Full sensor view on <Link to="/military" className="underline">/military</Link>.
+          </p>
+
+          {(!suspects || suspects.length === 0) ? (
+            <div className="brutal-border-thick bg-paper p-4 text-sm">
+              {milLoading
+                ? "Scanning the current window for military-block ICAO hexes…"
+                : "No unmapped aircraft in this window match a published military ICAO block or owner keyword."}
+            </div>
+          ) : (
+            <div className="overflow-x-auto brutal-border-thick bg-paper">
+              <table className="w-full text-sm">
+                <caption className="sr-only">Unmapped aircraft suspected to be military based on ICAO hex range or owner string.</caption>
+                <thead className="bg-ink text-paper">
+                  <tr>
+                    <th className="text-left p-3 label-stamp">ICAO / Tail</th>
+                    <th className="text-left p-3 label-stamp">Suspected origin</th>
+                    <th className="text-left p-3 label-stamp">Why flagged</th>
+                    <th className="text-left p-3 label-stamp">Owner / Model</th>
+                    <th className="text-right p-3 label-stamp">Detections</th>
+                    <th className="text-right p-3 label-stamp">Min alt</th>
+                    <th className="text-right p-3 label-stamp">Avg alt</th>
+                    <th className="text-right p-3 label-stamp">Night %</th>
+                    <th className="text-left p-3 label-stamp">Last seen</th>
+                  </tr>
+                </thead>
+                <tbody className="font-mono">
+                  {suspects.map((a) => (
+                    <tr key={a.icao + (a.registration ?? "")} className="border-t border-ink/20 hover:bg-warning/40">
+                      <td className="p-3 font-bold">
+                        <Link
+                          to="/tail-search"
+                          search={{ tail: a.registration ?? a.icao }}
+                          className="underline hover:bg-warning"
+                        >
+                          {a.registration ?? a.icao}
+                        </Link>
+                        {a.registration && <div className="text-[10px] opacity-60">{a.icao}</div>}
+                      </td>
+                      <td className="p-3">
+                        <span className="label-stamp bg-alert text-paper px-2 py-0.5">{a.suspectedCountry}</span>
+                      </td>
+                      <td className="p-3 text-xs">{a.reason}</td>
+                      <td className="p-3">{a.owner ?? a.model ?? "—"}</td>
+                      <td className="p-3 text-right font-bold">{fmt(a.totalDetections)}</td>
+                      <td className="p-3 text-right">{a.minAltitude != null ? fmt(a.minAltitude) : "—"}</td>
+                      <td className="p-3 text-right">{a.avgAltitude != null ? fmt(Math.round(a.avgAltitude)) : "—"}</td>
+                      <td className="p-3 text-right">{fmtPct(a.nightPct)}</td>
+                      <td className="p-3 whitespace-nowrap text-xs">{a.lastSeen ? new Date(a.lastSeen).toLocaleDateString() : "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <p className="mt-3 text-xs opacity-80 font-mono">
+            Method: <code>aircraft_profiles</code> filtered to non-US-civil registrations, then matched
+            against published military ICAO allocations and an owner-keyword regex. Heuristic — every row
+            still requires human verification before any claim is made.
           </p>
         </div>
       </section>
