@@ -214,6 +214,15 @@ function Live() {
               <div className="label-stamp mb-1">County: OTHER</div>
               <p>GPS coordinates outside our primary 4-county zone (Kern, Kings, Tulare, Fresno) or within transition airspace between counties.</p>
             </div>
+            <div className="brutal-border p-3 bg-paper">
+              <div className="label-stamp mb-1">Altitude reads "0" or negative</div>
+              <p>
+                <strong>0 ft with on-ground = true</strong> means the aircraft just <em>landed</em> (taxi/ramp).
+                A reading <strong>below −100 ft while airborne</strong> is a transponder/barometric{" "}
+                <strong>anomaly or spoof</strong> — we suppress those from this feed and surface them on{" "}
+                <Link to="/ml-detections" className="underline">ML detections</Link>.
+              </p>
+            </div>
           </div>
 
           <div className="overflow-x-auto brutal-border-thick">

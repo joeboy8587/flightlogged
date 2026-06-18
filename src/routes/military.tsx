@@ -149,6 +149,11 @@ function MilitaryPage() {
           <p className="mt-3 text-sm opacity-90">
             Where is the FAA waiver? Where is the joint-operations memorandum? Document, then ask.
           </p>
+          <p className="mt-3 text-xs opacity-80 font-mono">
+            Counts here use the broader sensor view (detections + profiles, ICAO AE-range or branch-keyword match).
+            The <Link to="/operators" className="underline">Operators</Link> page applies the same classifier to
+            canonical operator profiles — military totals are reconciled across both pages.
+          </p>
         </div>
       </section>
 
