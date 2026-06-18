@@ -220,7 +220,7 @@ function Live() {
                 <strong>0 ft with on-ground = true</strong> means the aircraft just <em>landed</em> (taxi/ramp).
                 A reading <strong>below −100 ft while airborne</strong> is a transponder/barometric{" "}
                 <strong>anomaly or spoof</strong> — we suppress those from this feed and surface them on{" "}
-                <Link to="/anomalies" className="underline">/anomalies</Link>.
+                <Link to="/ml-detections" className="underline">ML detections</Link>.
               </p>
             </div>
           </div>
