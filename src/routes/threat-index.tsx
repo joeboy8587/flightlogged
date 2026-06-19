@@ -1,13 +1,36 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
+import { zodValidator, fallback } from "@tanstack/zod-adapter";
+import { z } from "zod";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
 import { breadcrumbScript } from "@/lib/breadcrumbs";
-import { getThreatIndex } from "@/lib/watchtower.functions";
+import { getThreatIndex, getCountyBaselines } from "@/lib/watchtower.functions";
 import { ConvergenceEventCard } from "@/components/convergence-event-card";
 
-const tiQO = queryOptions({ queryKey: ["threat-index"], queryFn: () => getThreatIndex() });
+const COUNTY_OPTIONS = [
+  { key: "all", label: "All counties" },
+  { key: "kern", label: "Kern" },
+  { key: "tulare", label: "Tulare" },
+  { key: "kings", label: "Kings" },
+  { key: "fresno", label: "Fresno" },
+  { key: "san_bernardino", label: "San Bernardino" },
+  { key: "other", label: "Other (LA basin etc.)" },
+] as const;
+type CountyParam = (typeof COUNTY_OPTIONS)[number]["key"];
+
+const searchSchema = z.object({
+  county: fallback(z.enum(["all", "kern", "tulare", "kings", "fresno", "san_bernardino", "other"]), "all").default("all"),
+});
+
+const tiQO = (county: CountyParam) =>
+  queryOptions({
+    queryKey: ["threat-index", county],
+    queryFn: () => getThreatIndex({ data: county === "all" ? {} : { county } }),
+  });
+const baselineQO = queryOptions({ queryKey: ["county-baselines"], queryFn: () => getCountyBaselines() });
 
 const crumbs = [
   { label: "Home", href: "/" },
@@ -15,6 +38,7 @@ const crumbs = [
 ];
 
 export const Route = createFileRoute("/threat-index")({
+  validateSearch: zodValidator(searchSchema),
   head: () => ({
     meta: [
       { title: "Threat Index — The Architecture of Never" },
@@ -40,7 +64,12 @@ export const Route = createFileRoute("/threat-index")({
       },
     ],
   }),
-  loader: ({ context }) => context.queryClient.ensureQueryData(tiQO),
+  loaderDeps: ({ search }) => ({ county: search.county }),
+  loader: ({ context, deps }) =>
+    Promise.all([
+      context.queryClient.ensureQueryData(tiQO(deps.county)),
+      context.queryClient.ensureQueryData(baselineQO),
+    ]),
   component: ThreatIndex,
   errorComponent: ({ reset }) => (
     <div className="min-h-screen bg-paper"><SiteHeader />
@@ -60,7 +89,10 @@ function tierClass(t: number | null) {
 }
 
 function ThreatIndex() {
-  const { data } = useSuspenseQuery(tiQO);
+  const { county } = Route.useSearch();
+  const { data } = useSuspenseQuery(tiQO(county));
+  const { data: baselines } = useSuspenseQuery(baselineQO);
+  const activeLabel = COUNTY_OPTIONS.find((c) => c.key === county)?.label ?? "All counties";
   return (
     <div className="min-h-screen bg-paper text-ink">
       <SiteHeader />
@@ -68,12 +100,37 @@ function ThreatIndex() {
       <ConvergenceEventCard />
       <section className="border-b-4 border-ink bg-ink text-paper">
         <div className="max-w-[1400px] mx-auto px-4 py-12">
-          <div className="label-stamp text-warning mb-4">WTI · {data.methodVersion ?? "method"} · {data.total.toLocaleString()} scored events</div>
+          <div className="label-stamp text-warning mb-4">WTI · {data.methodVersion ?? "method"} · {data.total.toLocaleString()} scored events · Lens: {activeLabel}</div>
           <h1 className="text-5xl sm:text-7xl mb-4">The Threat Index.</h1>
           <p className="max-w-3xl text-sm opacity-80">
             Every detection receives a Watchtower Threat Index score and a tier 1–5 classification.
             Method is open. Source data is public. Highest-scoring events surface here first.
           </p>
+          <div className="mt-6">
+            <div className="label-stamp text-warning mb-2">County lens — scores below are filtered to this airspace</div>
+            <div className="flex flex-wrap gap-2">
+              {COUNTY_OPTIONS.map((opt) => {
+                const matchCount = opt.key === "all"
+                  ? data.countyCounts.reduce((a, b) => a + b.count, 0)
+                  : (data.countyCounts.find((c) => c.county.toLowerCase().replace(/\s+/g, "_") === opt.key)?.count ?? 0);
+                const active = county === opt.key;
+                return (
+                  <Link
+                    key={opt.key}
+                    to="/threat-index"
+                    search={{ county: opt.key }}
+                    className={`label-stamp brutal-border px-3 py-2 ${active ? "bg-warning text-ink" : "bg-paper text-ink hover:bg-warning/40"}`}
+                  >
+                    {opt.label} <span className="opacity-60">· {matchCount}</span>
+                  </Link>
+                );
+              })}
+            </div>
+            <p className="text-[11px] font-mono opacity-70 mt-2 max-w-3xl">
+              Why this matters: LA-basin traffic volume is ~10× Kern's. A single regional ranking buries Kern signals
+              under LA noise. The county lens scores each event against the airspace it actually occurred in.
+            </p>
+          </div>
           <div className="mt-6 grid sm:grid-cols-3 gap-3 max-w-3xl">
             <div className="brutal-border-thick border-paper p-3">
               <div className="label-stamp opacity-60 mb-1">Method</div>
@@ -91,6 +148,50 @@ function ThreatIndex() {
           </div>
         </div>
       </section>
+
+      {baselines.length > 0 && (
+        <section className="border-b-4 border-ink bg-paper">
+          <div className="max-w-[1400px] mx-auto px-4 py-10">
+            <div className="label-stamp bg-ink text-paper inline-block px-2 py-1 mb-3">Per-county baselines · last 48h</div>
+            <h2 className="text-3xl sm:text-4xl mb-4">What "normal" looks like — county by county</h2>
+            <p className="text-sm max-w-3xl mb-4 opacity-80">
+              Each county learns its own baseline. An aircraft at 800 ft over Kern is anomalous because Kern's normal
+              is high-altitude transit — even if the same altitude would be unremarkable over the LA basin.
+            </p>
+            <div className="overflow-x-auto brutal-border">
+              <table className="w-full text-xs font-mono">
+                <thead className="bg-ink text-paper">
+                  <tr>
+                    <th className="text-left p-2">County</th>
+                    <th className="text-right p-2">Samples (48h)</th>
+                    <th className="text-right p-2">Unique aircraft</th>
+                    <th className="text-right p-2">Median altitude</th>
+                    <th className="text-right p-2">10th %ile altitude</th>
+                    <th className="text-right p-2">Median speed</th>
+                    <th className="text-right p-2">Night %</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {baselines.map((b) => (
+                    <tr key={b.countyKey} className="border-t border-ink/20">
+                      <td className="p-2 font-bold">{b.county}</td>
+                      <td className="p-2 text-right">{b.samples.toLocaleString()}</td>
+                      <td className="p-2 text-right">{b.uniqueAircraft.toLocaleString()}</td>
+                      <td className="p-2 text-right">{b.medianAltitude != null ? `${b.medianAltitude.toLocaleString()} ft` : "—"}</td>
+                      <td className="p-2 text-right">{b.p10Altitude != null ? `${b.p10Altitude.toLocaleString()} ft` : "—"}</td>
+                      <td className="p-2 text-right">{b.medianSpeed != null ? `${b.medianSpeed} kts` : "—"}</td>
+                      <td className="p-2 text-right">{b.nightPct != null ? `${b.nightPct}%` : "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-[11px] opacity-70 mt-2">
+              Baselines refresh on every page load from the last 48 hours of <code>detections</code>. Same math for every county.
+            </p>
+          </div>
+        </section>
+      )}
 
       <section className="border-b-4 border-ink bg-warning text-ink">
         <div className="max-w-[1400px] mx-auto px-4 py-8">
@@ -310,6 +411,9 @@ WTI                       = 91.12`}</pre>
                     <div className="flex items-center gap-2">
                       <span className={`label-stamp px-2 py-1 ${tierClass(r.tier)}`}>T{r.tier ?? "—"} · {r.level || "—"}</span>
                       <span className="label-stamp bg-ink text-paper px-2 py-1">WTI {r.wti.toFixed(2)}</span>
+                      <span className={`label-stamp brutal-border px-2 py-1 ${r.county && /kern/i.test(r.county) ? "bg-warning text-ink" : "bg-paper text-ink"}`}>
+                        {r.county || "county unknown"}
+                      </span>
                     </div>
                   </div>
                   {c ? (

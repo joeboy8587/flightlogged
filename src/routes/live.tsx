@@ -4,7 +4,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
 import { breadcrumbScript } from "@/lib/breadcrumbs";
-import { getSnapshot, getRecentLowAltitude, getRepeatOffenders, getIdentifiedOperators, getLocalAgencyAircraft } from "@/lib/watchtower.functions";
+import { getSnapshot, getRecentLowAltitude, getRepeatOffenders, getIdentifiedOperators, getLocalAgencyAircraft, getKernAlerts } from "@/lib/watchtower.functions";
 import { ShareRow } from "@/components/share-row";
 import { fmtPct } from "@/lib/format";
 import { StoryCard } from "@/components/story-card";
@@ -14,6 +14,7 @@ const lowAltQO = queryOptions({ queryKey: ["low-alt"], queryFn: () => getRecentL
 const repeatQO = queryOptions({ queryKey: ["repeat"], queryFn: () => getRepeatOffenders() });
 const idQO = queryOptions({ queryKey: ["identified"], queryFn: () => getIdentifiedOperators() });
 const localQO = queryOptions({ queryKey: ["local-agencies"], queryFn: () => getLocalAgencyAircraft() });
+const kernQO = queryOptions({ queryKey: ["kern-alerts"], queryFn: () => getKernAlerts(), refetchInterval: 60000 });
 
 const crumbs = [{ label: "Home", href: "/" }, { label: "Live Feed" }];
 
@@ -35,6 +36,7 @@ export const Route = createFileRoute("/live")({
     context.queryClient.ensureQueryData(repeatQO),
     context.queryClient.ensureQueryData(idQO),
     context.queryClient.ensureQueryData(localQO),
+    context.queryClient.ensureQueryData(kernQO),
   ]),
   component: Live,
   errorComponent: ({ reset }) => (
@@ -62,6 +64,7 @@ function Live() {
   const { data: repeat } = useSuspenseQuery(repeatQO);
   const { data: identified } = useSuspenseQuery(idQO);
   const { data: local } = useSuspenseQuery(localQO);
+  const { data: kern } = useSuspenseQuery(kernQO);
 
   const anomalyPct = s.totalDetections > 0 ? Math.round((s.anomalyEvents / s.totalDetections) * 1000) / 10 : 0;
 
@@ -72,6 +75,52 @@ function Live() {
     <div className="min-h-screen bg-paper text-ink">
       <SiteHeader />
       <SiteBreadcrumbs items={crumbs} />
+
+      {/* KERN COUNTY ALERTS — surfaced above LA-volume noise */}
+      {kern.length > 0 && (
+        <section className="border-b-4 border-ink bg-alert text-paper">
+          <div className="max-w-[1400px] mx-auto px-4 py-8">
+            <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
+              <div>
+                <div className="label-stamp bg-paper text-ink inline-block px-2 py-0.5 mb-2">Kern County · last 24h · scored against Kern's own baseline</div>
+                <h2 className="text-3xl sm:text-4xl">Kern County low-altitude alerts</h2>
+              </div>
+              <Link to="/threat-index" search={{ county: "kern" }} className="label-stamp brutal-border bg-paper text-ink px-3 py-2 hover:bg-warning whitespace-nowrap">
+                Kern-only Threat Index →
+              </Link>
+            </div>
+            <div className="overflow-x-auto brutal-border-thick border-paper">
+              <table className="w-full text-sm">
+                <thead className="bg-ink text-paper">
+                  <tr>
+                    <th className="text-left p-3 label-stamp">When</th>
+                    <th className="text-left p-3 label-stamp">Aircraft</th>
+                    <th className="text-left p-3 label-stamp">Owner</th>
+                    <th className="text-right p-3 label-stamp">Altitude</th>
+                    <th className="text-right p-3 label-stamp">Kern z</th>
+                    <th className="text-left p-3 label-stamp">County</th>
+                  </tr>
+                </thead>
+                <tbody className="font-mono bg-paper text-ink">
+                  {kern.map((r) => (
+                    <tr key={r.icao + r.capturedAt} className="border-t border-ink/20">
+                      <td className="p-3 whitespace-nowrap">{fmtTime(r.capturedAt)}</td>
+                      <td className="p-3"><span className="font-bold">{r.registration || r.icao}</span>{r.model && <div className="text-xs opacity-60">{r.model}</div>}</td>
+                      <td className="p-3 text-xs">{r.owner || "—"}</td>
+                      <td className={`p-3 text-right font-bold ${altClass(r.altitude)}`}>{fmt(r.altitude)} ft</td>
+                      <td className="p-3 text-right">{r.kernZ != null ? r.kernZ.toFixed(1) : "—"}</td>
+                      <td className="p-3 text-xs">{r.county || "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="mt-3 text-[11px] font-mono opacity-90">
+              <strong>Kern z</strong> = standard deviations below Kern's own 48h median altitude. Higher = more anomalous for this airspace.
+            </p>
+          </div>
+        </section>
+      )}
 
       {/* STICKY RIGHTS STRIP — legal frame stays visible while scrolling the feed */}
       <div className="sticky top-0 z-30 bg-ink text-paper border-b-4 border-warning">
