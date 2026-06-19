@@ -545,6 +545,7 @@ export type ThreatTopRow = {
   computedAt: string | null;
   components: ThreatComponents | null;
   hashShort: string | null;
+  county: string | null;
 };
 export type ThreatComponents = {
   altitude: number | null;
@@ -566,10 +567,35 @@ export type ThreatIndexSummary = {
   top: ThreatTopRow[];
   methodVersion: string | null;
   hashedRows: number;
+  countyCounts: { county: string; count: number }[];
+  countyFilter: string | null;
 };
 
-export const getThreatIndex = createServerFn({ method: "GET" }).handler(async (): Promise<ThreatIndexSummary> => {
+// County normalization — collapses arbitrary county strings into one of the AOI buckets.
+const AOI_COUNTIES = ["kern", "tulare", "kings", "fresno", "san bernardino"] as const;
+export type CountyKey = "kern" | "tulare" | "kings" | "fresno" | "san_bernardino" | "other";
+export function normalizeCountyKey(raw: string | null | undefined): CountyKey {
+  if (!raw) return "other";
+  const s = String(raw).toLowerCase();
+  if (s.includes("kern")) return "kern";
+  if (s.includes("tulare")) return "tulare";
+  if (s.includes("kings")) return "kings";
+  if (s.includes("fresno")) return "fresno";
+  if (s.includes("san bernardino") || s.includes("sanbernardino")) return "san_bernardino";
+  return "other";
+}
+const COUNTY_LABEL: Record<CountyKey, string> = {
+  kern: "Kern", tulare: "Tulare", kings: "Kings", fresno: "Fresno",
+  san_bernardino: "San Bernardino", other: "Other",
+};
+
+export const getThreatIndex = createServerFn({ method: "GET" })
+  .inputValidator((input: { county?: string } | undefined) => ({
+    county: input?.county && typeof input.county === "string" ? input.county : null,
+  }))
+  .handler(async ({ data }): Promise<ThreatIndexSummary> => {
   const e = evidence();
+  const w = watchtower();
   const [tot, buckets, top, mv, hashed] = await Promise.all([
     e`SELECT COUNT(*)::bigint AS c FROM public.threat_tiers`,
     e`SELECT tier_level, threat_level, COUNT(*)::int AS c
@@ -580,15 +606,36 @@ export const getThreatIndex = createServerFn({ method: "GET" }).handler(async ()
       FROM public.threat_tiers
       WHERE wti_score IS NOT NULL
       ORDER BY wti_score DESC
-      LIMIT 25`,
+      LIMIT 250`,
     e`SELECT method_version FROM public.threat_tiers WHERE method_version IS NOT NULL LIMIT 1`,
     e`SELECT COUNT(*)::bigint AS c FROM public.threat_tiers WHERE sha256_hash IS NOT NULL`,
   ]);
-  return {
-    total: Number(tot[0].c),
-    buckets: buckets.map((r: any) => ({ tier: r.tier_level, level: r.threat_level, count: r.c })),
-    top: top.map((r: any) => ({
-      detectionId: String(r.detection_id),
+  // Cross-DB county lookup: threat_tiers lives in the evidence DB and detections
+  // lives in the watchtower DB, so we hydrate county per-row via a second query.
+  const detIds = (top as any[])
+    .map((r) => (r.detection_id != null ? String(r.detection_id) : null))
+    .filter(Boolean) as string[];
+  const countyMap = new Map<string, string>();
+  if (detIds.length > 0) {
+    try {
+      const dRows = await w`
+        SELECT id::text AS id, county
+        FROM detections
+        WHERE id::text = ANY(${detIds}::text[])
+      `;
+      for (const r of dRows as any[]) {
+        if (r.county) countyMap.set(String(r.id), String(r.county));
+      }
+    } catch (err) {
+      console.error("threat-index county hydration failed:", err);
+    }
+  }
+  const wantedKey = data.county ? normalizeCountyKey(data.county) : null;
+  const enriched = (top as any[]).map((r) => {
+    const did = String(r.detection_id);
+    const county = countyMap.get(did) ?? null;
+    return {
+      detectionId: did,
       wti: Number(r.wti_score),
       tier: r.tier_level,
       level: r.threat_level,
@@ -610,10 +657,167 @@ export const getThreatIndex = createServerFn({ method: "GET" }).handler(async ()
           }
         : null,
       hashShort: r.sha256_hash ? String(r.sha256_hash).slice(0, 12) : null,
-    })),
+      county,
+    } as ThreatTopRow;
+  });
+  // Distribution across the full hydrated pool — before filtering — so the chip
+  // counts always reflect what's available.
+  const countyCountMap = new Map<string, number>();
+  for (const row of enriched) {
+    const key = normalizeCountyKey(row.county);
+    countyCountMap.set(key, (countyCountMap.get(key) ?? 0) + 1);
+  }
+  const countyCounts = (["kern", "tulare", "kings", "fresno", "san_bernardino", "other"] as CountyKey[])
+    .map((k) => ({ county: COUNTY_LABEL[k], count: countyCountMap.get(k) ?? 0 }));
+  const filtered = wantedKey
+    ? enriched.filter((r) => normalizeCountyKey(r.county) === wantedKey)
+    : enriched;
+  return {
+    total: Number(tot[0].c),
+    buckets: buckets.map((r: any) => ({ tier: r.tier_level, level: r.threat_level, count: r.c })),
+    top: filtered.slice(0, 25),
     methodVersion: mv[0]?.method_version ?? null,
     hashedRows: Number(hashed[0].c),
+    countyCounts,
+    countyFilter: wantedKey,
   };
+});
+
+// ============================================================
+// COUNTY BASELINES & KERN ALERTS — per-county lens
+// ============================================================
+
+export type CountyBaseline = {
+  county: string;
+  countyKey: CountyKey;
+  samples: number;
+  medianAltitude: number | null;
+  p10Altitude: number | null;
+  medianSpeed: number | null;
+  nightPct: number | null;
+  uniqueAircraft: number;
+};
+
+export const getCountyBaselines = createServerFn({ method: "GET" }).handler(
+  async (): Promise<CountyBaseline[]> => {
+    try {
+      const w = watchtower();
+      const rows = await w`
+        SELECT county,
+               COUNT(*)::int AS samples,
+               COUNT(DISTINCT icao_hex)::int AS uniq,
+               PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY altitude_ft) AS med_alt,
+               PERCENTILE_CONT(0.1) WITHIN GROUP (ORDER BY altitude_ft) AS p10_alt,
+               PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY speed_kts) AS med_spd,
+               AVG(CASE WHEN EXTRACT(HOUR FROM captured_at) < 6 OR EXTRACT(HOUR FROM captured_at) >= 22
+                        THEN 1 ELSE 0 END)::float AS night_pct
+        FROM detections
+        WHERE captured_at >= NOW() - INTERVAL '48 hours'
+          AND altitude_ft IS NOT NULL
+          AND altitude_ft >= 0
+          AND on_ground = false
+          AND county IS NOT NULL
+        GROUP BY county
+        ORDER BY samples DESC
+      `;
+      // Collapse into the AOI buckets
+      const agg = new Map<CountyKey, { samples: number; uniq: number; medAlt: number[]; p10Alt: number[]; medSpd: number[]; night: number[] }>();
+      for (const r of rows as any[]) {
+        const key = normalizeCountyKey(r.county);
+        const cur = agg.get(key) ?? { samples: 0, uniq: 0, medAlt: [], p10Alt: [], medSpd: [], night: [] };
+        cur.samples += Number(r.samples ?? 0);
+        cur.uniq += Number(r.uniq ?? 0);
+        if (r.med_alt != null) cur.medAlt.push(Number(r.med_alt));
+        if (r.p10_alt != null) cur.p10Alt.push(Number(r.p10_alt));
+        if (r.med_spd != null) cur.medSpd.push(Number(r.med_spd));
+        if (r.night_pct != null) cur.night.push(Number(r.night_pct));
+        agg.set(key, cur);
+      }
+      const avg = (xs: number[]) => (xs.length === 0 ? null : Math.round((xs.reduce((a, b) => a + b, 0) / xs.length) * 10) / 10);
+      const out: CountyBaseline[] = [];
+      for (const key of ["kern", "tulare", "kings", "fresno", "san_bernardino", "other"] as CountyKey[]) {
+        const v = agg.get(key);
+        out.push({
+          county: COUNTY_LABEL[key],
+          countyKey: key,
+          samples: v?.samples ?? 0,
+          uniqueAircraft: v?.uniq ?? 0,
+          medianAltitude: v ? avg(v.medAlt) : null,
+          p10Altitude: v ? avg(v.p10Alt) : null,
+          medianSpeed: v ? avg(v.medSpd) : null,
+          nightPct: v && v.night.length > 0 ? Math.round((v.night.reduce((a, b) => a + b, 0) / v.night.length) * 1000) / 10 : null,
+        });
+      }
+      return out;
+    } catch (err) {
+      console.error("getCountyBaselines failed:", err);
+      return [];
+    }
+  },
+);
+
+export type KernAlert = {
+  icao: string;
+  registration: string | null;
+  owner: string | null;
+  model: string | null;
+  capturedAt: string;
+  altitude: number | null;
+  speed: number | null;
+  county: string | null;
+  kernZ: number | null; // deviation from Kern's own median altitude (low = scary)
+};
+
+export const getKernAlerts = createServerFn({ method: "GET" }).handler(async (): Promise<KernAlert[]> => {
+  try {
+    const w = watchtower();
+    const [rows, base] = await Promise.all([
+      w`
+        SELECT d.icao_hex, d.registration, d.captured_at, d.altitude_ft, d.speed_kts, d.county,
+               p.registered_owner, p.aircraft_model
+        FROM detections d
+        LEFT JOIN aircraft_profiles p ON p.icao_hex = d.icao_hex
+        WHERE d.county ILIKE '%kern%'
+          AND d.captured_at >= NOW() - INTERVAL '24 hours'
+          AND d.altitude_ft IS NOT NULL
+          AND d.altitude_ft >= 0
+          AND d.altitude_ft < 2500
+          AND d.on_ground = false
+        ORDER BY d.altitude_ft ASC, d.captured_at DESC
+        LIMIT 25
+      `,
+      w`
+        SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY altitude_ft) AS med,
+               STDDEV_POP(altitude_ft)::float AS sd
+        FROM detections
+        WHERE county ILIKE '%kern%'
+          AND captured_at >= NOW() - INTERVAL '48 hours'
+          AND altitude_ft IS NOT NULL
+          AND altitude_ft >= 0
+          AND on_ground = false
+      `,
+    ]);
+    const med = (base as any[])[0]?.med != null ? Number((base as any[])[0].med) : null;
+    const sd = (base as any[])[0]?.sd != null ? Number((base as any[])[0].sd) : null;
+    return (rows as any[]).map((r) => {
+      const alt = r.altitude_ft != null ? Number(r.altitude_ft) : null;
+      const z = alt != null && med != null && sd && sd > 0 ? Math.round(((med - alt) / sd) * 10) / 10 : null;
+      return {
+        icao: r.icao_hex,
+        registration: r.registration,
+        owner: r.registered_owner,
+        model: r.aircraft_model,
+        capturedAt: new Date(r.captured_at).toISOString(),
+        altitude: alt,
+        speed: r.speed_kts != null ? Number(r.speed_kts) : null,
+        county: r.county,
+        kernZ: z,
+      };
+    });
+  } catch (err) {
+    console.error("getKernAlerts failed:", err);
+    return [];
+  }
 });
 
 export type MlAnomaly = {
