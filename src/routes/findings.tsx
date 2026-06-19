@@ -1,6 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
+import { zodValidator, fallback } from "@tanstack/zod-adapter";
+import { z } from "zod";
+import { useMemo } from "react";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
@@ -12,7 +15,12 @@ const anomQO = queryOptions({ queryKey: ["anomalies"], queryFn: () => getAnomali
 
 const crumbs = [{ label: "Home", href: "/" }, { label: "Findings" }];
 
+const findingsSearch = z.object({
+  county: fallback(z.enum(["all", "kern"]), "all").default("all"),
+});
+
 export const Route = createFileRoute("/findings")({
+  validateSearch: zodValidator(findingsSearch),
   head: () => ({
     meta: [
       { title: "Findings Archive — The Architecture of Never" },
@@ -62,6 +70,11 @@ function sevColor(score: number | null) {
 
 function Findings() {
   const { data: anom } = useSuspenseQuery(anomQO);
+  const { county } = Route.useSearch();
+  const visible = useMemo(
+    () => (county === "kern" ? anom.filter((a) => a.county && /kern/i.test(a.county)) : anom),
+    [anom, county],
+  );
   return (
     <div className="min-h-screen bg-paper text-ink">
       <SiteHeader />
@@ -87,10 +100,28 @@ function Findings() {
 
       <section className="border-b-4 border-ink">
         <div className="max-w-[1400px] mx-auto px-4 py-16">
-          <h2 className="text-4xl sm:text-5xl mb-6">Anomaly events</h2>
+          <div className="flex flex-wrap items-end justify-between gap-3 mb-6">
+            <h2 className="text-4xl sm:text-5xl">Anomaly events</h2>
+            <div className="flex gap-2">
+              <Link
+                to="/findings"
+                search={{ county: "all" }}
+                className={`label-stamp brutal-border px-3 py-2 ${county === "all" ? "bg-warning text-ink" : "bg-paper hover:bg-warning/40"}`}
+              >
+                All counties <span className="opacity-60">· {anom.length}</span>
+              </Link>
+              <Link
+                to="/findings"
+                search={{ county: "kern" }}
+                className={`label-stamp brutal-border px-3 py-2 ${county === "kern" ? "bg-warning text-ink" : "bg-paper hover:bg-warning/40"}`}
+              >
+                Kern only <span className="opacity-60">· {anom.filter((a) => a.county && /kern/i.test(a.county)).length}</span>
+              </Link>
+            </div>
+          </div>
           <div className="space-y-3">
-            {anom.length === 0 && <p className="font-mono text-sm opacity-60">No anomalies — baseline still learning.</p>}
-            {anom.map((a) => (
+            {visible.length === 0 && <p className="font-mono text-sm opacity-60">No anomalies for this filter.</p>}
+            {visible.map((a) => (
               <article key={a.id} className="brutal-border p-5 bg-paper">
                 <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
                   <div>
@@ -100,7 +131,11 @@ function Findings() {
                   <div className="flex items-center gap-2">
                     {a.anomalyScore != null && <span className={`label-stamp px-2 py-1 ${sevColor(a.anomalyScore)}`}>SCORE {a.anomalyScore.toFixed(2)}</span>}
                     {a.altitude != null && <span className="label-stamp brutal-border px-2 py-1 font-mono">{a.altitude} ft</span>}
-                    {a.county && <span className="label-stamp brutal-border px-2 py-1">{a.county}</span>}
+                    {a.county && (
+                      <span className={`label-stamp brutal-border px-2 py-1 ${/kern/i.test(a.county) ? "bg-warning text-ink" : ""}`}>
+                        {a.county}
+                      </span>
+                    )}
                   </div>
                 </div>
                 {a.reasoning && <p className="text-sm">{a.reasoning}</p>}
