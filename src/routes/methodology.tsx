@@ -75,6 +75,40 @@ function Methodology() {
         </div>
       </section>
 
+      <section className="bg-paper border-b-4 border-ink">
+        <div className="max-w-[1400px] mx-auto px-4 py-16">
+          <div className="label-stamp bg-warning inline-block px-2 py-1 mb-3">County-weighted baselines</div>
+          <h2 className="text-4xl sm:text-5xl mb-4">Each county gets its own normal.</h2>
+          <p className="text-base max-w-3xl mb-3">
+            Los Angeles airspace produces roughly ten times the traffic of Kern County. A single regional baseline lets
+            LA volume drown Kern signals — a Cessna at 800 ft over Bakersfield looks unremarkable next to thousands of
+            LA-basin orbits. The fix is not to suppress LA. It is to learn what normal means for each county and score
+            each detection against the airspace it actually occurred in.
+          </p>
+          <div className="grid md:grid-cols-2 gap-4 mt-6">
+            <div className="brutal-border p-5 bg-paper">
+              <div className="label-stamp mb-2">How it works</div>
+              <ul className="text-sm font-mono space-y-2">
+                <li>1. Partition the last 48h of detections by county.</li>
+                <li>2. Compute median, 10th-percentile, and standard deviation of altitude per county.</li>
+                <li>3. Score each detection against <em>its own county's</em> baseline.</li>
+                <li>4. Aircraft crossing multiple counties get scored in each; displayed score = MAX(per-county score).</li>
+                <li>5. Cross-county coordination, convergence, and shell-network detection are unchanged.</li>
+              </ul>
+            </div>
+            <div className="brutal-border p-5 bg-paper">
+              <div className="label-stamp mb-2">Why this isn't cherry-picking</div>
+              <ul className="text-sm font-mono space-y-2">
+                <li>· Same math for every county — nothing is hand-coded.</li>
+                <li>· Per-county baselines are published live on <a href="/threat-index" className="underline">/threat-index</a>.</li>
+                <li>· MAX rule prevents a quiet LA segment from hiding a loud Kern one.</li>
+                <li>· Raw data remains intact — anyone can re-run the partition.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* === NEW CREDIBILITY SECTIONS === */}
 
       {/* 1. Data Sources */}
