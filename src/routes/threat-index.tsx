@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
-import { zodValidator, fallback } from "@tanstack/zod-adapter";
+import { zodValidator, fallback } from "@/lib/zod-adapter";
 import { z } from "zod";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
