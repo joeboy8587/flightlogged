@@ -595,70 +595,53 @@ export const getThreatIndex = createServerFn({ method: "GET" })
     county: input?.county && typeof input.county === "string" ? input.county : null,
   }))
   .handler(async ({ data }): Promise<ThreatIndexSummary> => {
-  const e = evidence();
+  // WTI is now computed directly from anomaly_events (quiet-math).
+  // No more cross-DB hydration: detection_id, county, anomaly_score, and the
+  // contributing factors all live on the same row.
   const w = watchtower();
-  const [tot, buckets, top, mv, hashed] = await Promise.all([
-    e`SELECT COUNT(*)::bigint AS c FROM public.threat_tiers`,
-    e`SELECT tier_level, threat_level, COUNT(*)::int AS c
-      FROM public.threat_tiers
-      GROUP BY tier_level, threat_level
-      ORDER BY tier_level DESC NULLS LAST`,
-    e`SELECT detection_id, wti_score, tier_level, threat_level, computed_at, components, sha256_hash
-      FROM public.threat_tiers
-      WHERE wti_score IS NOT NULL
-      ORDER BY wti_score DESC
+  const [tot, top, hashed] = await Promise.all([
+    w`SELECT COUNT(*)::bigint AS c FROM anomaly_events WHERE anomaly_score IS NOT NULL`,
+    w`SELECT id::text AS detection_id, anomaly_score, county, county_z_score,
+             contributing_factors, detected_at, sha256_hash, anomaly_type
+      FROM anomaly_events
+      WHERE anomaly_score IS NOT NULL
+      ORDER BY anomaly_score DESC NULLS LAST
       LIMIT 250`,
-    e`SELECT method_version FROM public.threat_tiers WHERE method_version IS NOT NULL LIMIT 1`,
-    e`SELECT COUNT(*)::bigint AS c FROM public.threat_tiers WHERE sha256_hash IS NOT NULL`,
+    w`SELECT COUNT(*)::bigint AS c FROM anomaly_events WHERE sha256_hash IS NOT NULL`,
   ]);
-  // Cross-DB county lookup: threat_tiers lives in the evidence DB and detections
-  // lives in the watchtower DB, so we hydrate county per-row via a second query.
-  const detIds = (top as any[])
-    .map((r) => (r.detection_id != null ? String(r.detection_id) : null))
-    .filter(Boolean) as string[];
-  const countyMap = new Map<string, string>();
-  if (detIds.length > 0) {
-    try {
-      const dRows = await w`
-        SELECT id::text AS id, county
-        FROM detections
-        WHERE id::text = ANY(${detIds}::text[])
-      `;
-      for (const r of dRows as any[]) {
-        if (r.county) countyMap.set(String(r.id), String(r.county));
-      }
-    } catch (err) {
-      console.error("threat-index county hydration failed:", err);
-    }
-  }
+  // Score → tier mapping (documented on /methodology):
+  //   0–25 = T1 LOW, 25–50 = T2 MEDIUM, 50–75 = T3 HIGH, 75–100 = T4 CRITICAL
+  const tierOf = (wti: number) => {
+    if (wti >= 75) return { tier: 4, level: "CRITICAL" };
+    if (wti >= 50) return { tier: 3, level: "HIGH" };
+    if (wti >= 25) return { tier: 2, level: "MEDIUM" };
+    return { tier: 1, level: "LOW" };
+  };
   const wantedKey = data.county ? normalizeCountyKey(data.county) : null;
   const enriched = (top as any[]).map((r) => {
-    const did = String(r.detection_id);
-    const county = countyMap.get(did) ?? null;
+    // anomaly_score is roughly 0..1 in quiet-math; project to 0..100.
+    const rawScore = r.anomaly_score != null ? Number(r.anomaly_score) : 0;
+    const wti = Math.min(100, Math.round(rawScore * 100 * 10) / 10);
+    const t = tierOf(wti);
+    const cf = (r.contributing_factors && typeof r.contributing_factors === "object") ? r.contributing_factors : {};
     return {
-      detectionId: did,
-      wti: Number(r.wti_score),
-      tier: r.tier_level,
-      level: r.threat_level,
-      computedAt: r.computed_at ? new Date(r.computed_at).toISOString() : null,
-      components: r.components
-        ? {
-            altitude: r.components.altitude ?? null,
-            temporal: r.components.temporal ?? null,
-            convergence: r.components.convergence ?? null,
-            shellNetwork: r.components.shell_network ?? null,
-            repeatFrequency: r.components.repeat_frequency ?? null,
-            weights: {
-              altitude: r.components.weights?.altitude ?? null,
-              temporal: r.components.weights?.temporal ?? null,
-              convergence: r.components.weights?.convergence ?? null,
-              shell: r.components.weights?.shell ?? null,
-              repeat: r.components.weights?.repeat ?? null,
-            },
-          }
-        : null,
+      detectionId: String(r.detection_id),
+      wti,
+      tier: t.tier,
+      level: t.level,
+      computedAt: r.detected_at ? new Date(r.detected_at).toISOString() : null,
+      components: {
+        altitude: cf.altitude ?? null,
+        temporal: cf.temporal ?? null,
+        convergence: cf.convergence ?? null,
+        shellNetwork: cf.shell_network ?? cf.shellNetwork ?? null,
+        repeatFrequency: cf.repeat_frequency ?? cf.repeatFrequency ?? null,
+        weights: {
+          altitude: 0.35, temporal: 0.20, convergence: 0.12, shell: 0.18, repeat: 0.15,
+        },
+      },
       hashShort: r.sha256_hash ? String(r.sha256_hash).slice(0, 12) : null,
-      county,
+      county: r.county ?? null,
     } as ThreatTopRow;
   });
   // Distribution across the full hydrated pool — before filtering — so the chip
@@ -673,11 +656,20 @@ export const getThreatIndex = createServerFn({ method: "GET" })
   const filtered = wantedKey
     ? enriched.filter((r) => normalizeCountyKey(r.county) === wantedKey)
     : enriched;
+  // Bucket tier counts from the hydrated pool (before county filtering).
+  const bucketMap = new Map<string, { tier: number; level: string; count: number }>();
+  for (const r of enriched) {
+    const k = `${r.tier}|${r.level}`;
+    const v = bucketMap.get(k) ?? { tier: r.tier!, level: r.level!, count: 0 };
+    v.count += 1;
+    bucketMap.set(k, v);
+  }
+  const buckets = Array.from(bucketMap.values()).sort((a, b) => b.tier - a.tier);
   return {
     total: Number(tot[0].c),
-    buckets: buckets.map((r: any) => ({ tier: r.tier_level, level: r.threat_level, count: r.c })),
+    buckets,
     top: filtered.slice(0, 25),
-    methodVersion: mv[0]?.method_version ?? null,
+    methodVersion: "quiet-math.wti.v1",
     hashedRows: Number(hashed[0].c),
     countyCounts,
     countyFilter: wantedKey,
