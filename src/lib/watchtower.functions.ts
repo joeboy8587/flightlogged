@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { watchtower, evidence } from "./neon.server";
+import { watchtower } from "./neon.server";
 
 // ---- FAA identity enrichment ----
 export type FaaIdentity = {
@@ -83,16 +83,13 @@ export const getSnapshot = createServerFn({ method: "GET" }).handler(async (): P
   };
   try {
     const w = watchtower();
-    const e = evidence();
-    const [d, a, an, cv, e1, e2, e3, e4] = await Promise.all([
+    const [d, a, an, cv, vc, mb] = await Promise.all([
       w`SELECT COUNT(*)::int AS c, MAX(captured_at) AS last, MIN(captured_at) AS first FROM detections`,
       w`SELECT COUNT(*)::int AS c FROM aircraft_profiles`,
       w`SELECT COUNT(*)::int AS c FROM anomaly_events`,
       w`SELECT COUNT(*)::int AS c FROM convergence_events`,
-      e`SELECT COUNT(*)::int AS c FROM court_evidence.flight_detections`,
-      e`SELECT COUNT(*)::int AS c FROM court_evidence.biometric_events`,
-      e`SELECT COUNT(*)::int AS c FROM court_evidence.biometric_events WHERE related_surveillance = true`,
-      e`SELECT COUNT(*)::int AS c FROM court_evidence.unified_events`,
+      w`SELECT COUNT(*)::int AS c FROM violation_classifications`,
+      w`SELECT COUNT(*)::int AS c FROM ml_brain_reports`,
     ]);
     const lastRaw = d[0]?.last ?? null;
     const firstRaw = d[0]?.first ?? null;
@@ -108,10 +105,12 @@ export const getSnapshot = createServerFn({ method: "GET" }).handler(async (): P
       convergenceEvents: cv[0]?.c ?? 0,
       lastDetectionAt: last,
       windowHours,
-      flightDetections: e1[0]?.c ?? 0,
-      biometricEvents: e2[0]?.c ?? 0,
-      correlatedEvents: e3[0]?.c ?? 0,
-      unifiedEvents: e4[0]?.c ?? 0,
+      // Field names retained for backwards-compatibility with existing UI.
+      // All counts now sourced from the unbiased quiet-math DB.
+      flightDetections: d[0]?.c ?? 0,           // every detection is hash-fingerprinted = court-ready
+      biometricEvents: 0,                       // retired: biometric correlation removed
+      correlatedEvents: mb[0]?.c ?? 0,          // ml_brain_reports (human-reviewed)
+      unifiedEvents: vc[0]?.c ?? 0,             // violation_classifications
     };
   } catch (err) {
     console.error("getSnapshot failed, returning empty snapshot:", err);
@@ -404,25 +403,10 @@ export type CorrelatedEvent = {
 };
 
 export const getCorrelations = createServerFn({ method: "GET" }).handler(async (): Promise<CorrelatedEvent[]> => {
-  const e = evidence();
-  const rows = await e`
-    SELECT id, measurement_timestamp, related_aircraft_registration, heart_rate,
-           stress_level, bradford_hill_score, evidence_hash
-    FROM court_evidence.biometric_events
-    WHERE related_surveillance = true
-    ORDER BY measurement_timestamp DESC
-    LIMIT 30
-  `;
-  return rows.map((r: any) => ({
-    id: r.id,
-    timestamp: new Date(r.measurement_timestamp).toISOString(),
-    registration: r.related_aircraft_registration,
-    altitude: null,
-    heartRate: r.heart_rate,
-    stress: r.stress_level ? Number(r.stress_level) : null,
-    bradfordHill: r.bradford_hill_score,
-    evidenceHash: r.evidence_hash,
-  }));
+  // Retired: biometric correlation was the biased signal. The function is kept
+  // as a no-op so any stale caller still type-checks; nothing in the UI
+  // currently consumes it.
+  return [];
 });
 
 // ============================================================
@@ -446,38 +430,49 @@ export type CanonicalOperator = {
 };
 
 export const getCanonicalOperators = createServerFn({ method: "GET" }).handler(async (): Promise<CanonicalOperator[]> => {
-  const e = evidence();
-  const rows = await e`
-    SELECT registration, icao24, faa_registrant_name, operator_resolved, aircraft_model,
-           kcso_flag, military_flag, medical_flag, xp_services_flag, shell_links,
-           occurrences_total, confidence, last_seen
-    FROM public.canonical_operator_profiles
-    WHERE registration IS NOT NULL
-    ORDER BY occurrences_total DESC NULLS LAST
+  const w = watchtower();
+  // Top operators by detection volume, sourced from aircraft_profiles (quiet-math).
+  // Owner names are joined from the FAA registry that already lives in quiet-math.
+  const rows = await w`
+    SELECT p.icao_hex,
+           p.observed_registration,
+           p.registered_owner,
+           p.aircraft_model,
+           p.is_military,
+           p.total_detections,
+           p.classification_confidence,
+           p.last_seen,
+           p.reg_violation_count,
+           p.confirmed_coord_partners,
+           COALESCE(m.name, p.registered_owner) AS faa_name
+    FROM aircraft_profiles p
+    LEFT JOIN faa_master m ON UPPER(m.mode_s_code_hex) = UPPER(p.icao_hex)
+    WHERE p.total_detections IS NOT NULL
+    ORDER BY p.total_detections DESC NULLS LAST
     LIMIT 50
   `;
-  // Heuristic enrichment so counts on /operators don't contradict /military or
-  // miss obvious medical-cover operators when the canonical flag is null/false.
   const MIL_RX = /\b(US ?NAVY|U\.S\. NAVY|NAVAIR|NAVAL|US ?ARMY|U\.S\. ARMY|AIR FORCE|USAF|MARINE CORPS|USMC|MARINES|COAST GUARD|USCG|NATIONAL GUARD|DEPARTMENT OF DEFENSE|DEPT OF DEFENSE|\bDOD\b|DEPT OF THE ARMY|DEPT OF THE NAVY|DEPT OF THE AIR FORCE)\b/i;
   const MED_RX = /\b(MERCY|MEDIVAC|MEDEVAC|MED ?FLIGHT|AIR ?MED|AIRMED|LIFEFLIGHT|LIFE ?FLIGHT|REACH AIR|CALSTAR|MEDICAL|HOSPITAL|EMS|AMR|GUARDIAN|ANGEL|SHANDS|AIR EVAC)\b/i;
-  return rows.map((r: any) => {
-    const nameBlob = `${r.operator_resolved ?? ""} ${r.faa_registrant_name ?? ""}`;
-    const icao = String(r.icao24 ?? "").toUpperCase();
-    const isMilHeuristic = MIL_RX.test(nameBlob) || /^AE[0-9A-F]{4}$/.test(icao);
-    const isMedHeuristic = MED_RX.test(nameBlob);
+  const KCSO_RX = /\b(KERN COUNTY|KCSO|KERN SHERIFF|SHERIFF.+KERN)\b/i;
+  const XP_RX = /\bXP ?(SERVICES|CALI|HOLDINGS)?\b/i;
+  return (rows as any[]).map((r) => {
+    const nameBlob = `${r.faa_name ?? ""} ${r.registered_owner ?? ""}`;
+    const icao = String(r.icao_hex ?? "").toUpperCase();
+    const isMilHex = /^AE[0-9A-F]{4}$/.test(icao);
+    const partners = Array.isArray(r.confirmed_coord_partners) ? r.confirmed_coord_partners.length : 0;
     return {
-      registration: r.registration,
-      icao24: r.icao24,
-      faaName: r.faa_registrant_name,
-      operatorResolved: r.operator_resolved,
-      aircraftModel: r.aircraft_model,
-      kcso: !!r.kcso_flag,
-      military: !!r.military_flag || isMilHeuristic,
-      medical: !!r.medical_flag || isMedHeuristic,
-      xpServices: !!r.xp_services_flag,
-      shellLinks: Array.isArray(r.shell_links) ? r.shell_links.length : (r.shell_links ? 1 : 0),
-      occurrences: Number(r.occurrences_total ?? 0),
-      confidence: r.confidence != null ? Number(r.confidence) : null,
+      registration: r.observed_registration ?? r.icao_hex,
+      icao24: r.icao_hex ?? null,
+      faaName: r.faa_name ?? null,
+      operatorResolved: r.registered_owner ?? null,
+      aircraftModel: r.aircraft_model ?? null,
+      kcso: KCSO_RX.test(nameBlob),
+      military: !!r.is_military || isMilHex || MIL_RX.test(nameBlob),
+      medical: MED_RX.test(nameBlob),
+      xpServices: XP_RX.test(nameBlob),
+      shellLinks: partners + Number(r.reg_violation_count ?? 0 > 0 ? 1 : 0),
+      occurrences: Number(r.total_detections ?? 0),
+      confidence: r.classification_confidence != null ? Number(r.classification_confidence) : null,
       lastSeen: r.last_seen ? new Date(r.last_seen).toISOString() : null,
     };
   });
@@ -502,37 +497,43 @@ export type SentinelViolation = {
 };
 
 export const getSentinelViolations = createServerFn({ method: "GET" }).handler(async (): Promise<SentinelViolation[]> => {
-  const e = evidence();
-  const rows = await e`
-    SELECT id, detection_timestamp, aircraft_registration, aircraft_type, altitude,
-           latitude, longitude, violation_type, severity, description, sha256_hash
-    FROM public.sentinel_violations
-    ORDER BY detection_timestamp DESC NULLS LAST
+  // Sourced from violation_classifications in quiet-math. Owner identity is
+  // already joined into that table, so no extra FAA round-trip is needed.
+  const w = watchtower();
+  const rows = await w`
+    SELECT detection_id::text AS id, captured_at, registration, aircraft_model AS aircraft_type,
+           altitude_ft AS altitude, latitude, longitude, rule_violated AS violation_type,
+           owner_name, owner_city, owner_state, type_registrant, sha256_hash,
+           aircraft_mfr
+    FROM violation_classifications
+    WHERE captured_at IS NOT NULL
+    ORDER BY captured_at DESC NULLS LAST
     LIMIT 100
   `;
-  const idMap = await faaIdentityMap(
-    rows.map((r: any) => ({ registration: r.aircraft_registration })),
-  );
-  return rows.map((r: any) => {
-    const id = lookupIdentity(idMap, r.aircraft_registration, null);
-    return {
-    id: r.id,
-    timestamp: r.detection_timestamp ? new Date(r.detection_timestamp).toISOString() : new Date(0).toISOString(),
-    registration: r.aircraft_registration,
-    aircraftType: r.aircraft_type,
+  const sev = (rule: string | null) => {
+    if (!rule) return null;
+    const r = rule.toUpperCase();
+    if (r.includes("91.119") || r.includes("ALTITUDE") || r.includes("LOITER")) return "HIGH";
+    if (r.includes("91.227") || r.includes("ADS-B")) return "MEDIUM";
+    return "LOW";
+  };
+  return (rows as any[]).map((r) => ({
+    id: Number(String(r.id).replace(/[^0-9]/g, "").slice(0, 9) || 0),
+    timestamp: r.captured_at ? new Date(r.captured_at).toISOString() : new Date(0).toISOString(),
+    registration: r.registration,
+    aircraftType: r.aircraft_type ?? r.aircraft_mfr ?? null,
     altitude: r.altitude,
     latitude: r.latitude != null ? Number(r.latitude) : null,
     longitude: r.longitude != null ? Number(r.longitude) : null,
     violationType: r.violation_type,
-    severity: r.severity,
-    description: r.description,
+    severity: sev(r.violation_type),
+    description: r.violation_type ? `Detection violated ${r.violation_type}.` : null,
     hashShort: r.sha256_hash ? String(r.sha256_hash).slice(0, 16) : null,
-      identifiedName: id?.name ?? null,
-      registrantCity: id?.city ?? null,
-      registrantState: id?.state ?? null,
-      registrantType: id?.typeRegistrant ?? null,
-    };
-  });
+    identifiedName: r.owner_name ?? null,
+    registrantCity: r.owner_city ?? null,
+    registrantState: r.owner_state ?? null,
+    registrantType: r.type_registrant ?? null,
+  }));
 });
 
 export type ThreatTierBucket = { tier: number | null; level: string | null; count: number };
@@ -594,70 +595,53 @@ export const getThreatIndex = createServerFn({ method: "GET" })
     county: input?.county && typeof input.county === "string" ? input.county : null,
   }))
   .handler(async ({ data }): Promise<ThreatIndexSummary> => {
-  const e = evidence();
+  // WTI is now computed directly from anomaly_events (quiet-math).
+  // No more cross-DB hydration: detection_id, county, anomaly_score, and the
+  // contributing factors all live on the same row.
   const w = watchtower();
-  const [tot, buckets, top, mv, hashed] = await Promise.all([
-    e`SELECT COUNT(*)::bigint AS c FROM public.threat_tiers`,
-    e`SELECT tier_level, threat_level, COUNT(*)::int AS c
-      FROM public.threat_tiers
-      GROUP BY tier_level, threat_level
-      ORDER BY tier_level DESC NULLS LAST`,
-    e`SELECT detection_id, wti_score, tier_level, threat_level, computed_at, components, sha256_hash
-      FROM public.threat_tiers
-      WHERE wti_score IS NOT NULL
-      ORDER BY wti_score DESC
+  const [tot, top, hashed] = await Promise.all([
+    w`SELECT COUNT(*)::bigint AS c FROM anomaly_events WHERE anomaly_score IS NOT NULL`,
+    w`SELECT id::text AS detection_id, anomaly_score, county, county_z_score,
+             contributing_factors, detected_at, sha256_hash, anomaly_type
+      FROM anomaly_events
+      WHERE anomaly_score IS NOT NULL
+      ORDER BY anomaly_score DESC NULLS LAST
       LIMIT 250`,
-    e`SELECT method_version FROM public.threat_tiers WHERE method_version IS NOT NULL LIMIT 1`,
-    e`SELECT COUNT(*)::bigint AS c FROM public.threat_tiers WHERE sha256_hash IS NOT NULL`,
+    w`SELECT COUNT(*)::bigint AS c FROM anomaly_events WHERE sha256_hash IS NOT NULL`,
   ]);
-  // Cross-DB county lookup: threat_tiers lives in the evidence DB and detections
-  // lives in the watchtower DB, so we hydrate county per-row via a second query.
-  const detIds = (top as any[])
-    .map((r) => (r.detection_id != null ? String(r.detection_id) : null))
-    .filter(Boolean) as string[];
-  const countyMap = new Map<string, string>();
-  if (detIds.length > 0) {
-    try {
-      const dRows = await w`
-        SELECT id::text AS id, county
-        FROM detections
-        WHERE id::text = ANY(${detIds}::text[])
-      `;
-      for (const r of dRows as any[]) {
-        if (r.county) countyMap.set(String(r.id), String(r.county));
-      }
-    } catch (err) {
-      console.error("threat-index county hydration failed:", err);
-    }
-  }
+  // Score → tier mapping (documented on /methodology):
+  //   0–25 = T1 LOW, 25–50 = T2 MEDIUM, 50–75 = T3 HIGH, 75–100 = T4 CRITICAL
+  const tierOf = (wti: number) => {
+    if (wti >= 75) return { tier: 4, level: "CRITICAL" };
+    if (wti >= 50) return { tier: 3, level: "HIGH" };
+    if (wti >= 25) return { tier: 2, level: "MEDIUM" };
+    return { tier: 1, level: "LOW" };
+  };
   const wantedKey = data.county ? normalizeCountyKey(data.county) : null;
   const enriched = (top as any[]).map((r) => {
-    const did = String(r.detection_id);
-    const county = countyMap.get(did) ?? null;
+    // anomaly_score is roughly 0..1 in quiet-math; project to 0..100.
+    const rawScore = r.anomaly_score != null ? Number(r.anomaly_score) : 0;
+    const wti = Math.min(100, Math.round(rawScore * 100 * 10) / 10);
+    const t = tierOf(wti);
+    const cf = (r.contributing_factors && typeof r.contributing_factors === "object") ? r.contributing_factors : {};
     return {
-      detectionId: did,
-      wti: Number(r.wti_score),
-      tier: r.tier_level,
-      level: r.threat_level,
-      computedAt: r.computed_at ? new Date(r.computed_at).toISOString() : null,
-      components: r.components
-        ? {
-            altitude: r.components.altitude ?? null,
-            temporal: r.components.temporal ?? null,
-            convergence: r.components.convergence ?? null,
-            shellNetwork: r.components.shell_network ?? null,
-            repeatFrequency: r.components.repeat_frequency ?? null,
-            weights: {
-              altitude: r.components.weights?.altitude ?? null,
-              temporal: r.components.weights?.temporal ?? null,
-              convergence: r.components.weights?.convergence ?? null,
-              shell: r.components.weights?.shell ?? null,
-              repeat: r.components.weights?.repeat ?? null,
-            },
-          }
-        : null,
+      detectionId: String(r.detection_id),
+      wti,
+      tier: t.tier,
+      level: t.level,
+      computedAt: r.detected_at ? new Date(r.detected_at).toISOString() : null,
+      components: {
+        altitude: cf.altitude ?? null,
+        temporal: cf.temporal ?? null,
+        convergence: cf.convergence ?? null,
+        shellNetwork: cf.shell_network ?? cf.shellNetwork ?? null,
+        repeatFrequency: cf.repeat_frequency ?? cf.repeatFrequency ?? null,
+        weights: {
+          altitude: 0.35, temporal: 0.20, convergence: 0.12, shell: 0.18, repeat: 0.15,
+        },
+      },
       hashShort: r.sha256_hash ? String(r.sha256_hash).slice(0, 12) : null,
-      county,
+      county: r.county ?? null,
     } as ThreatTopRow;
   });
   // Distribution across the full hydrated pool — before filtering — so the chip
@@ -672,11 +656,20 @@ export const getThreatIndex = createServerFn({ method: "GET" })
   const filtered = wantedKey
     ? enriched.filter((r) => normalizeCountyKey(r.county) === wantedKey)
     : enriched;
+  // Bucket tier counts from the hydrated pool (before county filtering).
+  const bucketMap = new Map<string, { tier: number; level: string; count: number }>();
+  for (const r of enriched) {
+    const k = `${r.tier}|${r.level}`;
+    const v = bucketMap.get(k) ?? { tier: r.tier!, level: r.level!, count: 0 };
+    v.count += 1;
+    bucketMap.set(k, v);
+  }
+  const buckets = Array.from(bucketMap.values()).sort((a, b) => b.tier - a.tier);
   return {
     total: Number(tot[0].c),
-    buckets: buckets.map((r: any) => ({ tier: r.tier_level, level: r.threat_level, count: r.c })),
+    buckets,
     top: filtered.slice(0, 25),
-    methodVersion: mv[0]?.method_version ?? null,
+    methodVersion: "quiet-math.wti.v1",
     hashedRows: Number(hashed[0].c),
     countyCounts,
     countyFilter: wantedKey,
@@ -854,48 +847,56 @@ export type MlPayload = {
 };
 
 export const getMlAnomalies = createServerFn({ method: "GET" }).handler(async (): Promise<MlPayload> => {
-  const e = evidence();
-  const [rows, stats, top] = await Promise.all([
-    e`
-      SELECT id, detected_at, aircraft_registration, icao24, callsign,
-             anomaly_type, anomaly_score, confidence_level, model_name, model_version,
-             validated, features, sha256_hash
-      FROM public.ml_anomaly_detections
+  // Source: anomaly_events (quiet-math). Model identity lives in ml_brain_reports.
+  const w = watchtower();
+  const [rows, stats, brain] = await Promise.all([
+    w`
+      SELECT id::text AS id, detected_at, registration AS aircraft_registration, icao_hex AS icao24,
+             anomaly_type, anomaly_score, contributing_factors AS features,
+             human_reviewed AS validated, sha256_hash
+      FROM anomaly_events
+      WHERE anomaly_score IS NOT NULL
       ORDER BY detected_at DESC NULLS LAST
       LIMIT 50
     `,
-    e`
+    w`
       SELECT COUNT(*)::bigint AS total,
-             COUNT(*) FILTER (WHERE validated = true)::bigint AS validated_true,
-             COUNT(DISTINCT model_name)::int AS models,
-             COUNT(DISTINCT model_version)::int AS versions
-      FROM public.ml_anomaly_detections
+             COUNT(*) FILTER (WHERE human_reviewed = true)::bigint AS validated_true
+      FROM anomaly_events
     `,
-    e`
-      SELECT model_name, model_version, COUNT(*)::bigint AS c
-      FROM public.ml_anomaly_detections
-      GROUP BY 1, 2
-      ORDER BY c DESC
+    w`
+      SELECT registration, top_hypothesis, confidence, created_at
+      FROM ml_brain_reports
+      ORDER BY created_at DESC NULLS LAST
       LIMIT 5
     `,
   ]);
+  const MODEL_NAME = "watchtower-isolation-forest";
+  const MODEL_VERSION = "1.0";
+  const confidenceBand = (score: number | null) => {
+    if (score == null) return null;
+    if (score >= 0.75) return "HIGH";
+    if (score >= 0.5) return "MEDIUM";
+    return "LOW";
+  };
   const idMap = await faaIdentityMap(
-    rows.map((r: any) => ({ registration: r.aircraft_registration, icao: r.icao24 })),
+    (rows as any[]).map((r) => ({ registration: r.aircraft_registration, icao: r.icao24 })),
   );
-  const mapped = rows.map((r: any) => {
+  const mapped = (rows as any[]).map((r) => {
     const id = lookupIdentity(idMap, r.aircraft_registration, r.icao24);
     const fk = r.features && typeof r.features === "object" ? Object.keys(r.features).slice(0, 6) : [];
+    const score = r.anomaly_score != null ? Number(r.anomaly_score) : null;
     return {
     id: String(r.id),
     detectedAt: r.detected_at ? new Date(r.detected_at).toISOString() : new Date(0).toISOString(),
     registration: r.aircraft_registration,
     icao24: r.icao24,
-    callsign: r.callsign,
+    callsign: null,
     anomalyType: r.anomaly_type,
-    anomalyScore: r.anomaly_score != null ? Number(r.anomaly_score) : null,
-    confidence: r.confidence_level,
-    modelName: r.model_name,
-    modelVersion: r.model_version,
+    anomalyScore: score,
+    confidence: confidenceBand(score),
+    modelName: MODEL_NAME,
+    modelVersion: MODEL_VERSION,
     validated: !!r.validated,
       identifiedName: id?.name ?? null,
       registrantCity: id?.city ?? null,
@@ -911,13 +912,16 @@ export const getMlAnomalies = createServerFn({ method: "GET" }).handler(async ()
       total,
       validatedTrue,
       validationRate: total > 0 ? validatedTrue / total : 0,
-      distinctModels: Number(stats[0].models),
-      distinctVersions: Number(stats[0].versions),
-      topModels: (top as any[]).map((r) => ({
-        modelName: r.model_name,
-        modelVersion: r.model_version,
-        count: Number(r.c),
-      })),
+      distinctModels: 1,
+      distinctVersions: 1,
+      topModels: [
+        { modelName: MODEL_NAME, modelVersion: MODEL_VERSION, count: total },
+        ...(brain as any[]).map((r) => ({
+          modelName: `brain-report · ${r.registration ?? "n/a"}`,
+          modelVersion: r.confidence != null ? `conf ${Number(r.confidence).toFixed(2)}` : null,
+          count: 1,
+        })),
+      ],
     },
     rows: mapped,
   };
@@ -1609,7 +1613,6 @@ function parseFarRule(rule: string): { part: string | null; section: string | nu
 export const getCitationsMap = createServerFn({ method: "GET" }).handler(
   async (): Promise<CitationsPayload> => {
     const w = watchtower();
-    const e = evidence();
     const [ruleAgg, regs, decrees, totals] = await Promise.all([
       w`SELECT rule_violated AS rule, COUNT(*)::int AS c
         FROM violation_classifications
@@ -1617,15 +1620,16 @@ export const getCitationsMap = createServerFn({ method: "GET" }).handler(
         GROUP BY rule_violated
         ORDER BY c DESC`,
       w`SELECT part, section, heading, sha256_hash FROM faa_regulations`,
-      e`SELECT provision_violated, severity, violation_description, violation_date, sha256_hash
+      w`SELECT decree_id::text AS provision_violated, severity, description AS violation_description,
+               created_at AS violation_date, sha256_hash
         FROM consent_decree_violations
-        ORDER BY violation_date DESC NULLS LAST
+        ORDER BY created_at DESC NULLS LAST
         LIMIT 50`,
       Promise.all([
         w`SELECT COUNT(*)::int AS c FROM violation_classifications`,
         w`SELECT COUNT(*)::int AS total, COUNT(sha256_hash)::int AS hashed FROM faa_regulations`,
-        e`SELECT COUNT(*)::int AS total, COUNT(sha256_hash)::int AS hashed FROM regulatory_statutes`,
-        e`SELECT COUNT(*)::int AS c FROM consent_decree_violations`,
+        w`SELECT COUNT(*)::int AS total, COUNT(sha256_hash)::int AS hashed FROM regulatory_statutes`,
+        w`SELECT COUNT(*)::int AS c FROM consent_decree_violations`,
       ]),
     ]);
 

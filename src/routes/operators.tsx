@@ -189,7 +189,7 @@ function Operators() {
             </table>
           </div>
           <p className="mt-3 text-xs opacity-70 font-mono">
-            Source: <code>canonical_operator_profiles</code>. Flags derive from public records (FAA, SoS filings).
+            Source: <code>aircraft_profiles</code> ⨝ <code>faa_master</code> (quiet-math). Flags derive from public records (FAA registry).
           </p>
         </div>
       </section>

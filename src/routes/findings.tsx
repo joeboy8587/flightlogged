@@ -1,5 +1,175 @@
---- a/src/routes/findings.tsx
-+++ b/src/routes/findings.tsx
-@@
--import { zodValidator, fallback } from "@tanstack/zod-adapter";
-+import { zodValidator, fallback } from "@/lib/zod-adapter";
+import { createFileRoute } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
+import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
+import { zodValidator, fallback } from "@/lib/zod-adapter";
+import { z } from "zod";
+import { useMemo } from "react";
+import { SiteHeader } from "@/components/site-header";
+import { SiteFooter } from "@/components/site-footer";
+import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
+import { breadcrumbScript } from "@/lib/breadcrumbs";
+import { getAnomalies } from "@/lib/watchtower.functions";
+import { DeadMansCurveTiles, dmcQO } from "@/components/dead-mans-curve";
+
+const anomQO = queryOptions({ queryKey: ["anomalies"], queryFn: () => getAnomalies() });
+
+const crumbs = [{ label: "Home", href: "/" }, { label: "Findings" }];
+
+const findingsSearch = z.object({
+  county: fallback(z.enum(["all", "kern"]), "all").default("all"),
+});
+
+export const Route = createFileRoute("/findings")({
+  validateSearch: zodValidator(findingsSearch),
+  head: () => ({
+    meta: [
+      { title: "Findings Archive — The Architecture of Never" },
+      { name: "description", content: "Documented airspace anomaly events. Each finding is SHA-256 hashed, timestamped, and Merkle-chained." },
+      { property: "og:title", content: "Findings — Architecture of Never" },
+      { property: "og:description", content: "Math-chosen anomaly events with chain of custody." },
+      { property: "og:url", content: "https://flightlogged.lovable.app/findings" },
+    ],
+    links: [{ rel: "canonical", href: "https://flightlogged.lovable.app/findings" }],
+    scripts: [
+      breadcrumbScript(crumbs),
+      {
+      type: "application/ld+json",
+      children: JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "CollectionPage",
+        name: "Findings Archive — The Architecture of Never",
+        description: "Documented airspace anomaly events. Each finding is statistically flagged after a 48-hour baseline, SHA-256 hashed, timestamped, and Merkle-chained.",
+        url: "https://flightlogged.lovable.app/findings",
+        isPartOf: { "@type": "WebSite", name: "The Architecture of Never", url: "https://flightlogged.lovable.app" },
+        about: { "@type": "Thing", name: "Civilian airspace accountability findings" },
+      }),
+      },
+    ],
+  }),
+  loader: ({ context }) => Promise.all([
+    context.queryClient.ensureQueryData(anomQO),
+    context.queryClient.ensureQueryData(dmcQO),
+  ]),
+  component: Findings,
+  errorComponent: ({ reset }) => (
+    <div className="min-h-screen bg-paper"><SiteHeader />
+      <div className="max-w-[1400px] mx-auto px-4 py-20">
+        <h1 className="text-5xl mb-4">Archive unreachable.</h1>
+        <p className="font-mono text-sm mb-6">Findings temporarily unavailable. Please try again.</p>
+        <button onClick={reset} className="brutal-border px-5 py-3 label-stamp bg-warning">Retry</button>
+      </div></div>
+  ),
+});
+
+function sevColor(score: number | null) {
+  if (score == null) return "";
+  if (score >= 0.8) return "bg-alert text-paper";
+  if (score >= 0.5) return "bg-warning text-ink";
+  return "bg-ink text-paper";
+}
+
+function Findings() {
+  const { data: anom } = useSuspenseQuery(anomQO);
+  const { county } = Route.useSearch();
+  const visible = useMemo(
+    () => (county === "kern" ? anom.filter((a) => a.county && /kern/i.test(a.county)) : anom),
+    [anom, county],
+  );
+  return (
+    <div className="min-h-screen bg-paper text-ink">
+      <SiteHeader />
+      <SiteBreadcrumbs items={crumbs} />
+      <section className="border-b-4 border-ink">
+        <div className="max-w-[1400px] mx-auto px-4 py-16">
+          <div className="label-stamp text-alert mb-2">Findings Archive</div>
+          <h1 className="text-5xl sm:text-7xl mb-6">Math chose these. Not us.</h1>
+          <p className="max-w-3xl text-lg">
+            Each entry was flagged by the statistical model after the baseline period.
+            Each row is cryptographically hashed, timestamped, and chained.
+            We didn't pick them. The deviation from normal did.
+          </p>
+          <div className="mt-6">
+            <Link to="/reports" className="label-stamp bg-ink text-paper px-4 py-3 brutal-shadow-warning hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all inline-block">
+              Read the full reports (4 PDFs) →
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <DeadMansCurveTiles />
+
+      <section className="border-b-4 border-ink">
+        <div className="max-w-[1400px] mx-auto px-4 py-16">
+          <div className="flex flex-wrap items-end justify-between gap-3 mb-6">
+            <h2 className="text-4xl sm:text-5xl">Anomaly events</h2>
+            <div className="flex gap-2">
+              <Link
+                to="/findings"
+                search={{ county: "all" }}
+                className={`label-stamp brutal-border px-3 py-2 ${county === "all" ? "bg-warning text-ink" : "bg-paper hover:bg-warning/40"}`}
+              >
+                All counties <span className="opacity-60">· {anom.length}</span>
+              </Link>
+              <Link
+                to="/findings"
+                search={{ county: "kern" }}
+                className={`label-stamp brutal-border px-3 py-2 ${county === "kern" ? "bg-warning text-ink" : "bg-paper hover:bg-warning/40"}`}
+              >
+                Kern only <span className="opacity-60">· {anom.filter((a) => a.county && /kern/i.test(a.county)).length}</span>
+              </Link>
+            </div>
+          </div>
+          <div className="space-y-3">
+            {visible.length === 0 && <p className="font-mono text-sm opacity-60">No anomalies for this filter.</p>}
+            {visible.map((a) => (
+              <article key={a.id} className="brutal-border p-5 bg-paper">
+                <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
+                  <div>
+                    <div className="label-stamp opacity-60 mb-1">{new Date(a.detectedAt).toLocaleString()}</div>
+                    <h3 className="text-2xl">{a.anomalyType} · {a.registration || a.icao}</h3>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {a.anomalyScore != null && <span className={`label-stamp px-2 py-1 ${sevColor(a.anomalyScore)}`}>SCORE {a.anomalyScore.toFixed(2)}</span>}
+                    {a.altitude != null && <span className="label-stamp brutal-border px-2 py-1 font-mono">{a.altitude} ft</span>}
+                    {a.county && (
+                      <span className={`label-stamp brutal-border px-2 py-1 ${/kern/i.test(a.county) ? "bg-warning text-ink" : ""}`}>
+                        {a.county}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {a.reasoning && <p className="text-sm">{a.reasoning}</p>}
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t-4 border-ink bg-paper">
+        <div className="max-w-[1400px] mx-auto px-4 py-12">
+          <div className="label-stamp bg-ink text-paper inline-block px-2 py-1 mb-4">See also · Public datasets</div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <Link to="/violations" className="brutal-border p-4 bg-paper hover:bg-warning/40">
+              <div className="font-display text-2xl mb-1">Violations Log</div>
+              <p className="text-xs font-mono opacity-70">Hashed airspace violations w/ severity & coordinates.</p>
+            </Link>
+            <Link to="/threat-index" className="brutal-border p-4 bg-paper hover:bg-warning/40">
+              <div className="font-display text-2xl mb-1">Threat Index</div>
+              <p className="text-xs font-mono opacity-70">WTI tier breakdown + top scoring events.</p>
+            </Link>
+            <Link to="/operators" className="brutal-border p-4 bg-paper hover:bg-warning/40">
+              <div className="font-display text-2xl mb-1">Operators</div>
+              <p className="text-xs font-mono opacity-70">Resolved operators with shell-company links.</p>
+            </Link>
+            <Link to="/ml-detections" className="brutal-border p-4 bg-paper hover:bg-warning/40">
+              <div className="font-display text-2xl mb-1">ML Detections</div>
+              <p className="text-xs font-mono opacity-70">Model-flagged anomalies w/ disclosed lineage.</p>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <SiteFooter />
+    </div>
+  );
+}

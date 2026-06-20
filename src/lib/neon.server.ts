@@ -36,14 +36,10 @@ export function watchtower() {
 }
 
 export function evidence() {
-  const url = process.env.NEON_EVIDENCE_URL;
-  if (!url) {
-    if (process.env.NODE_ENV !== "production") return makeStub("evidence");
-    throw new Error("NEON_EVIDENCE_URL not set");
-  }
-  try {
-    return neon(url);
-  } catch (err) {
-    throw new Error(`Failed to create Neon client for evidence (${String(url)}): ${String(err)}`);
-  }
+  // DEPRECATED. The legacy "lucky-wildflower" evidence DB has been retired.
+  // Every site page must read from the unbiased "quiet-math" watchtower DB.
+  // Any leftover caller is silently redirected so it cannot leak biased data.
+  // To find leaks, grep for evidence() and migrate to watchtower().
+  console.warn("evidence() is deprecated — redirecting to watchtower() (quiet-math).");
+  return watchtower();
 }
