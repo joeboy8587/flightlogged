@@ -438,7 +438,7 @@ WTI                       = 91.12`}</pre>
             })}
           </div>
           <p className="mt-3 text-xs opacity-70 font-mono">
-            Source: <code>threat_tiers</code>. Component values are 0–100; final WTI = Σ(component × weight).
+            Source: <code>anomaly_events</code> (quiet-math). WTI = anomaly_score × 100; tier bands 25 / 50 / 75.
             Every row carries the method version so a third party can reproduce the score.
           </p>
         </div>

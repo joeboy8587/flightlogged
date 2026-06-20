@@ -198,7 +198,7 @@ function Violations() {
             </table>
           </div>
           <p className="mt-3 text-xs opacity-70 font-mono">
-            Source: <code>sentinel_violations</code>. Each hash is reproducible from the underlying record.
+            Source: <code>violation_classifications</code> (quiet-math). Each hash is reproducible from the underlying record.
           </p>
         </div>
       </section>

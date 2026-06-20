@@ -176,7 +176,7 @@ function MlDetections() {
             </table>
           </div>
           <p className="mt-3 text-xs opacity-70 font-mono">
-            Source: <code>ml_anomaly_detections</code>. Model lineage is part of the record.
+            Source: <code>anomaly_events</code> (quiet-math). Model lineage published via <code>ml_brain_reports</code>.
           </p>
         </div>
       </section>
