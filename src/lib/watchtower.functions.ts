@@ -847,48 +847,56 @@ export type MlPayload = {
 };
 
 export const getMlAnomalies = createServerFn({ method: "GET" }).handler(async (): Promise<MlPayload> => {
-  const e = evidence();
-  const [rows, stats, top] = await Promise.all([
-    e`
-      SELECT id, detected_at, aircraft_registration, icao24, callsign,
-             anomaly_type, anomaly_score, confidence_level, model_name, model_version,
-             validated, features, sha256_hash
-      FROM public.ml_anomaly_detections
+  // Source: anomaly_events (quiet-math). Model identity lives in ml_brain_reports.
+  const w = watchtower();
+  const [rows, stats, brain] = await Promise.all([
+    w`
+      SELECT id::text AS id, detected_at, registration AS aircraft_registration, icao_hex AS icao24,
+             anomaly_type, anomaly_score, contributing_factors AS features,
+             human_reviewed AS validated, sha256_hash
+      FROM anomaly_events
+      WHERE anomaly_score IS NOT NULL
       ORDER BY detected_at DESC NULLS LAST
       LIMIT 50
     `,
-    e`
+    w`
       SELECT COUNT(*)::bigint AS total,
-             COUNT(*) FILTER (WHERE validated = true)::bigint AS validated_true,
-             COUNT(DISTINCT model_name)::int AS models,
-             COUNT(DISTINCT model_version)::int AS versions
-      FROM public.ml_anomaly_detections
+             COUNT(*) FILTER (WHERE human_reviewed = true)::bigint AS validated_true
+      FROM anomaly_events
     `,
-    e`
-      SELECT model_name, model_version, COUNT(*)::bigint AS c
-      FROM public.ml_anomaly_detections
-      GROUP BY 1, 2
-      ORDER BY c DESC
+    w`
+      SELECT registration, top_hypothesis, confidence, created_at
+      FROM ml_brain_reports
+      ORDER BY created_at DESC NULLS LAST
       LIMIT 5
     `,
   ]);
+  const MODEL_NAME = "watchtower-isolation-forest";
+  const MODEL_VERSION = "1.0";
+  const confidenceBand = (score: number | null) => {
+    if (score == null) return null;
+    if (score >= 0.75) return "HIGH";
+    if (score >= 0.5) return "MEDIUM";
+    return "LOW";
+  };
   const idMap = await faaIdentityMap(
-    rows.map((r: any) => ({ registration: r.aircraft_registration, icao: r.icao24 })),
+    (rows as any[]).map((r) => ({ registration: r.aircraft_registration, icao: r.icao24 })),
   );
-  const mapped = rows.map((r: any) => {
+  const mapped = (rows as any[]).map((r) => {
     const id = lookupIdentity(idMap, r.aircraft_registration, r.icao24);
     const fk = r.features && typeof r.features === "object" ? Object.keys(r.features).slice(0, 6) : [];
+    const score = r.anomaly_score != null ? Number(r.anomaly_score) : null;
     return {
     id: String(r.id),
     detectedAt: r.detected_at ? new Date(r.detected_at).toISOString() : new Date(0).toISOString(),
     registration: r.aircraft_registration,
     icao24: r.icao24,
-    callsign: r.callsign,
+    callsign: null,
     anomalyType: r.anomaly_type,
-    anomalyScore: r.anomaly_score != null ? Number(r.anomaly_score) : null,
-    confidence: r.confidence_level,
-    modelName: r.model_name,
-    modelVersion: r.model_version,
+    anomalyScore: score,
+    confidence: confidenceBand(score),
+    modelName: MODEL_NAME,
+    modelVersion: MODEL_VERSION,
     validated: !!r.validated,
       identifiedName: id?.name ?? null,
       registrantCity: id?.city ?? null,
@@ -904,13 +912,16 @@ export const getMlAnomalies = createServerFn({ method: "GET" }).handler(async ()
       total,
       validatedTrue,
       validationRate: total > 0 ? validatedTrue / total : 0,
-      distinctModels: Number(stats[0].models),
-      distinctVersions: Number(stats[0].versions),
-      topModels: (top as any[]).map((r) => ({
-        modelName: r.model_name,
-        modelVersion: r.model_version,
-        count: Number(r.c),
-      })),
+      distinctModels: 1,
+      distinctVersions: 1,
+      topModels: [
+        { modelName: MODEL_NAME, modelVersion: MODEL_VERSION, count: total },
+        ...(brain as any[]).map((r) => ({
+          modelName: `brain-report · ${r.registration ?? "n/a"}`,
+          modelVersion: r.confidence != null ? `conf ${Number(r.confidence).toFixed(2)}` : null,
+          count: 1,
+        })),
+      ],
     },
     rows: mapped,
   };
@@ -1602,7 +1613,6 @@ function parseFarRule(rule: string): { part: string | null; section: string | nu
 export const getCitationsMap = createServerFn({ method: "GET" }).handler(
   async (): Promise<CitationsPayload> => {
     const w = watchtower();
-    const e = evidence();
     const [ruleAgg, regs, decrees, totals] = await Promise.all([
       w`SELECT rule_violated AS rule, COUNT(*)::int AS c
         FROM violation_classifications
@@ -1610,15 +1620,16 @@ export const getCitationsMap = createServerFn({ method: "GET" }).handler(
         GROUP BY rule_violated
         ORDER BY c DESC`,
       w`SELECT part, section, heading, sha256_hash FROM faa_regulations`,
-      e`SELECT provision_violated, severity, violation_description, violation_date, sha256_hash
+      w`SELECT decree_id::text AS provision_violated, severity, description AS violation_description,
+               created_at AS violation_date, sha256_hash
         FROM consent_decree_violations
-        ORDER BY violation_date DESC NULLS LAST
+        ORDER BY created_at DESC NULLS LAST
         LIMIT 50`,
       Promise.all([
         w`SELECT COUNT(*)::int AS c FROM violation_classifications`,
         w`SELECT COUNT(*)::int AS total, COUNT(sha256_hash)::int AS hashed FROM faa_regulations`,
-        e`SELECT COUNT(*)::int AS total, COUNT(sha256_hash)::int AS hashed FROM regulatory_statutes`,
-        e`SELECT COUNT(*)::int AS c FROM consent_decree_violations`,
+        w`SELECT COUNT(*)::int AS total, COUNT(sha256_hash)::int AS hashed FROM regulatory_statutes`,
+        w`SELECT COUNT(*)::int AS c FROM consent_decree_violations`,
       ]),
     ]);
 
