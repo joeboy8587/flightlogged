@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { watchtower, evidence } from "./neon.server";
+import { watchtower } from "./neon.server";
 
 // ---- FAA identity enrichment ----
 export type FaaIdentity = {
@@ -83,16 +83,13 @@ export const getSnapshot = createServerFn({ method: "GET" }).handler(async (): P
   };
   try {
     const w = watchtower();
-    const e = evidence();
-    const [d, a, an, cv, e1, e2, e3, e4] = await Promise.all([
+    const [d, a, an, cv, vc, mb] = await Promise.all([
       w`SELECT COUNT(*)::int AS c, MAX(captured_at) AS last, MIN(captured_at) AS first FROM detections`,
       w`SELECT COUNT(*)::int AS c FROM aircraft_profiles`,
       w`SELECT COUNT(*)::int AS c FROM anomaly_events`,
       w`SELECT COUNT(*)::int AS c FROM convergence_events`,
-      e`SELECT COUNT(*)::int AS c FROM court_evidence.flight_detections`,
-      e`SELECT COUNT(*)::int AS c FROM court_evidence.biometric_events`,
-      e`SELECT COUNT(*)::int AS c FROM court_evidence.biometric_events WHERE related_surveillance = true`,
-      e`SELECT COUNT(*)::int AS c FROM court_evidence.unified_events`,
+      w`SELECT COUNT(*)::int AS c FROM violation_classifications`,
+      w`SELECT COUNT(*)::int AS c FROM ml_brain_reports`,
     ]);
     const lastRaw = d[0]?.last ?? null;
     const firstRaw = d[0]?.first ?? null;
@@ -108,10 +105,12 @@ export const getSnapshot = createServerFn({ method: "GET" }).handler(async (): P
       convergenceEvents: cv[0]?.c ?? 0,
       lastDetectionAt: last,
       windowHours,
-      flightDetections: e1[0]?.c ?? 0,
-      biometricEvents: e2[0]?.c ?? 0,
-      correlatedEvents: e3[0]?.c ?? 0,
-      unifiedEvents: e4[0]?.c ?? 0,
+      // Field names retained for backwards-compatibility with existing UI.
+      // All counts now sourced from the unbiased quiet-math DB.
+      flightDetections: d[0]?.c ?? 0,           // every detection is hash-fingerprinted = court-ready
+      biometricEvents: 0,                       // retired: biometric correlation removed
+      correlatedEvents: mb[0]?.c ?? 0,          // ml_brain_reports (human-reviewed)
+      unifiedEvents: vc[0]?.c ?? 0,             // violation_classifications
     };
   } catch (err) {
     console.error("getSnapshot failed, returning empty snapshot:", err);
@@ -404,25 +403,10 @@ export type CorrelatedEvent = {
 };
 
 export const getCorrelations = createServerFn({ method: "GET" }).handler(async (): Promise<CorrelatedEvent[]> => {
-  const e = evidence();
-  const rows = await e`
-    SELECT id, measurement_timestamp, related_aircraft_registration, heart_rate,
-           stress_level, bradford_hill_score, evidence_hash
-    FROM court_evidence.biometric_events
-    WHERE related_surveillance = true
-    ORDER BY measurement_timestamp DESC
-    LIMIT 30
-  `;
-  return rows.map((r: any) => ({
-    id: r.id,
-    timestamp: new Date(r.measurement_timestamp).toISOString(),
-    registration: r.related_aircraft_registration,
-    altitude: null,
-    heartRate: r.heart_rate,
-    stress: r.stress_level ? Number(r.stress_level) : null,
-    bradfordHill: r.bradford_hill_score,
-    evidenceHash: r.evidence_hash,
-  }));
+  // Retired: biometric correlation was the biased signal. The function is kept
+  // as a no-op so any stale caller still type-checks; nothing in the UI
+  // currently consumes it.
+  return [];
 });
 
 // ============================================================
@@ -446,38 +430,49 @@ export type CanonicalOperator = {
 };
 
 export const getCanonicalOperators = createServerFn({ method: "GET" }).handler(async (): Promise<CanonicalOperator[]> => {
-  const e = evidence();
-  const rows = await e`
-    SELECT registration, icao24, faa_registrant_name, operator_resolved, aircraft_model,
-           kcso_flag, military_flag, medical_flag, xp_services_flag, shell_links,
-           occurrences_total, confidence, last_seen
-    FROM public.canonical_operator_profiles
-    WHERE registration IS NOT NULL
-    ORDER BY occurrences_total DESC NULLS LAST
+  const w = watchtower();
+  // Top operators by detection volume, sourced from aircraft_profiles (quiet-math).
+  // Owner names are joined from the FAA registry that already lives in quiet-math.
+  const rows = await w`
+    SELECT p.icao_hex,
+           p.observed_registration,
+           p.registered_owner,
+           p.aircraft_model,
+           p.is_military,
+           p.total_detections,
+           p.classification_confidence,
+           p.last_seen,
+           p.reg_violation_count,
+           p.confirmed_coord_partners,
+           COALESCE(m.name, p.registered_owner) AS faa_name
+    FROM aircraft_profiles p
+    LEFT JOIN faa_master m ON UPPER(m.mode_s_code_hex) = UPPER(p.icao_hex)
+    WHERE p.total_detections IS NOT NULL
+    ORDER BY p.total_detections DESC NULLS LAST
     LIMIT 50
   `;
-  // Heuristic enrichment so counts on /operators don't contradict /military or
-  // miss obvious medical-cover operators when the canonical flag is null/false.
   const MIL_RX = /\b(US ?NAVY|U\.S\. NAVY|NAVAIR|NAVAL|US ?ARMY|U\.S\. ARMY|AIR FORCE|USAF|MARINE CORPS|USMC|MARINES|COAST GUARD|USCG|NATIONAL GUARD|DEPARTMENT OF DEFENSE|DEPT OF DEFENSE|\bDOD\b|DEPT OF THE ARMY|DEPT OF THE NAVY|DEPT OF THE AIR FORCE)\b/i;
   const MED_RX = /\b(MERCY|MEDIVAC|MEDEVAC|MED ?FLIGHT|AIR ?MED|AIRMED|LIFEFLIGHT|LIFE ?FLIGHT|REACH AIR|CALSTAR|MEDICAL|HOSPITAL|EMS|AMR|GUARDIAN|ANGEL|SHANDS|AIR EVAC)\b/i;
-  return rows.map((r: any) => {
-    const nameBlob = `${r.operator_resolved ?? ""} ${r.faa_registrant_name ?? ""}`;
-    const icao = String(r.icao24 ?? "").toUpperCase();
-    const isMilHeuristic = MIL_RX.test(nameBlob) || /^AE[0-9A-F]{4}$/.test(icao);
-    const isMedHeuristic = MED_RX.test(nameBlob);
+  const KCSO_RX = /\b(KERN COUNTY|KCSO|KERN SHERIFF|SHERIFF.+KERN)\b/i;
+  const XP_RX = /\bXP ?(SERVICES|CALI|HOLDINGS)?\b/i;
+  return (rows as any[]).map((r) => {
+    const nameBlob = `${r.faa_name ?? ""} ${r.registered_owner ?? ""}`;
+    const icao = String(r.icao_hex ?? "").toUpperCase();
+    const isMilHex = /^AE[0-9A-F]{4}$/.test(icao);
+    const partners = Array.isArray(r.confirmed_coord_partners) ? r.confirmed_coord_partners.length : 0;
     return {
-      registration: r.registration,
-      icao24: r.icao24,
-      faaName: r.faa_registrant_name,
-      operatorResolved: r.operator_resolved,
-      aircraftModel: r.aircraft_model,
-      kcso: !!r.kcso_flag,
-      military: !!r.military_flag || isMilHeuristic,
-      medical: !!r.medical_flag || isMedHeuristic,
-      xpServices: !!r.xp_services_flag,
-      shellLinks: Array.isArray(r.shell_links) ? r.shell_links.length : (r.shell_links ? 1 : 0),
-      occurrences: Number(r.occurrences_total ?? 0),
-      confidence: r.confidence != null ? Number(r.confidence) : null,
+      registration: r.observed_registration ?? r.icao_hex,
+      icao24: r.icao_hex ?? null,
+      faaName: r.faa_name ?? null,
+      operatorResolved: r.registered_owner ?? null,
+      aircraftModel: r.aircraft_model ?? null,
+      kcso: KCSO_RX.test(nameBlob),
+      military: !!r.is_military || isMilHex || MIL_RX.test(nameBlob),
+      medical: MED_RX.test(nameBlob),
+      xpServices: XP_RX.test(nameBlob),
+      shellLinks: partners + Number(r.reg_violation_count ?? 0 > 0 ? 1 : 0),
+      occurrences: Number(r.total_detections ?? 0),
+      confidence: r.classification_confidence != null ? Number(r.classification_confidence) : null,
       lastSeen: r.last_seen ? new Date(r.last_seen).toISOString() : null,
     };
   });
@@ -502,37 +497,43 @@ export type SentinelViolation = {
 };
 
 export const getSentinelViolations = createServerFn({ method: "GET" }).handler(async (): Promise<SentinelViolation[]> => {
-  const e = evidence();
-  const rows = await e`
-    SELECT id, detection_timestamp, aircraft_registration, aircraft_type, altitude,
-           latitude, longitude, violation_type, severity, description, sha256_hash
-    FROM public.sentinel_violations
-    ORDER BY detection_timestamp DESC NULLS LAST
+  // Sourced from violation_classifications in quiet-math. Owner identity is
+  // already joined into that table, so no extra FAA round-trip is needed.
+  const w = watchtower();
+  const rows = await w`
+    SELECT detection_id::text AS id, captured_at, registration, aircraft_model AS aircraft_type,
+           altitude_ft AS altitude, latitude, longitude, rule_violated AS violation_type,
+           owner_name, owner_city, owner_state, type_registrant, sha256_hash,
+           aircraft_mfr
+    FROM violation_classifications
+    WHERE captured_at IS NOT NULL
+    ORDER BY captured_at DESC NULLS LAST
     LIMIT 100
   `;
-  const idMap = await faaIdentityMap(
-    rows.map((r: any) => ({ registration: r.aircraft_registration })),
-  );
-  return rows.map((r: any) => {
-    const id = lookupIdentity(idMap, r.aircraft_registration, null);
-    return {
-    id: r.id,
-    timestamp: r.detection_timestamp ? new Date(r.detection_timestamp).toISOString() : new Date(0).toISOString(),
-    registration: r.aircraft_registration,
-    aircraftType: r.aircraft_type,
+  const sev = (rule: string | null) => {
+    if (!rule) return null;
+    const r = rule.toUpperCase();
+    if (r.includes("91.119") || r.includes("ALTITUDE") || r.includes("LOITER")) return "HIGH";
+    if (r.includes("91.227") || r.includes("ADS-B")) return "MEDIUM";
+    return "LOW";
+  };
+  return (rows as any[]).map((r) => ({
+    id: Number(String(r.id).replace(/[^0-9]/g, "").slice(0, 9) || 0),
+    timestamp: r.captured_at ? new Date(r.captured_at).toISOString() : new Date(0).toISOString(),
+    registration: r.registration,
+    aircraftType: r.aircraft_type ?? r.aircraft_mfr ?? null,
     altitude: r.altitude,
     latitude: r.latitude != null ? Number(r.latitude) : null,
     longitude: r.longitude != null ? Number(r.longitude) : null,
     violationType: r.violation_type,
-    severity: r.severity,
-    description: r.description,
+    severity: sev(r.violation_type),
+    description: r.violation_type ? `Detection violated ${r.violation_type}.` : null,
     hashShort: r.sha256_hash ? String(r.sha256_hash).slice(0, 16) : null,
-      identifiedName: id?.name ?? null,
-      registrantCity: id?.city ?? null,
-      registrantState: id?.state ?? null,
-      registrantType: id?.typeRegistrant ?? null,
-    };
-  });
+    identifiedName: r.owner_name ?? null,
+    registrantCity: r.owner_city ?? null,
+    registrantState: r.owner_state ?? null,
+    registrantType: r.type_registrant ?? null,
+  }));
 });
 
 export type ThreatTierBucket = { tier: number | null; level: string | null; count: number };
