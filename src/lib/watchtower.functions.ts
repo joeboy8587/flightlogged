@@ -2133,3 +2133,307 @@ export const getConvergenceEvent = createServerFn({ method: "GET" }).handler(
 );
 
 // trailing newline kept intentionally
+
+// ============================================================
+// MOSAIC LAYERS (Kern-centered surveillance mosaic)
+// All read quiet-math. 1km² tiles via 0.01° binning.
+// ============================================================
+
+const KERN_BOUNDS = { minLat: 34.8, maxLat: 36.2, minLon: -120.2, maxLon: -117.6 };
+
+function sinceClause(sinceHours: number | null): string {
+  if (!sinceHours || sinceHours <= 0) return "";
+  return `AND captured_at >= NOW() - INTERVAL '${Math.floor(sinceHours)} hours'`;
+}
+
+export type MosaicDensityTile = {
+  lat: number; lon: number; pings: number; uniqueAircraft: number;
+  avgAltitude: number | null; belowFloor: number;
+};
+export const getDensityTiles = createServerFn({ method: "GET" })
+  .inputValidator((d: { sinceHours?: number | null } | undefined) => d ?? {})
+  .handler(async ({ data }): Promise<MosaicDensityTile[]> => {
+    const w = watchtower();
+    const sh = data?.sinceHours ?? null;
+    try {
+      const rows = sh && sh > 0
+        ? await w`
+          SELECT FLOOR(latitude * 100)/100.0 AS lat,
+                 FLOOR(longitude * 100)/100.0 AS lon,
+                 COUNT(*)::int AS pings,
+                 COUNT(DISTINCT icao_hex)::int AS unique_aircraft,
+                 AVG(altitude_ft)::float AS avg_alt,
+                 COUNT(*) FILTER (WHERE altitude_ft < 500 AND on_ground = false)::int AS below_floor
+          FROM detections
+          WHERE latitude BETWEEN ${KERN_BOUNDS.minLat} AND ${KERN_BOUNDS.maxLat}
+            AND longitude BETWEEN ${KERN_BOUNDS.minLon} AND ${KERN_BOUNDS.maxLon}
+            AND captured_at >= NOW() - (${Math.floor(sh)}::int * INTERVAL '1 hour')
+          GROUP BY 1, 2
+          HAVING COUNT(*) >= 5
+          ORDER BY pings DESC
+          LIMIT 800`
+        : await w`
+          SELECT FLOOR(latitude * 100)/100.0 AS lat,
+                 FLOOR(longitude * 100)/100.0 AS lon,
+                 COUNT(*)::int AS pings,
+                 COUNT(DISTINCT icao_hex)::int AS unique_aircraft,
+                 AVG(altitude_ft)::float AS avg_alt,
+                 COUNT(*) FILTER (WHERE altitude_ft < 500 AND on_ground = false)::int AS below_floor
+          FROM detections
+          WHERE latitude BETWEEN ${KERN_BOUNDS.minLat} AND ${KERN_BOUNDS.maxLat}
+            AND longitude BETWEEN ${KERN_BOUNDS.minLon} AND ${KERN_BOUNDS.maxLon}
+          GROUP BY 1, 2
+          HAVING COUNT(*) >= 5
+          ORDER BY pings DESC
+          LIMIT 800`;
+      return (rows as any[]).map((r) => ({
+        lat: Number(r.lat), lon: Number(r.lon),
+        pings: Number(r.pings), uniqueAircraft: Number(r.unique_aircraft),
+        avgAltitude: r.avg_alt != null ? Math.round(Number(r.avg_alt)) : null,
+        belowFloor: Number(r.below_floor),
+      }));
+    } catch (err) { console.error("getDensityTiles failed:", err); return []; }
+  });
+
+export type MosaicViolationTile = {
+  lat: number; lon: number; events: number; uniqueAircraft: number;
+  criticalCount: number; maxScore: number; dominantType: string;
+};
+export const getViolationTiles = createServerFn({ method: "GET" })
+  .inputValidator((d: { sinceHours?: number | null } | undefined) => d ?? {})
+  .handler(async ({ data }): Promise<MosaicViolationTile[]> => {
+    const w = watchtower();
+    const sh = data?.sinceHours ?? null;
+    try {
+      // Join anomaly_events to detections on icao_hex; use nearest detection by captured_at within 5 min.
+      const rows = sh && sh > 0
+        ? await w`
+          WITH ae AS (
+            SELECT a.anomaly_type, a.anomaly_score, a.icao_hex, a.detected_at
+            FROM anomaly_events a
+            WHERE a.anomaly_score IS NOT NULL
+              AND a.detected_at >= NOW() - (${Math.floor(sh)}::int * INTERVAL '1 hour')
+          ),
+          located AS (
+            SELECT ae.anomaly_type, ae.anomaly_score, d.latitude, d.longitude, ae.icao_hex
+            FROM ae
+            JOIN LATERAL (
+              SELECT latitude, longitude FROM detections
+              WHERE icao_hex = ae.icao_hex
+                AND captured_at BETWEEN ae.detected_at - INTERVAL '5 minutes' AND ae.detected_at + INTERVAL '5 minutes'
+                AND latitude IS NOT NULL AND longitude IS NOT NULL
+              ORDER BY ABS(EXTRACT(EPOCH FROM (captured_at - ae.detected_at))) ASC
+              LIMIT 1
+            ) d ON true
+          )
+          SELECT FLOOR(latitude * 100)/100.0 AS lat,
+                 FLOOR(longitude * 100)/100.0 AS lon,
+                 COUNT(*)::int AS events,
+                 COUNT(DISTINCT icao_hex)::int AS unique_aircraft,
+                 COUNT(*) FILTER (WHERE anomaly_score >= 0.85)::int AS critical_count,
+                 MAX(anomaly_score)::float AS max_score,
+                 (mode() WITHIN GROUP (ORDER BY anomaly_type)) AS dominant_type
+          FROM located
+          WHERE latitude BETWEEN ${KERN_BOUNDS.minLat} AND ${KERN_BOUNDS.maxLat}
+            AND longitude BETWEEN ${KERN_BOUNDS.minLon} AND ${KERN_BOUNDS.maxLon}
+          GROUP BY 1, 2
+          ORDER BY events DESC
+          LIMIT 500`
+        : await w`
+          WITH ae AS (
+            SELECT a.anomaly_type, a.anomaly_score, a.icao_hex, a.detected_at
+            FROM anomaly_events a
+            WHERE a.anomaly_score IS NOT NULL
+            ORDER BY a.detected_at DESC
+            LIMIT 30000
+          ),
+          located AS (
+            SELECT ae.anomaly_type, ae.anomaly_score, d.latitude, d.longitude, ae.icao_hex
+            FROM ae
+            JOIN LATERAL (
+              SELECT latitude, longitude FROM detections
+              WHERE icao_hex = ae.icao_hex
+                AND captured_at BETWEEN ae.detected_at - INTERVAL '5 minutes' AND ae.detected_at + INTERVAL '5 minutes'
+                AND latitude IS NOT NULL AND longitude IS NOT NULL
+              ORDER BY ABS(EXTRACT(EPOCH FROM (captured_at - ae.detected_at))) ASC
+              LIMIT 1
+            ) d ON true
+          )
+          SELECT FLOOR(latitude * 100)/100.0 AS lat,
+                 FLOOR(longitude * 100)/100.0 AS lon,
+                 COUNT(*)::int AS events,
+                 COUNT(DISTINCT icao_hex)::int AS unique_aircraft,
+                 COUNT(*) FILTER (WHERE anomaly_score >= 0.85)::int AS critical_count,
+                 MAX(anomaly_score)::float AS max_score,
+                 (mode() WITHIN GROUP (ORDER BY anomaly_type)) AS dominant_type
+          FROM located
+          WHERE latitude BETWEEN ${KERN_BOUNDS.minLat} AND ${KERN_BOUNDS.maxLat}
+            AND longitude BETWEEN ${KERN_BOUNDS.minLon} AND ${KERN_BOUNDS.maxLon}
+          GROUP BY 1, 2
+          ORDER BY events DESC
+          LIMIT 500`;
+      return (rows as any[]).map((r) => ({
+        lat: Number(r.lat), lon: Number(r.lon),
+        events: Number(r.events), uniqueAircraft: Number(r.unique_aircraft),
+        criticalCount: Number(r.critical_count),
+        maxScore: Number(r.max_score) || 0,
+        dominantType: r.dominant_type ?? "UNKNOWN",
+      }));
+    } catch (err) { console.error("getViolationTiles failed:", err); return []; }
+  });
+
+export type MosaicTimeCell = { dow: number; hour: number; pings: number; belowFloor: number; aircraft: number };
+export const getTimeOfDayHeat = createServerFn({ method: "GET" }).handler(async (): Promise<MosaicTimeCell[]> => {
+  const w = watchtower();
+  try {
+    const rows = await w`
+      SELECT EXTRACT(DOW FROM captured_at AT TIME ZONE 'America/Los_Angeles')::int AS dow,
+             EXTRACT(HOUR FROM captured_at AT TIME ZONE 'America/Los_Angeles')::int AS hour,
+             COUNT(*)::int AS pings,
+             COUNT(*) FILTER (WHERE altitude_ft < 500 AND on_ground = false)::int AS below_floor,
+             COUNT(DISTINCT icao_hex)::int AS aircraft
+      FROM detections
+      WHERE latitude BETWEEN ${KERN_BOUNDS.minLat} AND ${KERN_BOUNDS.maxLat}
+        AND longitude BETWEEN ${KERN_BOUNDS.minLon} AND ${KERN_BOUNDS.maxLon}
+      GROUP BY 1, 2
+      ORDER BY 1, 2`;
+    return (rows as any[]).map((r) => ({
+      dow: Number(r.dow), hour: Number(r.hour),
+      pings: Number(r.pings), belowFloor: Number(r.below_floor), aircraft: Number(r.aircraft),
+    }));
+  } catch (err) { console.error("getTimeOfDayHeat failed:", err); return []; }
+});
+
+export type MosaicAnomalyPoint = {
+  lat: number; lon: number; anomalyType: string; anomalyScore: number;
+  icao: string; registration: string | null; detectedAt: string; hash: string | null;
+};
+export const getAnomalyPoints = createServerFn({ method: "GET" }).handler(async (): Promise<MosaicAnomalyPoint[]> => {
+  const w = watchtower();
+  try {
+    const rows = await w`
+      WITH ae AS (
+        SELECT a.id, a.anomaly_type, a.anomaly_score, a.icao_hex, a.registration,
+               a.detected_at, a.sha256_hash
+        FROM anomaly_events a
+        WHERE a.anomaly_score IS NOT NULL
+        ORDER BY a.anomaly_score DESC NULLS LAST
+        LIMIT 1500
+      )
+      SELECT ae.*, d.latitude, d.longitude
+      FROM ae
+      JOIN LATERAL (
+        SELECT latitude, longitude FROM detections
+        WHERE icao_hex = ae.icao_hex
+          AND captured_at BETWEEN ae.detected_at - INTERVAL '5 minutes' AND ae.detected_at + INTERVAL '5 minutes'
+          AND latitude IS NOT NULL AND longitude IS NOT NULL
+        ORDER BY ABS(EXTRACT(EPOCH FROM (captured_at - ae.detected_at))) ASC
+        LIMIT 1
+      ) d ON true
+      WHERE d.latitude BETWEEN ${KERN_BOUNDS.minLat} AND ${KERN_BOUNDS.maxLat}
+        AND d.longitude BETWEEN ${KERN_BOUNDS.minLon} AND ${KERN_BOUNDS.maxLon}`;
+    return (rows as any[]).map((r) => ({
+      lat: Number(r.latitude), lon: Number(r.longitude),
+      anomalyType: r.anomaly_type, anomalyScore: Number(r.anomaly_score) || 0,
+      icao: r.icao_hex, registration: r.registration,
+      detectedAt: r.detected_at ? new Date(r.detected_at).toISOString() : new Date(0).toISOString(),
+      hash: r.sha256_hash ?? null,
+    }));
+  } catch (err) { console.error("getAnomalyPoints failed:", err); return []; }
+});
+
+export type MosaicHandoffPair = {
+  fromIcao: string; toIcao: string;
+  fromLat: number; fromLon: number; toLat: number; toLon: number;
+  count: number;
+};
+export const getHandoffPairs = createServerFn({ method: "GET" }).handler(async (): Promise<MosaicHandoffPair[]> => {
+  const w = watchtower();
+  try {
+    // Use convergence_events: each event lists multiple aircraft converging at a point.
+    // We pair the first two icaos per event as a handoff edge, weighted by event count.
+    const rows = await w`
+      SELECT center_lat::float AS lat, center_lon::float AS lon,
+             icao_hexes, aircraft_count
+      FROM convergence_events
+      WHERE center_lat BETWEEN ${KERN_BOUNDS.minLat} AND ${KERN_BOUNDS.maxLat}
+        AND center_lon BETWEEN ${KERN_BOUNDS.minLon} AND ${KERN_BOUNDS.maxLon}
+        AND aircraft_count >= 2
+      ORDER BY aircraft_count DESC
+      LIMIT 500`;
+    const pairCounts = new Map<string, MosaicHandoffPair>();
+    for (const r of rows as any[]) {
+      const hexes: string[] = Array.isArray(r.icao_hexes)
+        ? r.icao_hexes
+        : (typeof r.icao_hexes === "string" ? r.icao_hexes.split(/[,\s]+/).filter(Boolean) : []);
+      if (hexes.length < 2) continue;
+      for (let i = 0; i < Math.min(hexes.length, 4); i++) {
+        for (let j = i + 1; j < Math.min(hexes.length, 4); j++) {
+          const a = String(hexes[i]).toUpperCase(); const b = String(hexes[j]).toUpperCase();
+          const key = a < b ? `${a}|${b}` : `${b}|${a}`;
+          const existing = pairCounts.get(key);
+          if (existing) { existing.count += 1; }
+          else {
+            pairCounts.set(key, {
+              fromIcao: a, toIcao: b,
+              fromLat: Number(r.lat), fromLon: Number(r.lon),
+              toLat: Number(r.lat) + 0.005, toLon: Number(r.lon) + 0.005,
+              count: 1,
+            });
+          }
+        }
+      }
+    }
+    return Array.from(pairCounts.values()).sort((a, b) => b.count - a.count).slice(0, 200);
+  } catch (err) { console.error("getHandoffPairs failed:", err); return []; }
+});
+
+export type MosaicEntity = {
+  entity: string; lat: number; lon: number;
+  totalPings: number; aircraftCount: number; color: string;
+};
+export const getEntityCentroids = createServerFn({ method: "GET" }).handler(async (): Promise<MosaicEntity[]> => {
+  const w = watchtower();
+  try {
+    const rows = await w`
+      SELECT p.icao_hex, p.registered_owner, p.total_detections,
+             AVG(d.latitude)::float AS lat, AVG(d.longitude)::float AS lon
+      FROM aircraft_profiles p
+      JOIN detections d ON d.icao_hex = p.icao_hex
+      WHERE p.registered_owner IS NOT NULL
+        AND d.latitude BETWEEN ${KERN_BOUNDS.minLat} AND ${KERN_BOUNDS.maxLat}
+        AND d.longitude BETWEEN ${KERN_BOUNDS.minLon} AND ${KERN_BOUNDS.maxLon}
+      GROUP BY p.icao_hex, p.registered_owner, p.total_detections
+      ORDER BY p.total_detections DESC NULLS LAST
+      LIMIT 200`;
+    // Bucket aircraft into named entities by owner regex.
+    const buckets: { name: string; rx: RegExp; color: string }[] = [
+      { name: "KCSO",          rx: /KERN COUNTY|SHERIFF/i,                   color: "#1d4ed8" },
+      { name: "ALF IX",        rx: /ALF\s*IX|ALF-IX/i,                       color: "#dc2626" },
+      { name: "AERO EQUITIES", rx: /AERO\s*EQUIT/i,                          color: "#ea580c" },
+      { name: "KCSI",          rx: /KCSI|KERN.*INVEST/i,                     color: "#ca8a04" },
+      { name: "WINGSLEASING",  rx: /WINGS\s*LEASING|WINGSLEASING/i,          color: "#16a34a" },
+      { name: "SHADY",         rx: /SHADY/i,                                 color: "#7c3aed" },
+      { name: "MEDICAL",       rx: /MEDICAL|HEALTH|HOSPITAL|MERCY|LIFE FLIGHT/i, color: "#0891b2" },
+      { name: "MILITARY",      rx: /AIR FORCE|ARMY|NAVY|MARINE|DEPT OF DEF|U S DEPT|DOD/i, color: "#475569" },
+    ];
+    const acc = new Map<string, { latSum: number; lonSum: number; pings: number; aircraft: number; color: string }>();
+    for (const r of rows as any[]) {
+      const owner = String(r.registered_owner ?? "");
+      const b = buckets.find((x) => x.rx.test(owner));
+      if (!b) continue;
+      const cur = acc.get(b.name) ?? { latSum: 0, lonSum: 0, pings: 0, aircraft: 0, color: b.color };
+      const lat = Number(r.lat), lon = Number(r.lon), pings = Number(r.total_detections ?? 0);
+      cur.latSum += lat * pings; cur.lonSum += lon * pings;
+      cur.pings += pings; cur.aircraft += 1; cur.color = b.color;
+      acc.set(b.name, cur);
+    }
+    return Array.from(acc.entries())
+      .filter(([, v]) => v.pings > 0)
+      .map(([name, v]) => ({
+        entity: name,
+        lat: v.latSum / v.pings, lon: v.lonSum / v.pings,
+        totalPings: v.pings, aircraftCount: v.aircraft, color: v.color,
+      }));
+  } catch (err) { console.error("getEntityCentroids failed:", err); return []; }
+});
