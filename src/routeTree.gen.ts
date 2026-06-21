@@ -17,6 +17,7 @@ import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as RulesRouteImport } from './routes/rules'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as OperatorsRouteImport } from './routes/operators'
+import { Route as MosaicRouteImport } from './routes/mosaic'
 import { Route as MlDetectionsRouteImport } from './routes/ml-detections'
 import { Route as MilitaryRouteImport } from './routes/military'
 import { Route as MethodologyRouteImport } from './routes/methodology'
@@ -71,6 +72,11 @@ const ReportsRoute = ReportsRouteImport.update({
 const OperatorsRoute = OperatorsRouteImport.update({
   id: '/operators',
   path: '/operators',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MosaicRoute = MosaicRouteImport.update({
+  id: '/mosaic',
+  path: '/mosaic',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MlDetectionsRoute = MlDetectionsRouteImport.update({
@@ -163,6 +169,7 @@ export interface FileRoutesByFullPath {
   '/methodology': typeof MethodologyRoute
   '/military': typeof MilitaryRoute
   '/ml-detections': typeof MlDetectionsRoute
+  '/mosaic': typeof MosaicRoute
   '/operators': typeof OperatorsRoute
   '/reports': typeof ReportsRoute
   '/rules': typeof RulesRoute
@@ -188,6 +195,7 @@ export interface FileRoutesByTo {
   '/methodology': typeof MethodologyRoute
   '/military': typeof MilitaryRoute
   '/ml-detections': typeof MlDetectionsRoute
+  '/mosaic': typeof MosaicRoute
   '/operators': typeof OperatorsRoute
   '/reports': typeof ReportsRoute
   '/rules': typeof RulesRoute
@@ -213,6 +221,7 @@ export interface FileRoutesById {
   '/methodology': typeof MethodologyRoute
   '/military': typeof MilitaryRoute
   '/ml-detections': typeof MlDetectionsRoute
+  '/mosaic': typeof MosaicRoute
   '/operators': typeof OperatorsRoute
   '/reports': typeof ReportsRoute
   '/rules': typeof RulesRoute
@@ -240,6 +249,7 @@ export interface FileRouteTypes {
     | '/methodology'
     | '/military'
     | '/ml-detections'
+    | '/mosaic'
     | '/operators'
     | '/reports'
     | '/rules'
@@ -265,6 +275,7 @@ export interface FileRouteTypes {
     | '/methodology'
     | '/military'
     | '/ml-detections'
+    | '/mosaic'
     | '/operators'
     | '/reports'
     | '/rules'
@@ -289,6 +300,7 @@ export interface FileRouteTypes {
     | '/methodology'
     | '/military'
     | '/ml-detections'
+    | '/mosaic'
     | '/operators'
     | '/reports'
     | '/rules'
@@ -315,6 +327,7 @@ export interface RootRouteChildren {
   MethodologyRoute: typeof MethodologyRoute
   MilitaryRoute: typeof MilitaryRoute
   MlDetectionsRoute: typeof MlDetectionsRoute
+  MosaicRoute: typeof MosaicRoute
   OperatorsRoute: typeof OperatorsRoute
   ReportsRoute: typeof ReportsRoute
   RulesRoute: typeof RulesRoute
@@ -381,6 +394,13 @@ declare module '@tanstack/react-router' {
       path: '/operators'
       fullPath: '/operators'
       preLoaderRoute: typeof OperatorsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mosaic': {
+      id: '/mosaic'
+      path: '/mosaic'
+      fullPath: '/mosaic'
+      preLoaderRoute: typeof MosaicRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/ml-detections': {
@@ -518,6 +538,7 @@ const rootRouteChildren: RootRouteChildren = {
   MethodologyRoute: MethodologyRoute,
   MilitaryRoute: MilitaryRoute,
   MlDetectionsRoute: MlDetectionsRoute,
+  MosaicRoute: MosaicRoute,
   OperatorsRoute: OperatorsRoute,
   ReportsRoute: ReportsRoute,
   RulesRoute: RulesRoute,
