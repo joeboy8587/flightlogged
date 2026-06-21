@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { createClientOnlyFn } from "@tanstack/react-start/client";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
@@ -9,7 +10,7 @@ import {
   getAnomalyPoints, getHandoffPairs, getEntityCentroids,
 } from "@/lib/watchtower.functions";
 
-const MosaicMap = lazy(() =>
+const MosaicMap = createClientOnlyFn(() =>
   import("@/components/mosaic/MosaicMap.client").then((m) => ({ default: m.MosaicMap })),
 );
 
