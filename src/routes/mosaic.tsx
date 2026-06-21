@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
-import { lazy, Suspense, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
@@ -75,6 +75,10 @@ function MosaicPage() {
 
   const todMax = useMemo(() => Math.max(1, ...tod.map((t) => t.pings)), [tod]);
 
+  // Leaflet is browser-only — defer mount until after hydration.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
   return (
     <div className="min-h-screen bg-paper text-ink">
       <SiteHeader />
@@ -96,13 +100,17 @@ function MosaicPage() {
         <div className="max-w-[1400px] mx-auto px-4 py-6">
           <div className="grid lg:grid-cols-[1fr_320px] gap-4">
             <div>
-              <Suspense fallback={<div className="h-[70vh] brutal-border bg-warning/20 flex items-center justify-center label-stamp">Loading map…</div>}>
-                <MosaicMap
-                  layers={layers}
-                  data={{ density, violations, anomalyPoints, handoffs, entities }}
-                  onSelect={setSelected}
-                />
-              </Suspense>
+              {mounted ? (
+                <Suspense fallback={<div className="h-[70vh] brutal-border bg-warning/20 flex items-center justify-center label-stamp">Loading map…</div>}>
+                  <MosaicMap
+                    layers={layers}
+                    data={{ density, violations, anomalyPoints, handoffs, entities }}
+                    onSelect={setSelected}
+                  />
+                </Suspense>
+              ) : (
+                <div className="h-[70vh] brutal-border bg-warning/20 flex items-center justify-center label-stamp">Loading map…</div>
+              )}
             </div>
 
             <aside className="space-y-4">
