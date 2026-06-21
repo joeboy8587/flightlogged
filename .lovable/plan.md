@@ -1,72 +1,93 @@
-# Re-wire every page to the quiet-math Neon DB
+# Fix preview + build the Surveillance Mosaic
 
-## What I found (the actual problem)
+## Part 1 — The "Preview has not been built yet" message
 
-Your two Neon connections resolve to:
+Quick diagnosis I just ran:
 
-- `NEON_WATCHTOWER_URL` → `ep-quiet-math-...neon.tech` ← the unbiased ML brain. 49 clean tables. **This is the one we want.**
-- `NEON_EVIDENCE_URL` → `ep-lucky-wildflower-...neon.tech` ← legacy/biased store. Hundreds of overlapping tables.
+- Dev server (sandbox): running clean, no errors in the Vite log.
+- Published site (`advocacywatch.live`): returns **HTTP 200** with HTML — the build is healthy.
+- Preview URL: returns a normal **302 → auth-bridge** redirect (expected behavior; not a build failure).
 
-`faaIdentityMap` already reads `faa_master` from quiet-math — good.
+So there is no actual build error in the code right now. The message you're seeing is the Lovable preview pane telling you the **last preview build hasn't finished yet** (or the preview iframe is stuck behind the auth-bridge handshake). The published site at `advocacywatch.live` is live and serving the latest deploy.
 
-The leaks are in `src/lib/watchtower.functions.ts`. Eight functions still call `evidence()` (lucky-wildflower). They power:
+What I'll do to make sure it stays that way:
 
-| Function | Page(s) | Currently reads from lucky-wildflower |
+1. Re-read `src/lib/watchtower.functions.ts` end-to-end and confirm none of the recently-rewired functions still reference removed types or stale field names (the file has a leftover `biometricEvents: 0` line on the snapshot — harmless, but I'll keep it to avoid breaking JSX that still reads it, OR remove it everywhere in lockstep).
+2. Hit each server function once via `invoke-server-function` (`/`, `/operators`, `/military`, `/threat-index`, `/live`, `/findings`, `/ml-detections`) and confirm every one returns 200. Any 500 gets fixed before moving on.
+3. Trigger a fresh preview build by saving a no-op edit if the preview iframe is still showing the "not built yet" state after step 2.
+
+If after that the preview pane still says "not built yet," it's a Lovable preview-infra issue, not a code issue — refreshing the editor tab clears it.
+
+## Part 2 — The Surveillance Mosaic
+
+A new route, `/mosaic`, that stacks six independent data layers over a single Kern-centered map. Every layer reads from **quiet-math** (the unbiased DB) via existing or new server functions — no lucky-wildflower, no new tables.
+
+### What the user sees
+
+A full-bleed map (centered ~35.43°N, −119.05°W, zoom 10) with:
+
+- A **layer toggle panel** (top-right) — six checkboxes, each layer can be turned on/off independently. Default: Density + Violations on, others off.
+- A **time filter** (top-left) — All / Last 7 days / Last 24h / Friday-Saturday nights only.
+- A **legend** (bottom-left) that updates based on which layers are active.
+- A **detail drawer** (right side) — clicking any tile / pin / arrow opens a popup with the underlying rows + a "Copy SHA-256 hash" button so it stays evidence-grade.
+
+### The six layers
+
+```text
+┌─ Layer 1  Density Heatmap          choropleth 1km² tiles, color = total pings
+├─ Layer 2  Violation Heatmap        overlay 60% opacity, color = dominant anomaly type
+├─ Layer 3  Time-of-Day Calendar     7×24 grid below the map (not on the map)
+├─ Layer 4  Anomaly Type Pins        point markers, color = anomaly_type, size = count
+├─ Layer 5  Handoff Arrows           lines between aircraft pairs, thickness = handoff count
+└─ Layer 6  Entity Network Pins      named pins (KCSO, ALF IX, AERO EQUITIES…), click = dossier
+```
+
+### Map library
+
+Use **Leaflet** + **react-leaflet** (MIT-licensed, no API key, works with OpenStreetMap tiles). It bundles cleanly into the Worker runtime and doesn't require Mapbox / Google Maps tokens. Heatmap layer uses `leaflet.heat`. The Lovable Google Maps connector is overkill here — we don't need geocoding, just a tile background.
+
+### Server functions to add (all in `src/lib/watchtower.functions.ts`, all read quiet-math)
+
+Each function bins on a **0.01°×0.01° tile** (~1 km at this latitude) using `floor(lat*100)/100` and `floor(lon*100)/100` so the six layers share a tile grid and can be cross-referenced.
+
+| Function | Source table(s) | Returns |
 |---|---|---|
-| `getSnapshot` | `/` hero, header counters | `court_evidence.flight_detections`, `biometric_events`, `unified_events` |
-| `getCorrelations` | `/` correlation grid | `court_evidence.biometric_events` |
-| `getCanonicalOperators` | `/operators` | `canonical_operator_profiles` |
-| `getSentinelViolations` | `/violations` | `sentinel_violations` |
-| `getThreatIndex` | `/threat-index`, `/live` Kern card, ConvergenceEventCard top WTI | `threat_tiers` |
-| `getMlAnomalies` | `/ml-detections` | `ml_anomaly_detections` |
+| `getDensityTiles({ since })` | `detections` | `[{ lat, lon, pings, uniqueAircraft, avgAltitude }]` |
+| `getViolationTiles({ since })` | `anomaly_events` | `[{ lat, lon, events, uniqueAircraft, criticalCount, maxScore, dominantType }]` |
+| `getTimeOfDayHeat({ since })` | `detections` + `anomaly_events` | `[{ dow, hour, pings, belowFloor, aircraft }]` (7×24 = 168 rows) |
+| `getAnomalyPoints({ since, limit: 2000 })` | `anomaly_events` | `[{ lat, lon, anomalyType, anomalyScore, icao, registration, detectedAt }]` |
+| `getHandoffPairs({ since })` | `detections` self-join on time + distance | `[{ fromIcao, toIcao, fromLat, fromLon, toLat, toLon, count }]` (existing `convergence_events` table may already have this — confirm and use it if so) |
+| `getEntityCentroids()` | `aircraft_profiles` ⨝ `faa_master` + regex bucketing | `[{ entity, lat, lon, totalPings, aircraftCount, color }]` |
 
-These are why numbers contradict across pages and why "biased data" creeps in.
+All tile queries cap at top-N tiles (500) and use `staleTime: 5 * 60_000` so the map isn't refetched on every layer toggle.
 
-## Quiet-math equivalents (verified)
+### Files
 
-| Old (lucky) | New (quiet-math) | Notes |
-|---|---|---|
-| `court_evidence.flight_detections` | `public.detections` (2.39M rows) | drop-in, richer schema |
-| `canonical_operator_profiles` | `aircraft_profiles` ⨝ `faa_aircraft_registry`/`faa_master` | already has `is_military`, `tactical_role`, `reg_violation_count`, `confirmed_coord_partners` — derive medical/KCSO/XP flags with the same heuristic regex over `registered_owner` |
-| `sentinel_violations` | `violation_classifications` (1,537 rows) | already has owner_name/city/state/type_registrant joined in; no FAA round-trip needed |
-| `threat_tiers` (WTI) | computed view over `anomaly_events` + `detections` + `convergence_events` | `anomaly_events.anomaly_score`, `county_z_score`, `cross_county_scores`, `contributing_factors` jsonb already exist — we synthesize a WTI score + tier client-side using documented weights (the same ones we publish on `/methodology`) |
-| `ml_anomaly_detections` | `anomaly_events` (606k rows) + `ml_brain_reports` as model card | model name/version come from `ml_brain_reports` (14 rows); per-row features from `contributing_factors` jsonb; `human_reviewed` already on the table |
-| `court_evidence.biometric_events` (correlations) | **REMOVE** | biometric/heart-rate correlation is the biased signal you want gone. Replace the `/` correlation grid with a "Top convergence events" grid from `convergence_events` (104k rows, has `aircraft_count`, `unique_icao_hexes`, `center_lat/lon`, `anomaly_score`) |
+- **New**: `src/routes/mosaic.tsx` — the page (head/SEO, map, layer panel, time filter, legend, drawer).
+- **New**: `src/components/mosaic/` — `MosaicMap.tsx`, `LayerPanel.tsx`, `TimeFilter.tsx`, `Legend.tsx`, `CalendarHeatmap.tsx`, `DetailDrawer.tsx`.
+- **Edited**: `src/lib/watchtower.functions.ts` — add the 6 new server functions above.
+- **Edited**: `src/components/site-header.tsx` — add "Mosaic" to nav between "Live" and "Threat Index".
+- **Edited**: `src/routes/methodology.tsx` — add a short "Mosaic" section explaining the 1km² tile binning and the six layers.
+- **Edited**: `package.json` — add `leaflet`, `react-leaflet`, `leaflet.heat`, `@types/leaflet`.
 
-## Implementation order
+### Evidence integrity
 
-1. **`src/lib/neon.server.ts`**
-   - Keep `watchtower()` (quiet-math). Mark `evidence()` deprecated and make it throw with a clear message in production so any forgotten call site fails loudly, not silently.
+Every tile and pin payload includes:
+- `sha256_hash` for the underlying detection/anomaly rows (already in quiet-math).
+- `tileFingerprint` = SHA-256 of `(lat, lon, count, since)` so a screenshot of the mosaic can be verified later.
+- A "Copy evidence bundle" button in the detail drawer that produces a JSON blob with the rows + their hashes for FOIA / legal export.
 
-2. **`src/lib/watchtower.functions.ts`** — rewrite the eight functions above to only call `watchtower()`:
-   - `getSnapshot`: counts from `detections`, `aircraft_profiles`, `anomaly_events`, `convergence_events`. Drop the four biometric counters; replace with `convergenceAircraft`, `mlReports`, `violations` so the snapshot type stays useful.
-   - `getCorrelations` → rename to `getTopConvergence`, return `convergence_events` rows.
-   - `getCanonicalOperators`: select from `aircraft_profiles` (top by `total_detections`), left-join `faa_aircraft_registry` for owner name, derive `medical`/`military`/`kcso`/`xpServices` from owner regex + `is_military` column.
-   - `getSentinelViolations`: select from `violation_classifications`, order by `captured_at`.
-   - `getThreatIndex` + `getKernAlerts`: build WTI in SQL from `anomaly_events` (use `anomaly_score`, `county_z_score`) plus a convergence bonus from `convergence_events` matched on `icao_hex` within a 10-min window. Tier thresholds: 0–25 LOW, 25–50 MED, 50–75 HIGH, 75+ CRITICAL. Document on `/methodology`.
-   - `getMlAnomalies`: rows from `anomaly_events` (anomalyType=`anomaly_type`, score=`anomaly_score`, features=keys of `contributing_factors`, validated=`human_reviewed`, hash=`sha256_hash`). Model card stats from `ml_brain_reports`.
-   - `getConvergenceEvent` (top card on `/reports`): use `convergence_events` ordered by `aircraft_count DESC` — already in quiet-math, just confirm.
+### Out of scope (will not do unless asked)
 
-3. **Page components** — type names stay the same so most JSX is untouched. Only adjust where field meaning changed:
-   - `src/routes/index.tsx`: swap the biometric correlation section for a "Top convergence events" section.
-   - `src/routes/operators.tsx`: confirm the four flag columns still render; medical-cover count will now be live and consistent with `/military`.
-   - `src/routes/threat-index.tsx`, `src/routes/live.tsx`, `src/components/convergence-event-card.tsx`: no JSX changes expected; the data shape is preserved.
-   - `src/routes/ml-detections.tsx`: model-card "Top model" pulls from `ml_brain_reports`; row table is unchanged.
-   - `src/routes/methodology.tsx`: add a "Single source of truth" paragraph naming quiet-math and listing the four core tables.
-
-4. **Runtime errors**
-   - `TypeError: Failed to fetch` at app load is the Lovable preview probe — not a code bug; it disappears once SSR returns 200 reliably. The hydration error `#418` is caused by the snapshot returning `0`s on the SSR pass (when lucky-wildflower times out) and real numbers on the client. After step 2, SSR uses one DB and one transport so both passes match. Add `staleTime: Infinity` on snapshot/hero queries so the loader-primed value is the one rendered.
-   - Re-confirm the `/military` page (you reported it crashing) — once `getThreatIndex` and the snapshot stop touching lucky-wildflower, the cascading 500 should be gone. If anything still crashes I'll wrap the leaf query in the existing `try/empty` pattern used by `getSnapshot`.
-
-5. **Verification (no manual checks needed from you)**
-   - I'll hit each server function via `invoke-server-function` after the cutover and confirm no row originates from lucky-wildflower (the `evidence()` stub will throw if it does).
-   - Cross-check the four numbers that must agree across pages: total detections, unique aircraft, military count, medical-cover count.
+- No write-back to the database.
+- No ML re-training — we read existing `anomaly_events.anomaly_type` as-is.
+- No real-time WebSocket layer (5-minute cache is plenty; can add later).
+- No mobile-optimized layout v1 — map is desktop-first; mobile gets a "Open on desktop for full mosaic" notice.
 
 ## What you'll see when it's done
 
-- One database powers everything. Numbers stop contradicting between Operators / Military / Threat Index / Live.
-- The biometric/heart-rate correlation grid on the home page is replaced with a real convergence-events grid sourced from 104k clean rows.
-- `/military` stops crashing.
-- The hydration warning on first load goes away.
-
-No new tables, no migrations. Pure rewiring inside `src/lib/watchtower.functions.ts` plus small JSX swaps on `index.tsx` and `methodology.tsx`.
+- A new "Mosaic" link in the header. Click it and the Kern map renders within ~2s with Density + Violations layers on by default. The KCSO ramp tile glows dark red on both layers — that's the finding visualized.
+- Toggle Layer 5 and the handoff arrows draw between `N787FA ↔ N790FA` and friends, with line thickness proportional to handoff count.
+- Toggle Layer 3 and the 7×24 calendar appears below the map showing Fri 21:00 PDT as the hottest cell.
+- Every tile and pin has a "Copy evidence bundle" button so anything you screenshot is chain-of-custody verifiable.
+- The "Preview has not been built yet" message disappears as soon as the preview build completes (no code change required for that — but Part 1's verification pass ensures no server function is silently 500-ing and blocking the build probe).
