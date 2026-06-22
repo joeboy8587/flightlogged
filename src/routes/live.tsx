@@ -251,8 +251,28 @@ function Live() {
               <div className="label-stamp text-alert mb-2">Below 1,500 ft · Not on ground</div>
               <h2 className="text-4xl sm:text-5xl">Recent low-altitude detections</h2>
             </div>
-            <Link to="/methodology" className="label-stamp brutal-border px-3 py-2 hover:bg-warning">What counts as low? →</Link>
+            <div className="flex items-center gap-2 flex-wrap">
+              <label htmlFor="county-filter" className="label-stamp">County:</label>
+              <select
+                id="county-filter"
+                value={county}
+                onChange={(e) => setCounty(e.target.value)}
+                className="brutal-border bg-paper px-3 py-2 font-mono text-sm cursor-pointer hover:bg-warning"
+              >
+                <option value="all">All counties ({low.length})</option>
+                {countyOptions.map((c) => (
+                  <option key={c.key} value={c.key}>
+                    {c.label} ({c.count})
+                  </option>
+                ))}
+              </select>
+              <Link to="/methodology" className="label-stamp brutal-border px-3 py-2 hover:bg-warning">What counts as low? →</Link>
+            </div>
           </div>
+          <p className="mb-4 text-xs font-mono opacity-70">
+            Multi-county coverage. Filter is applied to the low-altitude table and the plain-English story strip above.
+            Kern-only sections (alerts, local agencies) hide automatically when another county is selected.
+          </p>
 
           {/* Constitutional banner */}
           <div className="brutal-border-thick bg-ink text-paper p-5 mb-6">
@@ -317,8 +337,8 @@ function Live() {
                 </tr>
               </thead>
               <tbody className="font-mono">
-                {low.length === 0 && <tr><td colSpan={8} className="p-6 text-center">No low-altitude activity in the current window.</td></tr>}
-                {low.map((r) => (
+                {lowFiltered.length === 0 && <tr><td colSpan={8} className="p-6 text-center">No low-altitude activity in this county for the current window.</td></tr>}
+                {lowFiltered.map((r) => (
                   <tr key={r.icao + r.capturedAt} className="border-t border-ink/20 hover:bg-warning/30">
                     <td className="p-3 whitespace-nowrap">{fmtTime(r.capturedAt)}</td>
                     <td className="p-3"><span className="font-bold">{r.registration || r.icao}</span>{r.model && <div className="text-xs opacity-60">{r.model}</div>}</td>
