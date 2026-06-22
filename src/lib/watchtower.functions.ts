@@ -2395,8 +2395,11 @@ export type MosaicHandoffPair = {
   fromLat: number; fromLon: number; toLat: number; toLon: number;
   count: number;
 };
-export const getHandoffPairs = createServerFn({ method: "GET" }).handler(async (): Promise<MosaicHandoffPair[]> => {
+export const getHandoffPairs = createServerFn({ method: "GET" })
+  .inputValidator((d: { county?: string | null } | undefined) => ({ county: normalizeCountyLens(d?.county) }))
+  .handler(async ({ data }): Promise<MosaicHandoffPair[]> => {
   const w = watchtower();
+  const county = data.county ?? "all";
   try {
     // Use quiet-math convergence_events: each event lists multiple aircraft converging at a point.
     // We pair ICAOs from unique_icao_hexes per event as a handoff edge, weighted by event count.
@@ -2404,9 +2407,16 @@ export const getHandoffPairs = createServerFn({ method: "GET" }).handler(async (
       SELECT center_lat::float AS lat, center_lon::float AS lon,
              unique_icao_hexes, aircraft_count
       FROM convergence_events
-      WHERE center_lat BETWEEN ${KERN_BOUNDS.minLat} AND ${KERN_BOUNDS.maxLat}
-        AND center_lon BETWEEN ${KERN_BOUNDS.minLon} AND ${KERN_BOUNDS.maxLon}
+      WHERE center_lat BETWEEN ${MOSAIC_BOUNDS.minLat} AND ${MOSAIC_BOUNDS.maxLat}
+        AND center_lon BETWEEN ${MOSAIC_BOUNDS.minLon} AND ${MOSAIC_BOUNDS.maxLon}
         AND aircraft_count >= 2
+        AND (${county} = 'all' OR CASE
+          WHEN county ILIKE '%kern%' THEN 'kern'
+          WHEN county ILIKE '%tulare%' THEN 'tulare'
+          WHEN county ILIKE '%kings%' THEN 'kings'
+          WHEN county ILIKE '%fresno%' THEN 'fresno'
+          WHEN county ILIKE '%san bernardino%' OR county ILIKE '%san_bernardino%' OR county ILIKE '%sanbernardino%' THEN 'san_bernardino'
+          ELSE 'other' END = ${county})
       ORDER BY aircraft_count DESC
       LIMIT 500`;
     const pairCounts = new Map<string, MosaicHandoffPair>();
@@ -2440,8 +2450,11 @@ export type MosaicEntity = {
   entity: string; lat: number; lon: number;
   totalPings: number; aircraftCount: number; color: string;
 };
-export const getEntityCentroids = createServerFn({ method: "GET" }).handler(async (): Promise<MosaicEntity[]> => {
+export const getEntityCentroids = createServerFn({ method: "GET" })
+  .inputValidator((d: { county?: string | null } | undefined) => ({ county: normalizeCountyLens(d?.county) }))
+  .handler(async ({ data }): Promise<MosaicEntity[]> => {
   const w = watchtower();
+  const county = data.county ?? "all";
   try {
     const rows = await w`
       SELECT p.icao_hex, p.registered_owner, p.total_detections,
@@ -2449,8 +2462,15 @@ export const getEntityCentroids = createServerFn({ method: "GET" }).handler(asyn
       FROM aircraft_profiles p
       JOIN detections d ON d.icao_hex = p.icao_hex
       WHERE p.registered_owner IS NOT NULL
-        AND d.latitude BETWEEN ${KERN_BOUNDS.minLat} AND ${KERN_BOUNDS.maxLat}
-        AND d.longitude BETWEEN ${KERN_BOUNDS.minLon} AND ${KERN_BOUNDS.maxLon}
+        AND d.latitude BETWEEN ${MOSAIC_BOUNDS.minLat} AND ${MOSAIC_BOUNDS.maxLat}
+        AND d.longitude BETWEEN ${MOSAIC_BOUNDS.minLon} AND ${MOSAIC_BOUNDS.maxLon}
+        AND (${county} = 'all' OR CASE
+          WHEN d.county ILIKE '%kern%' THEN 'kern'
+          WHEN d.county ILIKE '%tulare%' THEN 'tulare'
+          WHEN d.county ILIKE '%kings%' THEN 'kings'
+          WHEN d.county ILIKE '%fresno%' THEN 'fresno'
+          WHEN d.county ILIKE '%san bernardino%' OR d.county ILIKE '%san_bernardino%' OR d.county ILIKE '%sanbernardino%' THEN 'san_bernardino'
+          ELSE 'other' END = ${county})
       GROUP BY p.icao_hex, p.registered_owner, p.total_detections
       ORDER BY p.total_detections DESC NULLS LAST
       LIMIT 200`;
