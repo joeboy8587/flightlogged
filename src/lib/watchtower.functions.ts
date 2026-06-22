@@ -2257,32 +2257,17 @@ export type MosaicViolationTile = {
   criticalCount: number; maxScore: number; dominantType: string;
 };
 export const getViolationTiles = createServerFn({ method: "GET" })
-  .inputValidator((d: { sinceHours?: number | null } | undefined) => d ?? {})
+  .inputValidator((d: { sinceHours?: number | null; county?: string | null } | undefined) => ({
+    sinceHours: d?.sinceHours ?? null,
+    county: normalizeCountyLens(d?.county),
+  }))
   .handler(async ({ data }): Promise<MosaicViolationTile[]> => {
     const w = watchtower();
     const sh = data?.sinceHours ?? null;
+    const county = data?.county ?? "all";
     try {
-      // Join anomaly_events to detections on icao_hex; use nearest detection by captured_at within 5 min.
       const rows = sh && sh > 0
         ? await w`
-          WITH ae AS (
-            SELECT a.anomaly_type, a.anomaly_score, a.icao_hex, a.detected_at
-            FROM anomaly_events a
-            WHERE a.anomaly_score IS NOT NULL
-              AND a.detected_at >= NOW() - (${Math.floor(sh)}::int * INTERVAL '1 hour')
-          ),
-          located AS (
-            SELECT ae.anomaly_type, ae.anomaly_score, d.latitude, d.longitude, ae.icao_hex
-            FROM ae
-            JOIN LATERAL (
-              SELECT latitude, longitude FROM detections
-              WHERE icao_hex = ae.icao_hex
-                AND captured_at BETWEEN ae.detected_at - INTERVAL '5 minutes' AND ae.detected_at + INTERVAL '5 minutes'
-                AND latitude IS NOT NULL AND longitude IS NOT NULL
-              ORDER BY ABS(EXTRACT(EPOCH FROM (captured_at - ae.detected_at))) ASC
-              LIMIT 1
-            ) d ON true
-          )
           SELECT FLOOR(latitude * 100)/100.0 AS lat,
                  FLOOR(longitude * 100)/100.0 AS lon,
                  COUNT(*)::int AS events,
@@ -2290,32 +2275,22 @@ export const getViolationTiles = createServerFn({ method: "GET" })
                  COUNT(*) FILTER (WHERE anomaly_score >= 0.85)::int AS critical_count,
                  MAX(anomaly_score)::float AS max_score,
                  (mode() WITHIN GROUP (ORDER BY anomaly_type)) AS dominant_type
-          FROM located
-          WHERE latitude BETWEEN ${KERN_BOUNDS.minLat} AND ${KERN_BOUNDS.maxLat}
-            AND longitude BETWEEN ${KERN_BOUNDS.minLon} AND ${KERN_BOUNDS.maxLon}
+          FROM anomaly_events
+          WHERE anomaly_score IS NOT NULL
+            AND latitude BETWEEN ${MOSAIC_BOUNDS.minLat} AND ${MOSAIC_BOUNDS.maxLat}
+            AND longitude BETWEEN ${MOSAIC_BOUNDS.minLon} AND ${MOSAIC_BOUNDS.maxLon}
+            AND detected_at >= NOW() - (${Math.floor(sh)}::int * INTERVAL '1 hour')
+            AND (${county} = 'all' OR CASE
+              WHEN county ILIKE '%kern%' THEN 'kern'
+              WHEN county ILIKE '%tulare%' THEN 'tulare'
+              WHEN county ILIKE '%kings%' THEN 'kings'
+              WHEN county ILIKE '%fresno%' THEN 'fresno'
+              WHEN county ILIKE '%san bernardino%' OR county ILIKE '%san_bernardino%' OR county ILIKE '%sanbernardino%' THEN 'san_bernardino'
+              ELSE 'other' END = ${county})
           GROUP BY 1, 2
           ORDER BY events DESC
           LIMIT 500`
         : await w`
-          WITH ae AS (
-            SELECT a.anomaly_type, a.anomaly_score, a.icao_hex, a.detected_at
-            FROM anomaly_events a
-            WHERE a.anomaly_score IS NOT NULL
-            ORDER BY a.detected_at DESC
-            LIMIT 30000
-          ),
-          located AS (
-            SELECT ae.anomaly_type, ae.anomaly_score, d.latitude, d.longitude, ae.icao_hex
-            FROM ae
-            JOIN LATERAL (
-              SELECT latitude, longitude FROM detections
-              WHERE icao_hex = ae.icao_hex
-                AND captured_at BETWEEN ae.detected_at - INTERVAL '5 minutes' AND ae.detected_at + INTERVAL '5 minutes'
-                AND latitude IS NOT NULL AND longitude IS NOT NULL
-              ORDER BY ABS(EXTRACT(EPOCH FROM (captured_at - ae.detected_at))) ASC
-              LIMIT 1
-            ) d ON true
-          )
           SELECT FLOOR(latitude * 100)/100.0 AS lat,
                  FLOOR(longitude * 100)/100.0 AS lon,
                  COUNT(*)::int AS events,
@@ -2323,9 +2298,17 @@ export const getViolationTiles = createServerFn({ method: "GET" })
                  COUNT(*) FILTER (WHERE anomaly_score >= 0.85)::int AS critical_count,
                  MAX(anomaly_score)::float AS max_score,
                  (mode() WITHIN GROUP (ORDER BY anomaly_type)) AS dominant_type
-          FROM located
-          WHERE latitude BETWEEN ${KERN_BOUNDS.minLat} AND ${KERN_BOUNDS.maxLat}
-            AND longitude BETWEEN ${KERN_BOUNDS.minLon} AND ${KERN_BOUNDS.maxLon}
+          FROM anomaly_events
+          WHERE anomaly_score IS NOT NULL
+            AND latitude BETWEEN ${MOSAIC_BOUNDS.minLat} AND ${MOSAIC_BOUNDS.maxLat}
+            AND longitude BETWEEN ${MOSAIC_BOUNDS.minLon} AND ${MOSAIC_BOUNDS.maxLon}
+            AND (${county} = 'all' OR CASE
+              WHEN county ILIKE '%kern%' THEN 'kern'
+              WHEN county ILIKE '%tulare%' THEN 'tulare'
+              WHEN county ILIKE '%kings%' THEN 'kings'
+              WHEN county ILIKE '%fresno%' THEN 'fresno'
+              WHEN county ILIKE '%san bernardino%' OR county ILIKE '%san_bernardino%' OR county ILIKE '%sanbernardino%' THEN 'san_bernardino'
+              ELSE 'other' END = ${county})
           GROUP BY 1, 2
           ORDER BY events DESC
           LIMIT 500`;
