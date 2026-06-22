@@ -103,10 +103,14 @@ function Operators() {
       <section className="border-b-4 border-ink bg-ink text-paper">
         <div className="max-w-[1400px] mx-auto px-4 py-12">
           <div className="label-stamp text-warning mb-4">Public FAA registry · Entity-resolved</div>
-          <h1 className="text-5xl sm:text-7xl mb-4">Hall of Shame.</h1>
+          <h1 className="text-5xl sm:text-7xl mb-4">
+            {counts.totalDetections.toLocaleString()} Detections. {counts.shell} Shell Companies. {counts.agency} Law Enforcement. {counts.military} Military.
+          </h1>
           <p className="max-w-3xl text-sm opacity-80">
-            Operators resolved from the FAA Master Registry, joined to observed detections and known
-            shell-company filings. Sourced entirely from public records any member of the public can verify.
+            The machine resolved <strong>{counts.total}</strong> operators from the public FAA registry,
+            joined them to <strong>{counts.totalDetections.toLocaleString()}</strong> observed detections, and
+            auto-flagged shell companies, law enforcement, military, and medical cover. The public record
+            named them. We just display it. No human picked this list.
           </p>
         </div>
       </section>
@@ -142,6 +146,12 @@ function Operators() {
             ))}
           </div>
           <div className="label-stamp text-alert mb-2">Showing {rows.length} of {data.length} · sorted by detections</div>
+          <p className="text-xs font-mono opacity-70 mb-3 max-w-3xl">
+            <strong>Confidence</strong> = likelihood this operator is conducting covert surveillance,
+            scored from registry opacity (shell/LLC), flight behavior (altitude, NIC suppression, hover
+            patterns), and coordination with other tails. Calculated by the machine, refreshed live from
+            <code> aircraft_profiles</code>.
+          </p>
           <div className="overflow-x-auto brutal-border-thick">
             <table className="w-full text-sm">
               <thead className="bg-ink text-paper">
