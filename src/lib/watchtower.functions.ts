@@ -2350,11 +2350,11 @@ export type MosaicHandoffPair = {
 export const getHandoffPairs = createServerFn({ method: "GET" }).handler(async (): Promise<MosaicHandoffPair[]> => {
   const w = watchtower();
   try {
-    // Use convergence_events: each event lists multiple aircraft converging at a point.
-    // We pair the first two icaos per event as a handoff edge, weighted by event count.
+    // Use quiet-math convergence_events: each event lists multiple aircraft converging at a point.
+    // We pair ICAOs from unique_icao_hexes per event as a handoff edge, weighted by event count.
     const rows = await w`
       SELECT center_lat::float AS lat, center_lon::float AS lon,
-             icao_hexes, aircraft_count
+             unique_icao_hexes, aircraft_count
       FROM convergence_events
       WHERE center_lat BETWEEN ${KERN_BOUNDS.minLat} AND ${KERN_BOUNDS.maxLat}
         AND center_lon BETWEEN ${KERN_BOUNDS.minLon} AND ${KERN_BOUNDS.maxLon}
@@ -2363,9 +2363,9 @@ export const getHandoffPairs = createServerFn({ method: "GET" }).handler(async (
       LIMIT 500`;
     const pairCounts = new Map<string, MosaicHandoffPair>();
     for (const r of rows as any[]) {
-      const hexes: string[] = Array.isArray(r.icao_hexes)
-        ? r.icao_hexes
-        : (typeof r.icao_hexes === "string" ? r.icao_hexes.split(/[,\s]+/).filter(Boolean) : []);
+      const hexes: string[] = Array.isArray(r.unique_icao_hexes)
+        ? r.unique_icao_hexes
+        : (typeof r.unique_icao_hexes === "string" ? r.unique_icao_hexes.split(/[,\s]+/).filter(Boolean) : []);
       if (hexes.length < 2) continue;
       for (let i = 0; i < Math.min(hexes.length, 4); i++) {
         for (let j = i + 1; j < Math.min(hexes.length, 4); j++) {
