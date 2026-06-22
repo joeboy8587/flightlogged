@@ -48,7 +48,7 @@ export function MosaicMap({
 
   useEffect(() => {
     if (!elRef.current || mapRef.current) return;
-    const map = L.map(elRef.current, { zoomControl: true }).setView([35.43, -119.05], 10);
+    const map = L.map(elRef.current, { zoomControl: true }).setView([35.6, -119.2], 7);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 18, attribution: "© OpenStreetMap",
     }).addTo(map);
@@ -140,6 +140,14 @@ export function MosaicMap({
       }
       lg.addTo(map); groups.entities = lg;
     }
+
+    const visiblePoints: [number, number][] = [];
+    if (layers.density) data.density.slice(0, 200).forEach((t) => visiblePoints.push([t.lat, t.lon]));
+    if (layers.violations) data.violations.slice(0, 200).forEach((t) => visiblePoints.push([t.lat, t.lon]));
+    if (layers.anomalyPins) data.anomalyPoints.slice(0, 200).forEach((p) => visiblePoints.push([p.lat, p.lon]));
+    if (layers.handoffs) data.handoffs.slice(0, 100).forEach((h) => { visiblePoints.push([h.fromLat, h.fromLon]); visiblePoints.push([h.toLat, h.toLon]); });
+    if (layers.entities) data.entities.forEach((e) => visiblePoints.push([e.lat, e.lon]));
+    if (visiblePoints.length > 0) map.fitBounds(L.latLngBounds(visiblePoints), { padding: [24, 24], maxZoom: 10 });
   }, [layers, data, onSelect]);
 
   return <div ref={elRef} style={{ height: "70vh", minHeight: 480, width: "100%" }} className="brutal-border" />;
