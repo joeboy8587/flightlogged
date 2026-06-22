@@ -64,12 +64,14 @@ const ANOMALY_COLORS: Record<string, string> = {
 const DOW_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 function MosaicPage() {
-  const { data: density } = useSuspenseQuery(densityQO);
-  const { data: violations } = useSuspenseQuery(violQO);
-  const { data: tod } = useSuspenseQuery(todQO);
-  const { data: anomalyPoints } = useSuspenseQuery(anomPtQO);
-  const { data: handoffs } = useSuspenseQuery(handoffQO);
-  const { data: entities } = useSuspenseQuery(entityQO);
+  const [county, setCounty] = useState("all");
+  const [MosaicMapComponent, setMosaicMapComponent] = useState<ComponentType<any> | null>(null);
+  const { data: density } = useSuspenseQuery(densityQO(county));
+  const { data: violations } = useSuspenseQuery(violQO(county));
+  const { data: tod } = useSuspenseQuery(todQO(county));
+  const { data: anomalyPoints } = useSuspenseQuery(anomPtQO(county));
+  const { data: handoffs } = useSuspenseQuery(handoffQO(county));
+  const { data: entities } = useSuspenseQuery(entityQO(county));
 
   const [layers, setLayers] = useState({
     density: true, violations: true, anomalyPins: false, handoffs: false, entities: true,
@@ -79,7 +81,16 @@ function MosaicPage() {
 
   const toggle = (k: keyof typeof layers) => setLayers((s) => ({ ...s, [k]: !s[k] }));
 
+  useEffect(() => {
+    let mounted = true;
+    import("@/components/mosaic/MosaicMap.client").then((mod) => {
+      if (mounted) setMosaicMapComponent(() => mod.MosaicMap);
+    });
+    return () => { mounted = false; };
+  }, []);
+
   const todMax = useMemo(() => Math.max(1, ...tod.map((t) => t.pings)), [tod]);
+  const mapData = useMemo(() => ({ density, violations, anomalyPoints, handoffs, entities }), [density, violations, anomalyPoints, handoffs, entities]);
 
   return (
     <div className="min-h-screen bg-paper text-ink">
@@ -89,9 +100,9 @@ function MosaicPage() {
       <section className="border-b-4 border-ink">
         <div className="max-w-[1400px] mx-auto px-4 py-8">
           <div className="label-stamp text-alert mb-2">Surveillance Mosaic</div>
-          <h1 className="text-4xl sm:text-6xl mb-3">Six layers. One map. One finding.</h1>
+          <h1 className="text-4xl sm:text-6xl mb-3">Six layers. Multi-county evidence.</h1>
           <p className="max-w-3xl text-sm sm:text-base">
-            Every layer reads from quiet-math (the unbiased ML database). Tile size is
+            Every layer reads from quiet-math. Choose any county lens or view the whole region. Tile size is
             ~1 km² (0.01° × 0.01°). Click any tile, pin, or arrow to open its evidence
             bundle with hash and source rows.
           </p>
@@ -102,12 +113,29 @@ function MosaicPage() {
         <div className="max-w-[1400px] mx-auto px-4 py-6">
           <div className="grid lg:grid-cols-[1fr_320px] gap-4">
             <div>
-              <div className="h-[70vh] brutal-border bg-warning/20 flex items-center justify-center label-stamp">
-                Interactive map loading — data layer active ({density.length} density tiles, {anomalyPoints.length} anomaly points, {handoffs.length} handoff pairs)
-              </div>
+              {MosaicMapComponent ? (
+                <MosaicMapComponent layers={layers} data={mapData} onSelect={setSelected} />
+              ) : (
+                <div className="h-[70vh] brutal-border bg-warning/20 flex items-center justify-center label-stamp">
+                  Interactive map loading — data layer active ({density.length} density tiles, {anomalyPoints.length} anomaly points, {handoffs.length} handoff pairs)
+                </div>
+              )}
             </div>
 
             <aside className="space-y-4">
+              <div className="brutal-border p-3">
+                <label htmlFor="mosaic-county" className="label-stamp mb-2 block">County lens</label>
+                <select
+                  id="mosaic-county"
+                  value={county}
+                  onChange={(e) => { setCounty(e.target.value); setSelected(null); }}
+                  className="brutal-border bg-paper px-3 py-2 font-mono text-sm w-full cursor-pointer hover:bg-warning"
+                >
+                  {COUNTY_OPTIONS.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
+                </select>
+                <p className="text-[11px] font-mono opacity-70 mt-2">All counts below refetch from quiet-math for the selected county.</p>
+              </div>
+
               <div className="brutal-border p-3">
                 <div className="label-stamp mb-2">Layers</div>
                 {([
