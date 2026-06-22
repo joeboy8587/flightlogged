@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
@@ -68,8 +69,35 @@ function Live() {
 
   const anomalyPct = s.totalDetections > 0 ? Math.round((s.anomalyEvents / s.totalDetections) * 1000) / 10 : 0;
 
-  // Top 5 plain-English stories — the most recent low-altitude detections.
-  const stories = low.slice(0, 5);
+  // County filter — multi-county, non-biased default ("all").
+  const [county, setCounty] = useState<string>("all");
+
+  const countyOptions = useMemo(() => {
+    const seen = new Map<string, number>();
+    for (const r of low) {
+      const key = (r.county || "OTHER").toUpperCase();
+      seen.set(key, (seen.get(key) ?? 0) + 1);
+    }
+    // Stable order with primary AOI counties first.
+    const primary = ["KERN", "KINGS", "TULARE", "FRESNO", "SAN BERNARDINO"];
+    const rest = [...seen.keys()].filter((k) => !primary.includes(k)).sort();
+    return [...primary.filter((k) => seen.has(k)), ...rest].map((k) => ({
+      key: k,
+      label: k.charAt(0) + k.slice(1).toLowerCase(),
+      count: seen.get(k) ?? 0,
+    }));
+  }, [low]);
+
+  const matchesCounty = (c: string | null | undefined) => {
+    if (county === "all") return true;
+    return (c || "OTHER").toUpperCase() === county;
+  };
+
+  const lowFiltered = useMemo(() => low.filter((r) => matchesCounty(r.county)), [low, county]);
+  // Top 5 plain-English stories — most recent low-altitude detections in the selected county.
+  const stories = lowFiltered.slice(0, 5);
+  const showKernAlerts = county === "all" || county === "KERN";
+  const showLocalAgencies = county === "all" || county === "KERN";
 
   return (
     <div className="min-h-screen bg-paper text-ink">
@@ -77,7 +105,7 @@ function Live() {
       <SiteBreadcrumbs items={crumbs} />
 
       {/* KERN COUNTY ALERTS — surfaced above LA-volume noise */}
-      {kern.length > 0 && (
+      {showKernAlerts && kern.length > 0 && (
         <section className="border-b-4 border-ink bg-alert text-paper">
           <div className="max-w-[1400px] mx-auto px-4 py-8">
             <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
@@ -223,8 +251,28 @@ function Live() {
               <div className="label-stamp text-alert mb-2">Below 1,500 ft · Not on ground</div>
               <h2 className="text-4xl sm:text-5xl">Recent low-altitude detections</h2>
             </div>
-            <Link to="/methodology" className="label-stamp brutal-border px-3 py-2 hover:bg-warning">What counts as low? →</Link>
+            <div className="flex items-center gap-2 flex-wrap">
+              <label htmlFor="county-filter" className="label-stamp">County:</label>
+              <select
+                id="county-filter"
+                value={county}
+                onChange={(e) => setCounty(e.target.value)}
+                className="brutal-border bg-paper px-3 py-2 font-mono text-sm cursor-pointer hover:bg-warning"
+              >
+                <option value="all">All counties ({low.length})</option>
+                {countyOptions.map((c) => (
+                  <option key={c.key} value={c.key}>
+                    {c.label} ({c.count})
+                  </option>
+                ))}
+              </select>
+              <Link to="/methodology" className="label-stamp brutal-border px-3 py-2 hover:bg-warning">What counts as low? →</Link>
+            </div>
           </div>
+          <p className="mb-4 text-xs font-mono opacity-70">
+            Multi-county coverage. Filter is applied to the low-altitude table and the plain-English story strip above.
+            Kern-only sections (alerts, local agencies) hide automatically when another county is selected.
+          </p>
 
           {/* Constitutional banner */}
           <div className="brutal-border-thick bg-ink text-paper p-5 mb-6">
@@ -289,8 +337,8 @@ function Live() {
                 </tr>
               </thead>
               <tbody className="font-mono">
-                {low.length === 0 && <tr><td colSpan={8} className="p-6 text-center">No low-altitude activity in the current window.</td></tr>}
-                {low.map((r) => (
+                {lowFiltered.length === 0 && <tr><td colSpan={8} className="p-6 text-center">No low-altitude activity in this county for the current window.</td></tr>}
+                {lowFiltered.map((r) => (
                   <tr key={r.icao + r.capturedAt} className="border-t border-ink/20 hover:bg-warning/30">
                     <td className="p-3 whitespace-nowrap">{fmtTime(r.capturedAt)}</td>
                     <td className="p-3"><span className="font-bold">{r.registration || r.icao}</span>{r.model && <div className="text-xs opacity-60">{r.model}</div>}</td>
@@ -363,7 +411,7 @@ function Live() {
       </section>
 
       {/* LOCAL AGENCY AIRCRAFT (Kern County) */}
-      {local.length > 0 && (
+      {showLocalAgencies && local.length > 0 && (
         <section className="border-b-4 border-ink bg-alert/10">
           <div className="max-w-[1400px] mx-auto px-4 py-16">
             <div className="label-stamp text-paper bg-alert inline-block px-2 py-1 mb-2">Local government aircraft · Kern County</div>
