@@ -590,24 +590,84 @@ const COUNTY_LABEL: Record<CountyKey, string> = {
   san_bernardino: "San Bernardino", other: "Other",
 };
 
+type CountyLens = CountyKey | "all";
+function normalizeCountyLens(raw: string | null | undefined): CountyLens {
+  if (!raw || String(raw).toLowerCase() === "all") return "all";
+  return normalizeCountyKey(raw);
+}
+
 export const getThreatIndex = createServerFn({ method: "GET" })
   .inputValidator((input: { county?: string } | undefined) => ({
     county: input?.county && typeof input.county === "string" ? input.county : null,
   }))
   .handler(async ({ data }): Promise<ThreatIndexSummary> => {
-  // WTI is now computed directly from anomaly_events (quiet-math).
-  // No more cross-DB hydration: detection_id, county, anomaly_score, and the
-  // contributing factors all live on the same row.
+  // WTI is computed directly from anomaly_events (quiet-math). Totals, buckets,
+  // county chips, and the top table are now all derived from the same live table
+  // so page numbers do not drift from Tail Search / ML / Mosaic.
   const w = watchtower();
-  const [tot, top, hashed] = await Promise.all([
-    w`SELECT COUNT(*)::bigint AS c FROM anomaly_events WHERE anomaly_score IS NOT NULL`,
+  const wantedKey = normalizeCountyLens(data.county);
+  const [tot, top, hashed, countyAgg, bucketAgg] = await Promise.all([
+    w`SELECT COUNT(*)::bigint AS c
+      FROM anomaly_events
+      WHERE anomaly_score IS NOT NULL
+        AND (${wantedKey} = 'all' OR CASE
+          WHEN county ILIKE '%kern%' THEN 'kern'
+          WHEN county ILIKE '%tulare%' THEN 'tulare'
+          WHEN county ILIKE '%kings%' THEN 'kings'
+          WHEN county ILIKE '%fresno%' THEN 'fresno'
+          WHEN county ILIKE '%san bernardino%' OR county ILIKE '%san_bernardino%' OR county ILIKE '%sanbernardino%' THEN 'san_bernardino'
+          ELSE 'other' END = ${wantedKey})`,
     w`SELECT id::text AS detection_id, anomaly_score, county, county_z_score,
              contributing_factors, detected_at, sha256_hash, anomaly_type
       FROM anomaly_events
       WHERE anomaly_score IS NOT NULL
-      ORDER BY anomaly_score DESC NULLS LAST
-      LIMIT 250`,
-    w`SELECT COUNT(*)::bigint AS c FROM anomaly_events WHERE sha256_hash IS NOT NULL`,
+        AND (${wantedKey} = 'all' OR CASE
+          WHEN county ILIKE '%kern%' THEN 'kern'
+          WHEN county ILIKE '%tulare%' THEN 'tulare'
+          WHEN county ILIKE '%kings%' THEN 'kings'
+          WHEN county ILIKE '%fresno%' THEN 'fresno'
+          WHEN county ILIKE '%san bernardino%' OR county ILIKE '%san_bernardino%' OR county ILIKE '%sanbernardino%' THEN 'san_bernardino'
+          ELSE 'other' END = ${wantedKey})
+      ORDER BY anomaly_score DESC NULLS LAST, detected_at DESC NULLS LAST
+      LIMIT 25`,
+    w`SELECT COUNT(*)::bigint AS c
+      FROM anomaly_events
+      WHERE sha256_hash IS NOT NULL
+        AND anomaly_score IS NOT NULL
+        AND (${wantedKey} = 'all' OR CASE
+          WHEN county ILIKE '%kern%' THEN 'kern'
+          WHEN county ILIKE '%tulare%' THEN 'tulare'
+          WHEN county ILIKE '%kings%' THEN 'kings'
+          WHEN county ILIKE '%fresno%' THEN 'fresno'
+          WHEN county ILIKE '%san bernardino%' OR county ILIKE '%san_bernardino%' OR county ILIKE '%sanbernardino%' THEN 'san_bernardino'
+          ELSE 'other' END = ${wantedKey})`,
+    w`SELECT CASE
+          WHEN county ILIKE '%kern%' THEN 'kern'
+          WHEN county ILIKE '%tulare%' THEN 'tulare'
+          WHEN county ILIKE '%kings%' THEN 'kings'
+          WHEN county ILIKE '%fresno%' THEN 'fresno'
+          WHEN county ILIKE '%san bernardino%' OR county ILIKE '%san_bernardino%' OR county ILIKE '%sanbernardino%' THEN 'san_bernardino'
+          ELSE 'other' END AS county_key,
+        COUNT(*)::bigint AS c
+      FROM anomaly_events
+      WHERE anomaly_score IS NOT NULL
+      GROUP BY 1`,
+    w`SELECT CASE
+          WHEN anomaly_score >= 0.75 THEN 4
+          WHEN anomaly_score >= 0.50 THEN 3
+          WHEN anomaly_score >= 0.25 THEN 2
+          ELSE 1 END AS tier,
+        COUNT(*)::bigint AS c
+      FROM anomaly_events
+      WHERE anomaly_score IS NOT NULL
+        AND (${wantedKey} = 'all' OR CASE
+          WHEN county ILIKE '%kern%' THEN 'kern'
+          WHEN county ILIKE '%tulare%' THEN 'tulare'
+          WHEN county ILIKE '%kings%' THEN 'kings'
+          WHEN county ILIKE '%fresno%' THEN 'fresno'
+          WHEN county ILIKE '%san bernardino%' OR county ILIKE '%san_bernardino%' OR county ILIKE '%sanbernardino%' THEN 'san_bernardino'
+          ELSE 'other' END = ${wantedKey})
+      GROUP BY 1`,
   ]);
   // Score → tier mapping (documented on /methodology):
   //   0–25 = T1 LOW, 25–50 = T2 MEDIUM, 50–75 = T3 HIGH, 75–100 = T4 CRITICAL
@@ -617,7 +677,6 @@ export const getThreatIndex = createServerFn({ method: "GET" })
     if (wti >= 25) return { tier: 2, level: "MEDIUM" };
     return { tier: 1, level: "LOW" };
   };
-  const wantedKey = data.county ? normalizeCountyKey(data.county) : null;
   const enriched = (top as any[]).map((r) => {
     // anomaly_score is roughly 0..1 in quiet-math; project to 0..100.
     const rawScore = r.anomaly_score != null ? Number(r.anomaly_score) : 0;
@@ -644,35 +703,20 @@ export const getThreatIndex = createServerFn({ method: "GET" })
       county: r.county ?? null,
     } as ThreatTopRow;
   });
-  // Distribution across the full hydrated pool — before filtering — so the chip
-  // counts always reflect what's available.
-  const countyCountMap = new Map<string, number>();
-  for (const row of enriched) {
-    const key = normalizeCountyKey(row.county);
-    countyCountMap.set(key, (countyCountMap.get(key) ?? 0) + 1);
-  }
+  const countyCountMap = new Map<string, number>((countyAgg as any[]).map((r) => [String(r.county_key), Number(r.c)]));
   const countyCounts = (["kern", "tulare", "kings", "fresno", "san_bernardino", "other"] as CountyKey[])
     .map((k) => ({ county: COUNTY_LABEL[k], count: countyCountMap.get(k) ?? 0 }));
-  const filtered = wantedKey
-    ? enriched.filter((r) => normalizeCountyKey(r.county) === wantedKey)
-    : enriched;
-  // Bucket tier counts from the hydrated pool (before county filtering).
-  const bucketMap = new Map<string, { tier: number; level: string; count: number }>();
-  for (const r of enriched) {
-    const k = `${r.tier}|${r.level}`;
-    const v = bucketMap.get(k) ?? { tier: r.tier!, level: r.level!, count: 0 };
-    v.count += 1;
-    bucketMap.set(k, v);
-  }
-  const buckets = Array.from(bucketMap.values()).sort((a, b) => b.tier - a.tier);
+  const buckets = (bucketAgg as any[])
+    .map((r) => ({ tier: Number(r.tier), level: tierOf(Number(r.tier) === 4 ? 100 : Number(r.tier) === 3 ? 50 : Number(r.tier) === 2 ? 25 : 0).level, count: Number(r.c) }))
+    .sort((a, b) => b.tier - a.tier);
   return {
     total: Number(tot[0].c),
     buckets,
-    top: filtered.slice(0, 25),
+    top: enriched,
     methodVersion: "quiet-math.wti.v1",
     hashedRows: Number(hashed[0].c),
     countyCounts,
-    countyFilter: wantedKey,
+    countyFilter: wantedKey === "all" ? null : wantedKey,
   };
 });
 
@@ -2135,26 +2179,25 @@ export const getConvergenceEvent = createServerFn({ method: "GET" }).handler(
 // trailing newline kept intentionally
 
 // ============================================================
-// MOSAIC LAYERS (Kern-centered surveillance mosaic)
+// MOSAIC LAYERS (multi-county surveillance mosaic)
 // All read quiet-math. 1km² tiles via 0.01° binning.
 // ============================================================
 
-const KERN_BOUNDS = { minLat: 34.8, maxLat: 36.2, minLon: -120.2, maxLon: -117.6 };
-
-function sinceClause(sinceHours: number | null): string {
-  if (!sinceHours || sinceHours <= 0) return "";
-  return `AND captured_at >= NOW() - INTERVAL '${Math.floor(sinceHours)} hours'`;
-}
+const MOSAIC_BOUNDS = { minLat: 32.2, maxLat: 38.2, minLon: -122.8, maxLon: -113.6 };
 
 export type MosaicDensityTile = {
   lat: number; lon: number; pings: number; uniqueAircraft: number;
   avgAltitude: number | null; belowFloor: number;
 };
 export const getDensityTiles = createServerFn({ method: "GET" })
-  .inputValidator((d: { sinceHours?: number | null } | undefined) => d ?? {})
+  .inputValidator((d: { sinceHours?: number | null; county?: string | null } | undefined) => ({
+    sinceHours: d?.sinceHours ?? null,
+    county: normalizeCountyLens(d?.county),
+  }))
   .handler(async ({ data }): Promise<MosaicDensityTile[]> => {
     const w = watchtower();
     const sh = data?.sinceHours ?? null;
+    const county = data?.county ?? "all";
     try {
       const rows = sh && sh > 0
         ? await w`
@@ -2165,9 +2208,16 @@ export const getDensityTiles = createServerFn({ method: "GET" })
                  AVG(altitude_ft)::float AS avg_alt,
                  COUNT(*) FILTER (WHERE altitude_ft < 500 AND on_ground = false)::int AS below_floor
           FROM detections
-          WHERE latitude BETWEEN ${KERN_BOUNDS.minLat} AND ${KERN_BOUNDS.maxLat}
-            AND longitude BETWEEN ${KERN_BOUNDS.minLon} AND ${KERN_BOUNDS.maxLon}
+          WHERE latitude BETWEEN ${MOSAIC_BOUNDS.minLat} AND ${MOSAIC_BOUNDS.maxLat}
+            AND longitude BETWEEN ${MOSAIC_BOUNDS.minLon} AND ${MOSAIC_BOUNDS.maxLon}
             AND captured_at >= NOW() - (${Math.floor(sh)}::int * INTERVAL '1 hour')
+            AND (${county} = 'all' OR CASE
+              WHEN county ILIKE '%kern%' THEN 'kern'
+              WHEN county ILIKE '%tulare%' THEN 'tulare'
+              WHEN county ILIKE '%kings%' THEN 'kings'
+              WHEN county ILIKE '%fresno%' THEN 'fresno'
+              WHEN county ILIKE '%san bernardino%' OR county ILIKE '%san_bernardino%' OR county ILIKE '%sanbernardino%' THEN 'san_bernardino'
+              ELSE 'other' END = ${county})
           GROUP BY 1, 2
           HAVING COUNT(*) >= 5
           ORDER BY pings DESC
@@ -2180,8 +2230,15 @@ export const getDensityTiles = createServerFn({ method: "GET" })
                  AVG(altitude_ft)::float AS avg_alt,
                  COUNT(*) FILTER (WHERE altitude_ft < 500 AND on_ground = false)::int AS below_floor
           FROM detections
-          WHERE latitude BETWEEN ${KERN_BOUNDS.minLat} AND ${KERN_BOUNDS.maxLat}
-            AND longitude BETWEEN ${KERN_BOUNDS.minLon} AND ${KERN_BOUNDS.maxLon}
+          WHERE latitude BETWEEN ${MOSAIC_BOUNDS.minLat} AND ${MOSAIC_BOUNDS.maxLat}
+            AND longitude BETWEEN ${MOSAIC_BOUNDS.minLon} AND ${MOSAIC_BOUNDS.maxLon}
+            AND (${county} = 'all' OR CASE
+              WHEN county ILIKE '%kern%' THEN 'kern'
+              WHEN county ILIKE '%tulare%' THEN 'tulare'
+              WHEN county ILIKE '%kings%' THEN 'kings'
+              WHEN county ILIKE '%fresno%' THEN 'fresno'
+              WHEN county ILIKE '%san bernardino%' OR county ILIKE '%san_bernardino%' OR county ILIKE '%sanbernardino%' THEN 'san_bernardino'
+              ELSE 'other' END = ${county})
           GROUP BY 1, 2
           HAVING COUNT(*) >= 5
           ORDER BY pings DESC
