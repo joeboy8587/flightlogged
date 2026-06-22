@@ -85,7 +85,7 @@ export const getSnapshot = createServerFn({ method: "GET" }).handler(async (): P
     const w = watchtower();
     const [d, a, an, cv, vc, mb] = await Promise.all([
       w`SELECT COUNT(*)::int AS c, MAX(captured_at) AS last, MIN(captured_at) AS first FROM detections`,
-      w`SELECT COUNT(*)::int AS c FROM aircraft_profiles`,
+      w`SELECT COUNT(DISTINCT icao_hex)::int AS c FROM detections`,
       w`SELECT COUNT(*)::int AS c FROM anomaly_events`,
       w`SELECT COUNT(*)::int AS c FROM convergence_events`,
       w`SELECT COUNT(*)::int AS c FROM violation_classifications`,
@@ -151,7 +151,7 @@ export const getRecentLowAltitude = createServerFn({ method: "GET" }).handler(as
         AND d.altitude_ft >= -100      -- exclude transponder/barometric anomalies from public display
         AND d.on_ground = false
       ORDER BY d.captured_at DESC
-      LIMIT 40
+      LIMIT 400
     `,
     w`SELECT rule_name, rule_source, min_altitude_violation_ft, violation_score
       FROM regulatory_baselines WHERE is_active = true
@@ -1759,39 +1759,54 @@ export const searchByTail = createServerFn({ method: "GET" })
     if (!data.tail) return null;
     const w = watchtower();
     const tail = data.tail;
-    const [profile, dets] = await Promise.all([
+    const nless = tail.startsWith("N") ? tail.slice(1) : tail;
+    const nform = tail.startsWith("N") ? tail : `N${tail}`;
+    const [profile, detStats, dets] = await Promise.all([
       w`SELECT p.icao_hex, p.observed_registration, p.registered_owner, p.aircraft_model,
                p.total_detections, p.min_altitude, p.avg_altitude, p.max_altitude,
                p.night_pct, p.first_seen, p.last_seen,
                m.name AS reg_name, m.city AS reg_city, m.state AS reg_state
         FROM aircraft_profiles p
         LEFT JOIN faa_master m ON UPPER(m.mode_s_code_hex) = UPPER(p.icao_hex)
-        WHERE UPPER(p.observed_registration) = ${tail}
+        WHERE UPPER(p.observed_registration) IN (${tail}, ${nform}, ${nless})
            OR UPPER(p.icao_hex) = ${tail}
+           OR UPPER(m.n_number) = ${nless}
+           OR UPPER(m.mode_s_code_hex) = ${tail}
         LIMIT 1`,
+      w`SELECT COUNT(*)::bigint AS total,
+               MIN(altitude_ft)::int AS min_alt,
+               AVG(altitude_ft)::float AS avg_alt,
+               MAX(altitude_ft)::int AS max_alt,
+               AVG(CASE WHEN EXTRACT(HOUR FROM captured_at AT TIME ZONE 'America/Los_Angeles') < 6
+                         OR EXTRACT(HOUR FROM captured_at AT TIME ZONE 'America/Los_Angeles') >= 22 THEN 1 ELSE 0 END)::float AS night_pct,
+               MIN(captured_at) AS first_seen,
+               MAX(captured_at) AS last_seen
+        FROM detections
+        WHERE UPPER(registration) IN (${tail}, ${nform}, ${nless}) OR UPPER(icao_hex) = ${tail}`,
       w`SELECT captured_at, altitude_ft, speed_kts, county, latitude, longitude, on_ground
         FROM detections
-        WHERE UPPER(registration) = ${tail} OR UPPER(icao_hex) = ${tail}
+        WHERE UPPER(registration) IN (${tail}, ${nform}, ${nless}) OR UPPER(icao_hex) = ${tail}
         ORDER BY captured_at DESC
         LIMIT 1000`,
     ]);
     const pArr = profile as any[];
     const dArr = dets as any[];
+    const live = (detStats as any[])[0] ?? {};
     if (pArr.length === 0 && dArr.length === 0) return null;
     const p = pArr[0] ?? {};
-    const rawMin = p.min_altitude == null ? null : Number(p.min_altitude);
+    const rawMin = live.min_alt == null ? null : Number(live.min_alt);
     return {
-      registration: p.observed_registration ?? tail,
+      registration: p.observed_registration ?? dArr[0]?.registration ?? nform,
       icao: p.icao_hex ?? null,
       owner: p.registered_owner ?? null,
       model: p.aircraft_model ?? null,
-      total: Number(p.total_detections ?? dArr.length),
+      total: Number(live.total ?? dArr.length),
       minAlt: rawMin != null && rawMin < -100 ? null : rawMin,
-      avgAlt: p.avg_altitude != null ? Number(p.avg_altitude) : null,
-      maxAlt: p.max_altitude != null ? Number(p.max_altitude) : null,
-      nightPct: p.night_pct != null ? Number(p.night_pct) : null,
-      firstSeen: p.first_seen ? new Date(p.first_seen).toISOString() : null,
-      lastSeen: p.last_seen ? new Date(p.last_seen).toISOString() : null,
+      avgAlt: live.avg_alt != null ? Number(live.avg_alt) : null,
+      maxAlt: live.max_alt != null ? Number(live.max_alt) : null,
+      nightPct: live.night_pct != null ? Number(live.night_pct) : null,
+      firstSeen: live.first_seen ? new Date(live.first_seen).toISOString() : null,
+      lastSeen: live.last_seen ? new Date(live.last_seen).toISOString() : null,
       identifiedName: p.reg_name ?? null,
       registrantCity: p.reg_city ?? null,
       registrantState: p.reg_state ?? null,
