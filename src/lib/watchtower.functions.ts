@@ -85,7 +85,7 @@ export const getSnapshot = createServerFn({ method: "GET" }).handler(async (): P
     const w = watchtower();
     const [d, a, an, cv, vc, mb] = await Promise.all([
       w`SELECT COUNT(*)::int AS c, MAX(captured_at) AS last, MIN(captured_at) AS first FROM detections`,
-      w`SELECT COUNT(*)::int AS c FROM aircraft_profiles`,
+      w`SELECT COUNT(DISTINCT icao_hex)::int AS c FROM detections`,
       w`SELECT COUNT(*)::int AS c FROM anomaly_events`,
       w`SELECT COUNT(*)::int AS c FROM convergence_events`,
       w`SELECT COUNT(*)::int AS c FROM violation_classifications`,
@@ -151,7 +151,7 @@ export const getRecentLowAltitude = createServerFn({ method: "GET" }).handler(as
         AND d.altitude_ft >= -100      -- exclude transponder/barometric anomalies from public display
         AND d.on_ground = false
       ORDER BY d.captured_at DESC
-      LIMIT 40
+      LIMIT 400
     `,
     w`SELECT rule_name, rule_source, min_altitude_violation_ft, violation_score
       FROM regulatory_baselines WHERE is_active = true
@@ -590,24 +590,84 @@ const COUNTY_LABEL: Record<CountyKey, string> = {
   san_bernardino: "San Bernardino", other: "Other",
 };
 
+type CountyLens = CountyKey | "all";
+function normalizeCountyLens(raw: string | null | undefined): CountyLens {
+  if (!raw || String(raw).toLowerCase() === "all") return "all";
+  return normalizeCountyKey(raw);
+}
+
 export const getThreatIndex = createServerFn({ method: "GET" })
   .inputValidator((input: { county?: string } | undefined) => ({
     county: input?.county && typeof input.county === "string" ? input.county : null,
   }))
   .handler(async ({ data }): Promise<ThreatIndexSummary> => {
-  // WTI is now computed directly from anomaly_events (quiet-math).
-  // No more cross-DB hydration: detection_id, county, anomaly_score, and the
-  // contributing factors all live on the same row.
+  // WTI is computed directly from anomaly_events (quiet-math). Totals, buckets,
+  // county chips, and the top table are now all derived from the same live table
+  // so page numbers do not drift from Tail Search / ML / Mosaic.
   const w = watchtower();
-  const [tot, top, hashed] = await Promise.all([
-    w`SELECT COUNT(*)::bigint AS c FROM anomaly_events WHERE anomaly_score IS NOT NULL`,
+  const wantedKey = normalizeCountyLens(data.county);
+  const [tot, top, hashed, countyAgg, bucketAgg] = await Promise.all([
+    w`SELECT COUNT(*)::bigint AS c
+      FROM anomaly_events
+      WHERE anomaly_score IS NOT NULL
+        AND (${wantedKey} = 'all' OR CASE
+          WHEN county ILIKE '%kern%' THEN 'kern'
+          WHEN county ILIKE '%tulare%' THEN 'tulare'
+          WHEN county ILIKE '%kings%' THEN 'kings'
+          WHEN county ILIKE '%fresno%' THEN 'fresno'
+          WHEN county ILIKE '%san bernardino%' OR county ILIKE '%san_bernardino%' OR county ILIKE '%sanbernardino%' THEN 'san_bernardino'
+          ELSE 'other' END = ${wantedKey})`,
     w`SELECT id::text AS detection_id, anomaly_score, county, county_z_score,
              contributing_factors, detected_at, sha256_hash, anomaly_type
       FROM anomaly_events
       WHERE anomaly_score IS NOT NULL
-      ORDER BY anomaly_score DESC NULLS LAST
-      LIMIT 250`,
-    w`SELECT COUNT(*)::bigint AS c FROM anomaly_events WHERE sha256_hash IS NOT NULL`,
+        AND (${wantedKey} = 'all' OR CASE
+          WHEN county ILIKE '%kern%' THEN 'kern'
+          WHEN county ILIKE '%tulare%' THEN 'tulare'
+          WHEN county ILIKE '%kings%' THEN 'kings'
+          WHEN county ILIKE '%fresno%' THEN 'fresno'
+          WHEN county ILIKE '%san bernardino%' OR county ILIKE '%san_bernardino%' OR county ILIKE '%sanbernardino%' THEN 'san_bernardino'
+          ELSE 'other' END = ${wantedKey})
+      ORDER BY anomaly_score DESC NULLS LAST, detected_at DESC NULLS LAST
+      LIMIT 25`,
+    w`SELECT COUNT(*)::bigint AS c
+      FROM anomaly_events
+      WHERE sha256_hash IS NOT NULL
+        AND anomaly_score IS NOT NULL
+        AND (${wantedKey} = 'all' OR CASE
+          WHEN county ILIKE '%kern%' THEN 'kern'
+          WHEN county ILIKE '%tulare%' THEN 'tulare'
+          WHEN county ILIKE '%kings%' THEN 'kings'
+          WHEN county ILIKE '%fresno%' THEN 'fresno'
+          WHEN county ILIKE '%san bernardino%' OR county ILIKE '%san_bernardino%' OR county ILIKE '%sanbernardino%' THEN 'san_bernardino'
+          ELSE 'other' END = ${wantedKey})`,
+    w`SELECT CASE
+          WHEN county ILIKE '%kern%' THEN 'kern'
+          WHEN county ILIKE '%tulare%' THEN 'tulare'
+          WHEN county ILIKE '%kings%' THEN 'kings'
+          WHEN county ILIKE '%fresno%' THEN 'fresno'
+          WHEN county ILIKE '%san bernardino%' OR county ILIKE '%san_bernardino%' OR county ILIKE '%sanbernardino%' THEN 'san_bernardino'
+          ELSE 'other' END AS county_key,
+        COUNT(*)::bigint AS c
+      FROM anomaly_events
+      WHERE anomaly_score IS NOT NULL
+      GROUP BY 1`,
+    w`SELECT CASE
+          WHEN anomaly_score >= 0.75 THEN 4
+          WHEN anomaly_score >= 0.50 THEN 3
+          WHEN anomaly_score >= 0.25 THEN 2
+          ELSE 1 END AS tier,
+        COUNT(*)::bigint AS c
+      FROM anomaly_events
+      WHERE anomaly_score IS NOT NULL
+        AND (${wantedKey} = 'all' OR CASE
+          WHEN county ILIKE '%kern%' THEN 'kern'
+          WHEN county ILIKE '%tulare%' THEN 'tulare'
+          WHEN county ILIKE '%kings%' THEN 'kings'
+          WHEN county ILIKE '%fresno%' THEN 'fresno'
+          WHEN county ILIKE '%san bernardino%' OR county ILIKE '%san_bernardino%' OR county ILIKE '%sanbernardino%' THEN 'san_bernardino'
+          ELSE 'other' END = ${wantedKey})
+      GROUP BY 1`,
   ]);
   // Score → tier mapping (documented on /methodology):
   //   0–25 = T1 LOW, 25–50 = T2 MEDIUM, 50–75 = T3 HIGH, 75–100 = T4 CRITICAL
@@ -617,7 +677,6 @@ export const getThreatIndex = createServerFn({ method: "GET" })
     if (wti >= 25) return { tier: 2, level: "MEDIUM" };
     return { tier: 1, level: "LOW" };
   };
-  const wantedKey = data.county ? normalizeCountyKey(data.county) : null;
   const enriched = (top as any[]).map((r) => {
     // anomaly_score is roughly 0..1 in quiet-math; project to 0..100.
     const rawScore = r.anomaly_score != null ? Number(r.anomaly_score) : 0;
@@ -644,35 +703,20 @@ export const getThreatIndex = createServerFn({ method: "GET" })
       county: r.county ?? null,
     } as ThreatTopRow;
   });
-  // Distribution across the full hydrated pool — before filtering — so the chip
-  // counts always reflect what's available.
-  const countyCountMap = new Map<string, number>();
-  for (const row of enriched) {
-    const key = normalizeCountyKey(row.county);
-    countyCountMap.set(key, (countyCountMap.get(key) ?? 0) + 1);
-  }
+  const countyCountMap = new Map<string, number>((countyAgg as any[]).map((r) => [String(r.county_key), Number(r.c)]));
   const countyCounts = (["kern", "tulare", "kings", "fresno", "san_bernardino", "other"] as CountyKey[])
     .map((k) => ({ county: COUNTY_LABEL[k], count: countyCountMap.get(k) ?? 0 }));
-  const filtered = wantedKey
-    ? enriched.filter((r) => normalizeCountyKey(r.county) === wantedKey)
-    : enriched;
-  // Bucket tier counts from the hydrated pool (before county filtering).
-  const bucketMap = new Map<string, { tier: number; level: string; count: number }>();
-  for (const r of enriched) {
-    const k = `${r.tier}|${r.level}`;
-    const v = bucketMap.get(k) ?? { tier: r.tier!, level: r.level!, count: 0 };
-    v.count += 1;
-    bucketMap.set(k, v);
-  }
-  const buckets = Array.from(bucketMap.values()).sort((a, b) => b.tier - a.tier);
+  const buckets = (bucketAgg as any[])
+    .map((r) => ({ tier: Number(r.tier), level: tierOf(Number(r.tier) === 4 ? 100 : Number(r.tier) === 3 ? 50 : Number(r.tier) === 2 ? 25 : 0).level, count: Number(r.c) }))
+    .sort((a, b) => b.tier - a.tier);
   return {
     total: Number(tot[0].c),
     buckets,
-    top: filtered.slice(0, 25),
+    top: enriched,
     methodVersion: "quiet-math.wti.v1",
     hashedRows: Number(hashed[0].c),
     countyCounts,
-    countyFilter: wantedKey,
+    countyFilter: wantedKey === "all" ? null : wantedKey,
   };
 });
 
@@ -1715,39 +1759,54 @@ export const searchByTail = createServerFn({ method: "GET" })
     if (!data.tail) return null;
     const w = watchtower();
     const tail = data.tail;
-    const [profile, dets] = await Promise.all([
+    const nless = tail.startsWith("N") ? tail.slice(1) : tail;
+    const nform = tail.startsWith("N") ? tail : `N${tail}`;
+    const [profile, detStats, dets] = await Promise.all([
       w`SELECT p.icao_hex, p.observed_registration, p.registered_owner, p.aircraft_model,
                p.total_detections, p.min_altitude, p.avg_altitude, p.max_altitude,
                p.night_pct, p.first_seen, p.last_seen,
                m.name AS reg_name, m.city AS reg_city, m.state AS reg_state
         FROM aircraft_profiles p
         LEFT JOIN faa_master m ON UPPER(m.mode_s_code_hex) = UPPER(p.icao_hex)
-        WHERE UPPER(p.observed_registration) = ${tail}
+        WHERE UPPER(p.observed_registration) IN (${tail}, ${nform}, ${nless})
            OR UPPER(p.icao_hex) = ${tail}
+           OR UPPER(m.n_number) = ${nless}
+           OR UPPER(m.mode_s_code_hex) = ${tail}
         LIMIT 1`,
+      w`SELECT COUNT(*)::bigint AS total,
+               MIN(altitude_ft)::int AS min_alt,
+               AVG(altitude_ft)::float AS avg_alt,
+               MAX(altitude_ft)::int AS max_alt,
+               AVG(CASE WHEN EXTRACT(HOUR FROM captured_at AT TIME ZONE 'America/Los_Angeles') < 6
+                         OR EXTRACT(HOUR FROM captured_at AT TIME ZONE 'America/Los_Angeles') >= 22 THEN 1 ELSE 0 END)::float AS night_pct,
+               MIN(captured_at) AS first_seen,
+               MAX(captured_at) AS last_seen
+        FROM detections
+        WHERE UPPER(registration) IN (${tail}, ${nform}, ${nless}) OR UPPER(icao_hex) = ${tail}`,
       w`SELECT captured_at, altitude_ft, speed_kts, county, latitude, longitude, on_ground
         FROM detections
-        WHERE UPPER(registration) = ${tail} OR UPPER(icao_hex) = ${tail}
+        WHERE UPPER(registration) IN (${tail}, ${nform}, ${nless}) OR UPPER(icao_hex) = ${tail}
         ORDER BY captured_at DESC
         LIMIT 1000`,
     ]);
     const pArr = profile as any[];
     const dArr = dets as any[];
+    const live = (detStats as any[])[0] ?? {};
     if (pArr.length === 0 && dArr.length === 0) return null;
     const p = pArr[0] ?? {};
-    const rawMin = p.min_altitude == null ? null : Number(p.min_altitude);
+    const rawMin = live.min_alt == null ? null : Number(live.min_alt);
     return {
-      registration: p.observed_registration ?? tail,
+      registration: p.observed_registration ?? dArr[0]?.registration ?? nform,
       icao: p.icao_hex ?? null,
       owner: p.registered_owner ?? null,
       model: p.aircraft_model ?? null,
-      total: Number(p.total_detections ?? dArr.length),
+      total: Number(live.total ?? dArr.length),
       minAlt: rawMin != null && rawMin < -100 ? null : rawMin,
-      avgAlt: p.avg_altitude != null ? Number(p.avg_altitude) : null,
-      maxAlt: p.max_altitude != null ? Number(p.max_altitude) : null,
-      nightPct: p.night_pct != null ? Number(p.night_pct) : null,
-      firstSeen: p.first_seen ? new Date(p.first_seen).toISOString() : null,
-      lastSeen: p.last_seen ? new Date(p.last_seen).toISOString() : null,
+      avgAlt: live.avg_alt != null ? Number(live.avg_alt) : null,
+      maxAlt: live.max_alt != null ? Number(live.max_alt) : null,
+      nightPct: live.night_pct != null ? Number(live.night_pct) : null,
+      firstSeen: live.first_seen ? new Date(live.first_seen).toISOString() : null,
+      lastSeen: live.last_seen ? new Date(live.last_seen).toISOString() : null,
       identifiedName: p.reg_name ?? null,
       registrantCity: p.reg_city ?? null,
       registrantState: p.reg_state ?? null,
@@ -2135,26 +2194,25 @@ export const getConvergenceEvent = createServerFn({ method: "GET" }).handler(
 // trailing newline kept intentionally
 
 // ============================================================
-// MOSAIC LAYERS (Kern-centered surveillance mosaic)
+// MOSAIC LAYERS (multi-county surveillance mosaic)
 // All read quiet-math. 1km² tiles via 0.01° binning.
 // ============================================================
 
-const KERN_BOUNDS = { minLat: 34.8, maxLat: 36.2, minLon: -120.2, maxLon: -117.6 };
-
-function sinceClause(sinceHours: number | null): string {
-  if (!sinceHours || sinceHours <= 0) return "";
-  return `AND captured_at >= NOW() - INTERVAL '${Math.floor(sinceHours)} hours'`;
-}
+const MOSAIC_BOUNDS = { minLat: 32.2, maxLat: 38.2, minLon: -122.8, maxLon: -113.6 };
 
 export type MosaicDensityTile = {
   lat: number; lon: number; pings: number; uniqueAircraft: number;
   avgAltitude: number | null; belowFloor: number;
 };
 export const getDensityTiles = createServerFn({ method: "GET" })
-  .inputValidator((d: { sinceHours?: number | null } | undefined) => d ?? {})
+  .inputValidator((d: { sinceHours?: number | null; county?: string | null } | undefined) => ({
+    sinceHours: d?.sinceHours ?? null,
+    county: normalizeCountyLens(d?.county),
+  }))
   .handler(async ({ data }): Promise<MosaicDensityTile[]> => {
     const w = watchtower();
     const sh = data?.sinceHours ?? null;
+    const county = data?.county ?? "all";
     try {
       const rows = sh && sh > 0
         ? await w`
@@ -2165,9 +2223,16 @@ export const getDensityTiles = createServerFn({ method: "GET" })
                  AVG(altitude_ft)::float AS avg_alt,
                  COUNT(*) FILTER (WHERE altitude_ft < 500 AND on_ground = false)::int AS below_floor
           FROM detections
-          WHERE latitude BETWEEN ${KERN_BOUNDS.minLat} AND ${KERN_BOUNDS.maxLat}
-            AND longitude BETWEEN ${KERN_BOUNDS.minLon} AND ${KERN_BOUNDS.maxLon}
+          WHERE latitude BETWEEN ${MOSAIC_BOUNDS.minLat} AND ${MOSAIC_BOUNDS.maxLat}
+            AND longitude BETWEEN ${MOSAIC_BOUNDS.minLon} AND ${MOSAIC_BOUNDS.maxLon}
             AND captured_at >= NOW() - (${Math.floor(sh)}::int * INTERVAL '1 hour')
+            AND (${county} = 'all' OR CASE
+              WHEN county ILIKE '%kern%' THEN 'kern'
+              WHEN county ILIKE '%tulare%' THEN 'tulare'
+              WHEN county ILIKE '%kings%' THEN 'kings'
+              WHEN county ILIKE '%fresno%' THEN 'fresno'
+              WHEN county ILIKE '%san bernardino%' OR county ILIKE '%san_bernardino%' OR county ILIKE '%sanbernardino%' THEN 'san_bernardino'
+              ELSE 'other' END = ${county})
           GROUP BY 1, 2
           HAVING COUNT(*) >= 5
           ORDER BY pings DESC
@@ -2180,8 +2245,15 @@ export const getDensityTiles = createServerFn({ method: "GET" })
                  AVG(altitude_ft)::float AS avg_alt,
                  COUNT(*) FILTER (WHERE altitude_ft < 500 AND on_ground = false)::int AS below_floor
           FROM detections
-          WHERE latitude BETWEEN ${KERN_BOUNDS.minLat} AND ${KERN_BOUNDS.maxLat}
-            AND longitude BETWEEN ${KERN_BOUNDS.minLon} AND ${KERN_BOUNDS.maxLon}
+          WHERE latitude BETWEEN ${MOSAIC_BOUNDS.minLat} AND ${MOSAIC_BOUNDS.maxLat}
+            AND longitude BETWEEN ${MOSAIC_BOUNDS.minLon} AND ${MOSAIC_BOUNDS.maxLon}
+            AND (${county} = 'all' OR CASE
+              WHEN county ILIKE '%kern%' THEN 'kern'
+              WHEN county ILIKE '%tulare%' THEN 'tulare'
+              WHEN county ILIKE '%kings%' THEN 'kings'
+              WHEN county ILIKE '%fresno%' THEN 'fresno'
+              WHEN county ILIKE '%san bernardino%' OR county ILIKE '%san_bernardino%' OR county ILIKE '%sanbernardino%' THEN 'san_bernardino'
+              ELSE 'other' END = ${county})
           GROUP BY 1, 2
           HAVING COUNT(*) >= 5
           ORDER BY pings DESC
@@ -2200,32 +2272,17 @@ export type MosaicViolationTile = {
   criticalCount: number; maxScore: number; dominantType: string;
 };
 export const getViolationTiles = createServerFn({ method: "GET" })
-  .inputValidator((d: { sinceHours?: number | null } | undefined) => d ?? {})
+  .inputValidator((d: { sinceHours?: number | null; county?: string | null } | undefined) => ({
+    sinceHours: d?.sinceHours ?? null,
+    county: normalizeCountyLens(d?.county),
+  }))
   .handler(async ({ data }): Promise<MosaicViolationTile[]> => {
     const w = watchtower();
     const sh = data?.sinceHours ?? null;
+    const county = data?.county ?? "all";
     try {
-      // Join anomaly_events to detections on icao_hex; use nearest detection by captured_at within 5 min.
       const rows = sh && sh > 0
         ? await w`
-          WITH ae AS (
-            SELECT a.anomaly_type, a.anomaly_score, a.icao_hex, a.detected_at
-            FROM anomaly_events a
-            WHERE a.anomaly_score IS NOT NULL
-              AND a.detected_at >= NOW() - (${Math.floor(sh)}::int * INTERVAL '1 hour')
-          ),
-          located AS (
-            SELECT ae.anomaly_type, ae.anomaly_score, d.latitude, d.longitude, ae.icao_hex
-            FROM ae
-            JOIN LATERAL (
-              SELECT latitude, longitude FROM detections
-              WHERE icao_hex = ae.icao_hex
-                AND captured_at BETWEEN ae.detected_at - INTERVAL '5 minutes' AND ae.detected_at + INTERVAL '5 minutes'
-                AND latitude IS NOT NULL AND longitude IS NOT NULL
-              ORDER BY ABS(EXTRACT(EPOCH FROM (captured_at - ae.detected_at))) ASC
-              LIMIT 1
-            ) d ON true
-          )
           SELECT FLOOR(latitude * 100)/100.0 AS lat,
                  FLOOR(longitude * 100)/100.0 AS lon,
                  COUNT(*)::int AS events,
@@ -2233,32 +2290,22 @@ export const getViolationTiles = createServerFn({ method: "GET" })
                  COUNT(*) FILTER (WHERE anomaly_score >= 0.85)::int AS critical_count,
                  MAX(anomaly_score)::float AS max_score,
                  (mode() WITHIN GROUP (ORDER BY anomaly_type)) AS dominant_type
-          FROM located
-          WHERE latitude BETWEEN ${KERN_BOUNDS.minLat} AND ${KERN_BOUNDS.maxLat}
-            AND longitude BETWEEN ${KERN_BOUNDS.minLon} AND ${KERN_BOUNDS.maxLon}
+          FROM anomaly_events
+          WHERE anomaly_score IS NOT NULL
+            AND latitude BETWEEN ${MOSAIC_BOUNDS.minLat} AND ${MOSAIC_BOUNDS.maxLat}
+            AND longitude BETWEEN ${MOSAIC_BOUNDS.minLon} AND ${MOSAIC_BOUNDS.maxLon}
+            AND detected_at >= NOW() - (${Math.floor(sh)}::int * INTERVAL '1 hour')
+            AND (${county} = 'all' OR CASE
+              WHEN county ILIKE '%kern%' THEN 'kern'
+              WHEN county ILIKE '%tulare%' THEN 'tulare'
+              WHEN county ILIKE '%kings%' THEN 'kings'
+              WHEN county ILIKE '%fresno%' THEN 'fresno'
+              WHEN county ILIKE '%san bernardino%' OR county ILIKE '%san_bernardino%' OR county ILIKE '%sanbernardino%' THEN 'san_bernardino'
+              ELSE 'other' END = ${county})
           GROUP BY 1, 2
           ORDER BY events DESC
           LIMIT 500`
         : await w`
-          WITH ae AS (
-            SELECT a.anomaly_type, a.anomaly_score, a.icao_hex, a.detected_at
-            FROM anomaly_events a
-            WHERE a.anomaly_score IS NOT NULL
-            ORDER BY a.detected_at DESC
-            LIMIT 30000
-          ),
-          located AS (
-            SELECT ae.anomaly_type, ae.anomaly_score, d.latitude, d.longitude, ae.icao_hex
-            FROM ae
-            JOIN LATERAL (
-              SELECT latitude, longitude FROM detections
-              WHERE icao_hex = ae.icao_hex
-                AND captured_at BETWEEN ae.detected_at - INTERVAL '5 minutes' AND ae.detected_at + INTERVAL '5 minutes'
-                AND latitude IS NOT NULL AND longitude IS NOT NULL
-              ORDER BY ABS(EXTRACT(EPOCH FROM (captured_at - ae.detected_at))) ASC
-              LIMIT 1
-            ) d ON true
-          )
           SELECT FLOOR(latitude * 100)/100.0 AS lat,
                  FLOOR(longitude * 100)/100.0 AS lon,
                  COUNT(*)::int AS events,
@@ -2266,9 +2313,17 @@ export const getViolationTiles = createServerFn({ method: "GET" })
                  COUNT(*) FILTER (WHERE anomaly_score >= 0.85)::int AS critical_count,
                  MAX(anomaly_score)::float AS max_score,
                  (mode() WITHIN GROUP (ORDER BY anomaly_type)) AS dominant_type
-          FROM located
-          WHERE latitude BETWEEN ${KERN_BOUNDS.minLat} AND ${KERN_BOUNDS.maxLat}
-            AND longitude BETWEEN ${KERN_BOUNDS.minLon} AND ${KERN_BOUNDS.maxLon}
+          FROM anomaly_events
+          WHERE anomaly_score IS NOT NULL
+            AND latitude BETWEEN ${MOSAIC_BOUNDS.minLat} AND ${MOSAIC_BOUNDS.maxLat}
+            AND longitude BETWEEN ${MOSAIC_BOUNDS.minLon} AND ${MOSAIC_BOUNDS.maxLon}
+            AND (${county} = 'all' OR CASE
+              WHEN county ILIKE '%kern%' THEN 'kern'
+              WHEN county ILIKE '%tulare%' THEN 'tulare'
+              WHEN county ILIKE '%kings%' THEN 'kings'
+              WHEN county ILIKE '%fresno%' THEN 'fresno'
+              WHEN county ILIKE '%san bernardino%' OR county ILIKE '%san_bernardino%' OR county ILIKE '%sanbernardino%' THEN 'san_bernardino'
+              ELSE 'other' END = ${county})
           GROUP BY 1, 2
           ORDER BY events DESC
           LIMIT 500`;
@@ -2283,8 +2338,11 @@ export const getViolationTiles = createServerFn({ method: "GET" })
   });
 
 export type MosaicTimeCell = { dow: number; hour: number; pings: number; belowFloor: number; aircraft: number };
-export const getTimeOfDayHeat = createServerFn({ method: "GET" }).handler(async (): Promise<MosaicTimeCell[]> => {
+export const getTimeOfDayHeat = createServerFn({ method: "GET" })
+  .inputValidator((d: { county?: string | null } | undefined) => ({ county: normalizeCountyLens(d?.county) }))
+  .handler(async ({ data }): Promise<MosaicTimeCell[]> => {
   const w = watchtower();
+  const county = data.county ?? "all";
   try {
     const rows = await w`
       SELECT EXTRACT(DOW FROM captured_at AT TIME ZONE 'America/Los_Angeles')::int AS dow,
@@ -2293,8 +2351,15 @@ export const getTimeOfDayHeat = createServerFn({ method: "GET" }).handler(async 
              COUNT(*) FILTER (WHERE altitude_ft < 500 AND on_ground = false)::int AS below_floor,
              COUNT(DISTINCT icao_hex)::int AS aircraft
       FROM detections
-      WHERE latitude BETWEEN ${KERN_BOUNDS.minLat} AND ${KERN_BOUNDS.maxLat}
-        AND longitude BETWEEN ${KERN_BOUNDS.minLon} AND ${KERN_BOUNDS.maxLon}
+      WHERE latitude BETWEEN ${MOSAIC_BOUNDS.minLat} AND ${MOSAIC_BOUNDS.maxLat}
+        AND longitude BETWEEN ${MOSAIC_BOUNDS.minLon} AND ${MOSAIC_BOUNDS.maxLon}
+        AND (${county} = 'all' OR CASE
+          WHEN county ILIKE '%kern%' THEN 'kern'
+          WHEN county ILIKE '%tulare%' THEN 'tulare'
+          WHEN county ILIKE '%kings%' THEN 'kings'
+          WHEN county ILIKE '%fresno%' THEN 'fresno'
+          WHEN county ILIKE '%san bernardino%' OR county ILIKE '%san_bernardino%' OR county ILIKE '%sanbernardino%' THEN 'san_bernardino'
+          ELSE 'other' END = ${county})
       GROUP BY 1, 2
       ORDER BY 1, 2`;
     return (rows as any[]).map((r) => ({
@@ -2308,30 +2373,28 @@ export type MosaicAnomalyPoint = {
   lat: number; lon: number; anomalyType: string; anomalyScore: number;
   icao: string; registration: string | null; detectedAt: string; hash: string | null;
 };
-export const getAnomalyPoints = createServerFn({ method: "GET" }).handler(async (): Promise<MosaicAnomalyPoint[]> => {
+export const getAnomalyPoints = createServerFn({ method: "GET" })
+  .inputValidator((d: { county?: string | null } | undefined) => ({ county: normalizeCountyLens(d?.county) }))
+  .handler(async ({ data }): Promise<MosaicAnomalyPoint[]> => {
   const w = watchtower();
+  const county = data.county ?? "all";
   try {
     const rows = await w`
-      WITH ae AS (
-        SELECT a.id, a.anomaly_type, a.anomaly_score, a.icao_hex, a.registration,
-               a.detected_at, a.sha256_hash
-        FROM anomaly_events a
-        WHERE a.anomaly_score IS NOT NULL
-        ORDER BY a.anomaly_score DESC NULLS LAST
-        LIMIT 1500
-      )
-      SELECT ae.*, d.latitude, d.longitude
-      FROM ae
-      JOIN LATERAL (
-        SELECT latitude, longitude FROM detections
-        WHERE icao_hex = ae.icao_hex
-          AND captured_at BETWEEN ae.detected_at - INTERVAL '5 minutes' AND ae.detected_at + INTERVAL '5 minutes'
-          AND latitude IS NOT NULL AND longitude IS NOT NULL
-        ORDER BY ABS(EXTRACT(EPOCH FROM (captured_at - ae.detected_at))) ASC
-        LIMIT 1
-      ) d ON true
-      WHERE d.latitude BETWEEN ${KERN_BOUNDS.minLat} AND ${KERN_BOUNDS.maxLat}
-        AND d.longitude BETWEEN ${KERN_BOUNDS.minLon} AND ${KERN_BOUNDS.maxLon}`;
+      SELECT id, anomaly_type, anomaly_score, icao_hex, registration,
+             detected_at, sha256_hash, latitude, longitude
+      FROM anomaly_events
+      WHERE anomaly_score IS NOT NULL
+        AND latitude BETWEEN ${MOSAIC_BOUNDS.minLat} AND ${MOSAIC_BOUNDS.maxLat}
+        AND longitude BETWEEN ${MOSAIC_BOUNDS.minLon} AND ${MOSAIC_BOUNDS.maxLon}
+        AND (${county} = 'all' OR CASE
+          WHEN county ILIKE '%kern%' THEN 'kern'
+          WHEN county ILIKE '%tulare%' THEN 'tulare'
+          WHEN county ILIKE '%kings%' THEN 'kings'
+          WHEN county ILIKE '%fresno%' THEN 'fresno'
+          WHEN county ILIKE '%san bernardino%' OR county ILIKE '%san_bernardino%' OR county ILIKE '%sanbernardino%' THEN 'san_bernardino'
+          ELSE 'other' END = ${county})
+      ORDER BY anomaly_score DESC NULLS LAST, detected_at DESC NULLS LAST
+      LIMIT 1500`;
     return (rows as any[]).map((r) => ({
       lat: Number(r.latitude), lon: Number(r.longitude),
       anomalyType: r.anomaly_type, anomalyScore: Number(r.anomaly_score) || 0,
@@ -2347,8 +2410,11 @@ export type MosaicHandoffPair = {
   fromLat: number; fromLon: number; toLat: number; toLon: number;
   count: number;
 };
-export const getHandoffPairs = createServerFn({ method: "GET" }).handler(async (): Promise<MosaicHandoffPair[]> => {
+export const getHandoffPairs = createServerFn({ method: "GET" })
+  .inputValidator((d: { county?: string | null } | undefined) => ({ county: normalizeCountyLens(d?.county) }))
+  .handler(async ({ data }): Promise<MosaicHandoffPair[]> => {
   const w = watchtower();
+  const county = data.county ?? "all";
   try {
     // Use quiet-math convergence_events: each event lists multiple aircraft converging at a point.
     // We pair ICAOs from unique_icao_hexes per event as a handoff edge, weighted by event count.
@@ -2356,9 +2422,16 @@ export const getHandoffPairs = createServerFn({ method: "GET" }).handler(async (
       SELECT center_lat::float AS lat, center_lon::float AS lon,
              unique_icao_hexes, aircraft_count
       FROM convergence_events
-      WHERE center_lat BETWEEN ${KERN_BOUNDS.minLat} AND ${KERN_BOUNDS.maxLat}
-        AND center_lon BETWEEN ${KERN_BOUNDS.minLon} AND ${KERN_BOUNDS.maxLon}
+      WHERE center_lat BETWEEN ${MOSAIC_BOUNDS.minLat} AND ${MOSAIC_BOUNDS.maxLat}
+        AND center_lon BETWEEN ${MOSAIC_BOUNDS.minLon} AND ${MOSAIC_BOUNDS.maxLon}
         AND aircraft_count >= 2
+        AND (${county} = 'all' OR CASE
+          WHEN county ILIKE '%kern%' THEN 'kern'
+          WHEN county ILIKE '%tulare%' THEN 'tulare'
+          WHEN county ILIKE '%kings%' THEN 'kings'
+          WHEN county ILIKE '%fresno%' THEN 'fresno'
+          WHEN county ILIKE '%san bernardino%' OR county ILIKE '%san_bernardino%' OR county ILIKE '%sanbernardino%' THEN 'san_bernardino'
+          ELSE 'other' END = ${county})
       ORDER BY aircraft_count DESC
       LIMIT 500`;
     const pairCounts = new Map<string, MosaicHandoffPair>();
@@ -2392,8 +2465,11 @@ export type MosaicEntity = {
   entity: string; lat: number; lon: number;
   totalPings: number; aircraftCount: number; color: string;
 };
-export const getEntityCentroids = createServerFn({ method: "GET" }).handler(async (): Promise<MosaicEntity[]> => {
+export const getEntityCentroids = createServerFn({ method: "GET" })
+  .inputValidator((d: { county?: string | null } | undefined) => ({ county: normalizeCountyLens(d?.county) }))
+  .handler(async ({ data }): Promise<MosaicEntity[]> => {
   const w = watchtower();
+  const county = data.county ?? "all";
   try {
     const rows = await w`
       SELECT p.icao_hex, p.registered_owner, p.total_detections,
@@ -2401,8 +2477,15 @@ export const getEntityCentroids = createServerFn({ method: "GET" }).handler(asyn
       FROM aircraft_profiles p
       JOIN detections d ON d.icao_hex = p.icao_hex
       WHERE p.registered_owner IS NOT NULL
-        AND d.latitude BETWEEN ${KERN_BOUNDS.minLat} AND ${KERN_BOUNDS.maxLat}
-        AND d.longitude BETWEEN ${KERN_BOUNDS.minLon} AND ${KERN_BOUNDS.maxLon}
+        AND d.latitude BETWEEN ${MOSAIC_BOUNDS.minLat} AND ${MOSAIC_BOUNDS.maxLat}
+        AND d.longitude BETWEEN ${MOSAIC_BOUNDS.minLon} AND ${MOSAIC_BOUNDS.maxLon}
+        AND (${county} = 'all' OR CASE
+          WHEN d.county ILIKE '%kern%' THEN 'kern'
+          WHEN d.county ILIKE '%tulare%' THEN 'tulare'
+          WHEN d.county ILIKE '%kings%' THEN 'kings'
+          WHEN d.county ILIKE '%fresno%' THEN 'fresno'
+          WHEN d.county ILIKE '%san bernardino%' OR d.county ILIKE '%san_bernardino%' OR d.county ILIKE '%sanbernardino%' THEN 'san_bernardino'
+          ELSE 'other' END = ${county})
       GROUP BY p.icao_hex, p.registered_owner, p.total_detections
       ORDER BY p.total_detections DESC NULLS LAST
       LIMIT 200`;

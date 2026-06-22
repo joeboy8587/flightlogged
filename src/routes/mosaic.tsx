@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ComponentType } from "react";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
@@ -9,32 +9,42 @@ import {
   getAnomalyPoints, getHandoffPairs, getEntityCentroids,
 } from "@/lib/watchtower.functions";
 
-const densityQO   = queryOptions({ queryKey: ["mosaic","density"],   queryFn: () => getDensityTiles({ data: {} }),    staleTime: 5 * 60_000 });
-const violQO      = queryOptions({ queryKey: ["mosaic","viol"],      queryFn: () => getViolationTiles({ data: {} }),  staleTime: 5 * 60_000 });
-const todQO       = queryOptions({ queryKey: ["mosaic","tod"],       queryFn: () => getTimeOfDayHeat(),               staleTime: 10 * 60_000 });
-const anomPtQO    = queryOptions({ queryKey: ["mosaic","anomPts"],   queryFn: () => getAnomalyPoints(),               staleTime: 5 * 60_000 });
-const handoffQO   = queryOptions({ queryKey: ["mosaic","handoff"],   queryFn: () => getHandoffPairs(),                staleTime: 10 * 60_000 });
-const entityQO    = queryOptions({ queryKey: ["mosaic","entity"],    queryFn: () => getEntityCentroids(),             staleTime: 10 * 60_000 });
+const COUNTY_OPTIONS = [
+  { key: "all", label: "All counties" },
+  { key: "kern", label: "Kern" },
+  { key: "kings", label: "Kings" },
+  { key: "tulare", label: "Tulare" },
+  { key: "fresno", label: "Fresno" },
+  { key: "san_bernardino", label: "San Bernardino" },
+  { key: "other", label: "Other" },
+] as const;
+
+const densityQO   = (county = "all") => queryOptions({ queryKey: ["mosaic","density", county],   queryFn: () => getDensityTiles({ data: { county } }),    staleTime: 5 * 60_000 });
+const violQO      = (county = "all") => queryOptions({ queryKey: ["mosaic","viol", county],      queryFn: () => getViolationTiles({ data: { county } }),  staleTime: 5 * 60_000 });
+const todQO       = (county = "all") => queryOptions({ queryKey: ["mosaic","tod", county],       queryFn: () => getTimeOfDayHeat({ data: { county } }),   staleTime: 10 * 60_000 });
+const anomPtQO    = (county = "all") => queryOptions({ queryKey: ["mosaic","anomPts", county],   queryFn: () => getAnomalyPoints({ data: { county } }),   staleTime: 5 * 60_000 });
+const handoffQO   = (county = "all") => queryOptions({ queryKey: ["mosaic","handoff", county],   queryFn: () => getHandoffPairs({ data: { county } }),    staleTime: 10 * 60_000 });
+const entityQO    = (county = "all") => queryOptions({ queryKey: ["mosaic","entity", county],    queryFn: () => getEntityCentroids({ data: { county } }), staleTime: 10 * 60_000 });
 
 const crumbs = [{ label: "Home", href: "/" }, { label: "Mosaic" }];
 
 export const Route = createFileRoute("/mosaic")({
   head: () => ({
     meta: [
-      { title: "Surveillance Mosaic — Kern Airspace Layers" },
-      { name: "description", content: "Six-layer evidence mosaic: density, violations, time-of-day, anomaly type, handoff pairs, entity network. Reads quiet-math (unbiased ML)." },
+      { title: "Surveillance Mosaic — Quiet Math Airspace" },
+      { name: "description", content: "Multi-county evidence mosaic: density, violations, time-of-day, anomaly type, handoff pairs, entity network. Reads quiet-math." },
       { property: "og:title", content: "Surveillance Mosaic — Architecture of Never" },
       { property: "og:description", content: "Six independent surveillance layers stacked on one map." },
     ],
     links: [{ rel: "canonical", href: "https://flightlogged.lovable.app/mosaic" }],
   }),
   loader: ({ context }) => Promise.all([
-    context.queryClient.ensureQueryData(densityQO),
-    context.queryClient.ensureQueryData(violQO),
-    context.queryClient.ensureQueryData(todQO),
-    context.queryClient.ensureQueryData(anomPtQO),
-    context.queryClient.ensureQueryData(handoffQO),
-    context.queryClient.ensureQueryData(entityQO),
+    context.queryClient.ensureQueryData(densityQO()),
+    context.queryClient.ensureQueryData(violQO()),
+    context.queryClient.ensureQueryData(todQO()),
+    context.queryClient.ensureQueryData(anomPtQO()),
+    context.queryClient.ensureQueryData(handoffQO()),
+    context.queryClient.ensureQueryData(entityQO()),
   ]),
   component: MosaicPage,
   errorComponent: ({ reset }) => (
@@ -54,12 +64,14 @@ const ANOMALY_COLORS: Record<string, string> = {
 const DOW_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 function MosaicPage() {
-  const { data: density } = useSuspenseQuery(densityQO);
-  const { data: violations } = useSuspenseQuery(violQO);
-  const { data: tod } = useSuspenseQuery(todQO);
-  const { data: anomalyPoints } = useSuspenseQuery(anomPtQO);
-  const { data: handoffs } = useSuspenseQuery(handoffQO);
-  const { data: entities } = useSuspenseQuery(entityQO);
+  const [county, setCounty] = useState("all");
+  const [MosaicMapComponent, setMosaicMapComponent] = useState<ComponentType<any> | null>(null);
+  const { data: density } = useSuspenseQuery(densityQO(county));
+  const { data: violations } = useSuspenseQuery(violQO(county));
+  const { data: tod } = useSuspenseQuery(todQO(county));
+  const { data: anomalyPoints } = useSuspenseQuery(anomPtQO(county));
+  const { data: handoffs } = useSuspenseQuery(handoffQO(county));
+  const { data: entities } = useSuspenseQuery(entityQO(county));
 
   const [layers, setLayers] = useState({
     density: true, violations: true, anomalyPins: false, handoffs: false, entities: true,
@@ -69,7 +81,16 @@ function MosaicPage() {
 
   const toggle = (k: keyof typeof layers) => setLayers((s) => ({ ...s, [k]: !s[k] }));
 
+  useEffect(() => {
+    let mounted = true;
+    import("@/components/mosaic/MosaicMap.client").then((mod) => {
+      if (mounted) setMosaicMapComponent(() => mod.MosaicMap);
+    });
+    return () => { mounted = false; };
+  }, []);
+
   const todMax = useMemo(() => Math.max(1, ...tod.map((t) => t.pings)), [tod]);
+  const mapData = useMemo(() => ({ density, violations, anomalyPoints, handoffs, entities }), [density, violations, anomalyPoints, handoffs, entities]);
 
   return (
     <div className="min-h-screen bg-paper text-ink">
@@ -79,9 +100,9 @@ function MosaicPage() {
       <section className="border-b-4 border-ink">
         <div className="max-w-[1400px] mx-auto px-4 py-8">
           <div className="label-stamp text-alert mb-2">Surveillance Mosaic</div>
-          <h1 className="text-4xl sm:text-6xl mb-3">Six layers. One map. One finding.</h1>
+          <h1 className="text-4xl sm:text-6xl mb-3">Six layers. Multi-county evidence.</h1>
           <p className="max-w-3xl text-sm sm:text-base">
-            Every layer reads from quiet-math (the unbiased ML database). Tile size is
+            Every layer reads from quiet-math. Choose any county lens or view the whole region. Tile size is
             ~1 km² (0.01° × 0.01°). Click any tile, pin, or arrow to open its evidence
             bundle with hash and source rows.
           </p>
@@ -92,12 +113,29 @@ function MosaicPage() {
         <div className="max-w-[1400px] mx-auto px-4 py-6">
           <div className="grid lg:grid-cols-[1fr_320px] gap-4">
             <div>
-              <div className="h-[70vh] brutal-border bg-warning/20 flex items-center justify-center label-stamp">
-                Interactive map loading — data layer active ({density.length} density tiles, {anomalyPoints.length} anomaly points, {handoffs.length} handoff pairs)
-              </div>
+              {MosaicMapComponent ? (
+                <MosaicMapComponent layers={layers} data={mapData} onSelect={setSelected} />
+              ) : (
+                <div className="h-[70vh] brutal-border bg-warning/20 flex items-center justify-center label-stamp">
+                  Interactive map loading — data layer active ({density.length} density tiles, {anomalyPoints.length} anomaly points, {handoffs.length} handoff pairs)
+                </div>
+              )}
             </div>
 
             <aside className="space-y-4">
+              <div className="brutal-border p-3">
+                <label htmlFor="mosaic-county" className="label-stamp mb-2 block">County lens</label>
+                <select
+                  id="mosaic-county"
+                  value={county}
+                  onChange={(e) => { setCounty(e.target.value); setSelected(null); }}
+                  className="brutal-border bg-paper px-3 py-2 font-mono text-sm w-full cursor-pointer hover:bg-warning"
+                >
+                  {COUNTY_OPTIONS.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
+                </select>
+                <p className="text-[11px] font-mono opacity-70 mt-2">All counts below refetch from quiet-math for the selected county.</p>
+              </div>
+
               <div className="brutal-border p-3">
                 <div className="label-stamp mb-2">Layers</div>
                 {([
