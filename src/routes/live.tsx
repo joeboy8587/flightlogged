@@ -411,7 +411,7 @@ function Live() {
       </section>
 
       {/* LOCAL AGENCY AIRCRAFT (Kern County) */}
-      {local.length > 0 && (
+      {showLocalAgencies && local.length > 0 && (
         <section className="border-b-4 border-ink bg-alert/10">
           <div className="max-w-[1400px] mx-auto px-4 py-16">
             <div className="label-stamp text-paper bg-alert inline-block px-2 py-1 mb-2">Local government aircraft · Kern County</div>
