@@ -2323,8 +2323,11 @@ export const getViolationTiles = createServerFn({ method: "GET" })
   });
 
 export type MosaicTimeCell = { dow: number; hour: number; pings: number; belowFloor: number; aircraft: number };
-export const getTimeOfDayHeat = createServerFn({ method: "GET" }).handler(async (): Promise<MosaicTimeCell[]> => {
+export const getTimeOfDayHeat = createServerFn({ method: "GET" })
+  .inputValidator((d: { county?: string | null } | undefined) => ({ county: normalizeCountyLens(d?.county) }))
+  .handler(async ({ data }): Promise<MosaicTimeCell[]> => {
   const w = watchtower();
+  const county = data.county ?? "all";
   try {
     const rows = await w`
       SELECT EXTRACT(DOW FROM captured_at AT TIME ZONE 'America/Los_Angeles')::int AS dow,
@@ -2333,8 +2336,15 @@ export const getTimeOfDayHeat = createServerFn({ method: "GET" }).handler(async 
              COUNT(*) FILTER (WHERE altitude_ft < 500 AND on_ground = false)::int AS below_floor,
              COUNT(DISTINCT icao_hex)::int AS aircraft
       FROM detections
-      WHERE latitude BETWEEN ${KERN_BOUNDS.minLat} AND ${KERN_BOUNDS.maxLat}
-        AND longitude BETWEEN ${KERN_BOUNDS.minLon} AND ${KERN_BOUNDS.maxLon}
+      WHERE latitude BETWEEN ${MOSAIC_BOUNDS.minLat} AND ${MOSAIC_BOUNDS.maxLat}
+        AND longitude BETWEEN ${MOSAIC_BOUNDS.minLon} AND ${MOSAIC_BOUNDS.maxLon}
+        AND (${county} = 'all' OR CASE
+          WHEN county ILIKE '%kern%' THEN 'kern'
+          WHEN county ILIKE '%tulare%' THEN 'tulare'
+          WHEN county ILIKE '%kings%' THEN 'kings'
+          WHEN county ILIKE '%fresno%' THEN 'fresno'
+          WHEN county ILIKE '%san bernardino%' OR county ILIKE '%san_bernardino%' OR county ILIKE '%sanbernardino%' THEN 'san_bernardino'
+          ELSE 'other' END = ${county})
       GROUP BY 1, 2
       ORDER BY 1, 2`;
     return (rows as any[]).map((r) => ({
@@ -2348,30 +2358,28 @@ export type MosaicAnomalyPoint = {
   lat: number; lon: number; anomalyType: string; anomalyScore: number;
   icao: string; registration: string | null; detectedAt: string; hash: string | null;
 };
-export const getAnomalyPoints = createServerFn({ method: "GET" }).handler(async (): Promise<MosaicAnomalyPoint[]> => {
+export const getAnomalyPoints = createServerFn({ method: "GET" })
+  .inputValidator((d: { county?: string | null } | undefined) => ({ county: normalizeCountyLens(d?.county) }))
+  .handler(async ({ data }): Promise<MosaicAnomalyPoint[]> => {
   const w = watchtower();
+  const county = data.county ?? "all";
   try {
     const rows = await w`
-      WITH ae AS (
-        SELECT a.id, a.anomaly_type, a.anomaly_score, a.icao_hex, a.registration,
-               a.detected_at, a.sha256_hash
-        FROM anomaly_events a
-        WHERE a.anomaly_score IS NOT NULL
-        ORDER BY a.anomaly_score DESC NULLS LAST
-        LIMIT 1500
-      )
-      SELECT ae.*, d.latitude, d.longitude
-      FROM ae
-      JOIN LATERAL (
-        SELECT latitude, longitude FROM detections
-        WHERE icao_hex = ae.icao_hex
-          AND captured_at BETWEEN ae.detected_at - INTERVAL '5 minutes' AND ae.detected_at + INTERVAL '5 minutes'
-          AND latitude IS NOT NULL AND longitude IS NOT NULL
-        ORDER BY ABS(EXTRACT(EPOCH FROM (captured_at - ae.detected_at))) ASC
-        LIMIT 1
-      ) d ON true
-      WHERE d.latitude BETWEEN ${KERN_BOUNDS.minLat} AND ${KERN_BOUNDS.maxLat}
-        AND d.longitude BETWEEN ${KERN_BOUNDS.minLon} AND ${KERN_BOUNDS.maxLon}`;
+      SELECT id, anomaly_type, anomaly_score, icao_hex, registration,
+             detected_at, sha256_hash, latitude, longitude
+      FROM anomaly_events
+      WHERE anomaly_score IS NOT NULL
+        AND latitude BETWEEN ${MOSAIC_BOUNDS.minLat} AND ${MOSAIC_BOUNDS.maxLat}
+        AND longitude BETWEEN ${MOSAIC_BOUNDS.minLon} AND ${MOSAIC_BOUNDS.maxLon}
+        AND (${county} = 'all' OR CASE
+          WHEN county ILIKE '%kern%' THEN 'kern'
+          WHEN county ILIKE '%tulare%' THEN 'tulare'
+          WHEN county ILIKE '%kings%' THEN 'kings'
+          WHEN county ILIKE '%fresno%' THEN 'fresno'
+          WHEN county ILIKE '%san bernardino%' OR county ILIKE '%san_bernardino%' OR county ILIKE '%sanbernardino%' THEN 'san_bernardino'
+          ELSE 'other' END = ${county})
+      ORDER BY anomaly_score DESC NULLS LAST, detected_at DESC NULLS LAST
+      LIMIT 1500`;
     return (rows as any[]).map((r) => ({
       lat: Number(r.latitude), lon: Number(r.longitude),
       anomalyType: r.anomaly_type, anomalyScore: Number(r.anomaly_score) || 0,
