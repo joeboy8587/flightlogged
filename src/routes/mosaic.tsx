@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ComponentType } from "react";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
@@ -9,32 +9,42 @@ import {
   getAnomalyPoints, getHandoffPairs, getEntityCentroids,
 } from "@/lib/watchtower.functions";
 
-const densityQO   = queryOptions({ queryKey: ["mosaic","density"],   queryFn: () => getDensityTiles({ data: {} }),    staleTime: 5 * 60_000 });
-const violQO      = queryOptions({ queryKey: ["mosaic","viol"],      queryFn: () => getViolationTiles({ data: {} }),  staleTime: 5 * 60_000 });
-const todQO       = queryOptions({ queryKey: ["mosaic","tod"],       queryFn: () => getTimeOfDayHeat(),               staleTime: 10 * 60_000 });
-const anomPtQO    = queryOptions({ queryKey: ["mosaic","anomPts"],   queryFn: () => getAnomalyPoints(),               staleTime: 5 * 60_000 });
-const handoffQO   = queryOptions({ queryKey: ["mosaic","handoff"],   queryFn: () => getHandoffPairs(),                staleTime: 10 * 60_000 });
-const entityQO    = queryOptions({ queryKey: ["mosaic","entity"],    queryFn: () => getEntityCentroids(),             staleTime: 10 * 60_000 });
+const COUNTY_OPTIONS = [
+  { key: "all", label: "All counties" },
+  { key: "kern", label: "Kern" },
+  { key: "kings", label: "Kings" },
+  { key: "tulare", label: "Tulare" },
+  { key: "fresno", label: "Fresno" },
+  { key: "san_bernardino", label: "San Bernardino" },
+  { key: "other", label: "Other" },
+] as const;
+
+const densityQO   = (county = "all") => queryOptions({ queryKey: ["mosaic","density", county],   queryFn: () => getDensityTiles({ data: { county } }),    staleTime: 5 * 60_000 });
+const violQO      = (county = "all") => queryOptions({ queryKey: ["mosaic","viol", county],      queryFn: () => getViolationTiles({ data: { county } }),  staleTime: 5 * 60_000 });
+const todQO       = (county = "all") => queryOptions({ queryKey: ["mosaic","tod", county],       queryFn: () => getTimeOfDayHeat({ data: { county } }),   staleTime: 10 * 60_000 });
+const anomPtQO    = (county = "all") => queryOptions({ queryKey: ["mosaic","anomPts", county],   queryFn: () => getAnomalyPoints({ data: { county } }),   staleTime: 5 * 60_000 });
+const handoffQO   = (county = "all") => queryOptions({ queryKey: ["mosaic","handoff", county],   queryFn: () => getHandoffPairs({ data: { county } }),    staleTime: 10 * 60_000 });
+const entityQO    = (county = "all") => queryOptions({ queryKey: ["mosaic","entity", county],    queryFn: () => getEntityCentroids({ data: { county } }), staleTime: 10 * 60_000 });
 
 const crumbs = [{ label: "Home", href: "/" }, { label: "Mosaic" }];
 
 export const Route = createFileRoute("/mosaic")({
   head: () => ({
     meta: [
-      { title: "Surveillance Mosaic — Kern Airspace Layers" },
-      { name: "description", content: "Six-layer evidence mosaic: density, violations, time-of-day, anomaly type, handoff pairs, entity network. Reads quiet-math (unbiased ML)." },
+      { title: "Surveillance Mosaic — Quiet Math Airspace" },
+      { name: "description", content: "Multi-county evidence mosaic: density, violations, time-of-day, anomaly type, handoff pairs, entity network. Reads quiet-math." },
       { property: "og:title", content: "Surveillance Mosaic — Architecture of Never" },
       { property: "og:description", content: "Six independent surveillance layers stacked on one map." },
     ],
     links: [{ rel: "canonical", href: "https://flightlogged.lovable.app/mosaic" }],
   }),
   loader: ({ context }) => Promise.all([
-    context.queryClient.ensureQueryData(densityQO),
-    context.queryClient.ensureQueryData(violQO),
-    context.queryClient.ensureQueryData(todQO),
-    context.queryClient.ensureQueryData(anomPtQO),
-    context.queryClient.ensureQueryData(handoffQO),
-    context.queryClient.ensureQueryData(entityQO),
+    context.queryClient.ensureQueryData(densityQO()),
+    context.queryClient.ensureQueryData(violQO()),
+    context.queryClient.ensureQueryData(todQO()),
+    context.queryClient.ensureQueryData(anomPtQO()),
+    context.queryClient.ensureQueryData(handoffQO()),
+    context.queryClient.ensureQueryData(entityQO()),
   ]),
   component: MosaicPage,
   errorComponent: ({ reset }) => (
