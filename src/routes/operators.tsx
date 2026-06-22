@@ -8,7 +8,14 @@ import { breadcrumbScript } from "@/lib/breadcrumbs";
 import { getCanonicalOperators } from "@/lib/watchtower.functions";
 import { ShareRow } from "@/components/share-row";
 
-const opsQO = queryOptions({ queryKey: ["canonical-operators"], queryFn: () => getCanonicalOperators() });
+const opsQO = queryOptions({
+  queryKey: ["canonical-operators"],
+  queryFn: () => getCanonicalOperators(),
+  // Prevent client refetch on mount; SSR-hydrated data is reused so the
+  // detection totals don't shift between server and client render.
+  staleTime: 5 * 60_000,
+  gcTime: 10 * 60_000,
+});
 
 const crumbs = [
   { label: "Home", href: "/" },
@@ -84,7 +91,9 @@ function Operators() {
       case "agency": return data.filter((o) => o.kcso);
       case "military": return data.filter((o) => o.military);
       case "medical": return data.filter((o) => o.medical);
-      default: return data;
+      // Default view caps at the 50 busiest tails so the table stays scannable;
+      // category filters reveal every matching operator from the wider pool.
+      default: return data.slice(0, 50);
     }
   }, [data, filter]);
 
