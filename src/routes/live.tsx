@@ -69,8 +69,35 @@ function Live() {
 
   const anomalyPct = s.totalDetections > 0 ? Math.round((s.anomalyEvents / s.totalDetections) * 1000) / 10 : 0;
 
-  // Top 5 plain-English stories — the most recent low-altitude detections.
-  const stories = low.slice(0, 5);
+  // County filter — multi-county, non-biased default ("all").
+  const [county, setCounty] = useState<string>("all");
+
+  const countyOptions = useMemo(() => {
+    const seen = new Map<string, number>();
+    for (const r of low) {
+      const key = (r.county || "OTHER").toUpperCase();
+      seen.set(key, (seen.get(key) ?? 0) + 1);
+    }
+    // Stable order with primary AOI counties first.
+    const primary = ["KERN", "KINGS", "TULARE", "FRESNO", "SAN BERNARDINO"];
+    const rest = [...seen.keys()].filter((k) => !primary.includes(k)).sort();
+    return [...primary.filter((k) => seen.has(k)), ...rest].map((k) => ({
+      key: k,
+      label: k.charAt(0) + k.slice(1).toLowerCase(),
+      count: seen.get(k) ?? 0,
+    }));
+  }, [low]);
+
+  const matchesCounty = (c: string | null | undefined) => {
+    if (county === "all") return true;
+    return (c || "OTHER").toUpperCase() === county;
+  };
+
+  const lowFiltered = useMemo(() => low.filter((r) => matchesCounty(r.county)), [low, county]);
+  // Top 5 plain-English stories — most recent low-altitude detections in the selected county.
+  const stories = lowFiltered.slice(0, 5);
+  const showKernAlerts = county === "all" || county === "KERN";
+  const showLocalAgencies = county === "all" || county === "KERN";
 
   return (
     <div className="min-h-screen bg-paper text-ink">
@@ -78,7 +105,7 @@ function Live() {
       <SiteBreadcrumbs items={crumbs} />
 
       {/* KERN COUNTY ALERTS — surfaced above LA-volume noise */}
-      {kern.length > 0 && (
+      {showKernAlerts && kern.length > 0 && (
         <section className="border-b-4 border-ink bg-alert text-paper">
           <div className="max-w-[1400px] mx-auto px-4 py-8">
             <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
