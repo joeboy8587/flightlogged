@@ -16,6 +16,7 @@ import { Route as TailSearchRouteImport } from './routes/tail-search'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as RulesRouteImport } from './routes/rules'
 import { Route as ReportsRouteImport } from './routes/reports'
+import { Route as PodcastsRouteImport } from './routes/podcasts'
 import { Route as OperatorsRouteImport } from './routes/operators'
 import { Route as MosaicRouteImport } from './routes/mosaic'
 import { Route as MlDetectionsRouteImport } from './routes/ml-detections'
@@ -33,6 +34,7 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ToolkitIndexRouteImport } from './routes/toolkit.index'
 import { Route as ToolkitFoiaRouteImport } from './routes/toolkit.foia'
+import { Route as ApiTtsRouteImport } from './routes/api/tts'
 
 const ViolationsRoute = ViolationsRouteImport.update({
   id: '/violations',
@@ -67,6 +69,11 @@ const RulesRoute = RulesRouteImport.update({
 const ReportsRoute = ReportsRouteImport.update({
   id: '/reports',
   path: '/reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PodcastsRoute = PodcastsRouteImport.update({
+  id: '/podcasts',
+  path: '/podcasts',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OperatorsRoute = OperatorsRouteImport.update({
@@ -154,6 +161,11 @@ const ToolkitFoiaRoute = ToolkitFoiaRouteImport.update({
   path: '/foia',
   getParentRoute: () => ToolkitRoute,
 } as any)
+const ApiTtsRoute = ApiTtsRouteImport.update({
+  id: '/api/tts',
+  path: '/api/tts',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -171,6 +183,7 @@ export interface FileRoutesByFullPath {
   '/ml-detections': typeof MlDetectionsRoute
   '/mosaic': typeof MosaicRoute
   '/operators': typeof OperatorsRoute
+  '/podcasts': typeof PodcastsRoute
   '/reports': typeof ReportsRoute
   '/rules': typeof RulesRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -178,6 +191,7 @@ export interface FileRoutesByFullPath {
   '/threat-index': typeof ThreatIndexRoute
   '/toolkit': typeof ToolkitRouteWithChildren
   '/violations': typeof ViolationsRoute
+  '/api/tts': typeof ApiTtsRoute
   '/toolkit/foia': typeof ToolkitFoiaRoute
   '/toolkit/': typeof ToolkitIndexRoute
 }
@@ -197,12 +211,14 @@ export interface FileRoutesByTo {
   '/ml-detections': typeof MlDetectionsRoute
   '/mosaic': typeof MosaicRoute
   '/operators': typeof OperatorsRoute
+  '/podcasts': typeof PodcastsRoute
   '/reports': typeof ReportsRoute
   '/rules': typeof RulesRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/tail-search': typeof TailSearchRoute
   '/threat-index': typeof ThreatIndexRoute
   '/violations': typeof ViolationsRoute
+  '/api/tts': typeof ApiTtsRoute
   '/toolkit/foia': typeof ToolkitFoiaRoute
   '/toolkit': typeof ToolkitIndexRoute
 }
@@ -223,6 +239,7 @@ export interface FileRoutesById {
   '/ml-detections': typeof MlDetectionsRoute
   '/mosaic': typeof MosaicRoute
   '/operators': typeof OperatorsRoute
+  '/podcasts': typeof PodcastsRoute
   '/reports': typeof ReportsRoute
   '/rules': typeof RulesRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -230,6 +247,7 @@ export interface FileRoutesById {
   '/threat-index': typeof ThreatIndexRoute
   '/toolkit': typeof ToolkitRouteWithChildren
   '/violations': typeof ViolationsRoute
+  '/api/tts': typeof ApiTtsRoute
   '/toolkit/foia': typeof ToolkitFoiaRoute
   '/toolkit/': typeof ToolkitIndexRoute
 }
@@ -251,6 +269,7 @@ export interface FileRouteTypes {
     | '/ml-detections'
     | '/mosaic'
     | '/operators'
+    | '/podcasts'
     | '/reports'
     | '/rules'
     | '/sitemap.xml'
@@ -258,6 +277,7 @@ export interface FileRouteTypes {
     | '/threat-index'
     | '/toolkit'
     | '/violations'
+    | '/api/tts'
     | '/toolkit/foia'
     | '/toolkit/'
   fileRoutesByTo: FileRoutesByTo
@@ -277,12 +297,14 @@ export interface FileRouteTypes {
     | '/ml-detections'
     | '/mosaic'
     | '/operators'
+    | '/podcasts'
     | '/reports'
     | '/rules'
     | '/sitemap.xml'
     | '/tail-search'
     | '/threat-index'
     | '/violations'
+    | '/api/tts'
     | '/toolkit/foia'
     | '/toolkit'
   id:
@@ -302,6 +324,7 @@ export interface FileRouteTypes {
     | '/ml-detections'
     | '/mosaic'
     | '/operators'
+    | '/podcasts'
     | '/reports'
     | '/rules'
     | '/sitemap.xml'
@@ -309,6 +332,7 @@ export interface FileRouteTypes {
     | '/threat-index'
     | '/toolkit'
     | '/violations'
+    | '/api/tts'
     | '/toolkit/foia'
     | '/toolkit/'
   fileRoutesById: FileRoutesById
@@ -329,6 +353,7 @@ export interface RootRouteChildren {
   MlDetectionsRoute: typeof MlDetectionsRoute
   MosaicRoute: typeof MosaicRoute
   OperatorsRoute: typeof OperatorsRoute
+  PodcastsRoute: typeof PodcastsRoute
   ReportsRoute: typeof ReportsRoute
   RulesRoute: typeof RulesRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
@@ -336,6 +361,7 @@ export interface RootRouteChildren {
   ThreatIndexRoute: typeof ThreatIndexRoute
   ToolkitRoute: typeof ToolkitRouteWithChildren
   ViolationsRoute: typeof ViolationsRoute
+  ApiTtsRoute: typeof ApiTtsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -387,6 +413,13 @@ declare module '@tanstack/react-router' {
       path: '/reports'
       fullPath: '/reports'
       preLoaderRoute: typeof ReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/podcasts': {
+      id: '/podcasts'
+      path: '/podcasts'
+      fullPath: '/podcasts'
+      preLoaderRoute: typeof PodcastsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/operators': {
@@ -508,6 +541,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ToolkitFoiaRouteImport
       parentRoute: typeof ToolkitRoute
     }
+    '/api/tts': {
+      id: '/api/tts'
+      path: '/api/tts'
+      fullPath: '/api/tts'
+      preLoaderRoute: typeof ApiTtsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -540,6 +580,7 @@ const rootRouteChildren: RootRouteChildren = {
   MlDetectionsRoute: MlDetectionsRoute,
   MosaicRoute: MosaicRoute,
   OperatorsRoute: OperatorsRoute,
+  PodcastsRoute: PodcastsRoute,
   ReportsRoute: ReportsRoute,
   RulesRoute: RulesRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
@@ -547,6 +588,7 @@ const rootRouteChildren: RootRouteChildren = {
   ThreatIndexRoute: ThreatIndexRoute,
   ToolkitRoute: ToolkitRouteWithChildren,
   ViolationsRoute: ViolationsRoute,
+  ApiTtsRoute: ApiTtsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

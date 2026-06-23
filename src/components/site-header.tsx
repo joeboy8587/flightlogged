@@ -14,6 +14,7 @@ const NAV = [
   { to: "/military", label: "Military" },
   { to: "/tail-search", label: "Tail Search" },
   { to: "/ml-detections", label: "ML" },
+  { to: "/podcasts", label: "Podcasts" },
   { to: "/citations", label: "Citations" },
   { to: "/reports", label: "Reports" },
   { to: "/rules", label: "Rules" },
