@@ -19,8 +19,7 @@ export const Route = createFileRoute("/api/public/tts")({
             body: JSON.stringify({
               model: "openai/gpt-4o-mini-tts",
               input, voice,
-              stream_format: "sse",
-              response_format: "pcm",
+              response_format: "mp3",
             }),
             signal: request.signal,
           });
@@ -28,7 +27,12 @@ export const Route = createFileRoute("/api/public/tts")({
             const t = await upstream.text().catch(() => "");
             return new Response(`TTS upstream ${upstream.status}: ${t.slice(0, 200)}`, { status: upstream.status });
           }
-          return new Response(upstream.body, { headers: { "Content-Type": "text/event-stream" } });
+          return new Response(upstream.body, {
+            headers: {
+              "Content-Type": "audio/mpeg",
+              "Cache-Control": "no-store",
+            },
+          });
         } catch (err) {
           if (request.signal.aborted) return new Response(null, { status: 499 });
           return new Response(`TTS error: ${(err as Error).message}`, { status: 500 });
