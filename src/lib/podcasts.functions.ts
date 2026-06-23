@@ -27,7 +27,7 @@ async function snapshotForScript() {
                p.total_detections,
                1 AS fleet_size
           FROM aircraft_profiles p
-          LEFT JOIN faa_master m ON UPPER(m.mode_s_code_hex) = UPPER(p.icao_hex)
+          LEFT JOIN faa_master m ON m.mode_s_code_hex = UPPER(p.icao_hex)
          WHERE p.total_detections IS NOT NULL
          ORDER BY p.total_detections DESC NULLS LAST LIMIT 5`, [] as any[]),
     settle(w`SELECT anomaly_type, COUNT(*)::int AS c

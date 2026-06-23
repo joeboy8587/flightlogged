@@ -288,7 +288,7 @@ export const getIdentifiedOperators = createServerFn({ method: "GET" }).handler(
     SELECT p.icao_hex, p.observed_registration, p.total_detections,
            m.name, m.type_registrant, m.city, m.state
     FROM aircraft_profiles p
-    LEFT JOIN faa_master m ON UPPER(m.mode_s_code_hex) = UPPER(p.icao_hex)
+    LEFT JOIN faa_master m ON m.mode_s_code_hex = UPPER(p.icao_hex)
     WHERE m.name IS NOT NULL
     ORDER BY p.total_detections DESC
     LIMIT 30
@@ -446,7 +446,7 @@ export const getCanonicalOperators = createServerFn({ method: "GET" }).handler(a
            p.confirmed_coord_partners,
            COALESCE(m.name, p.registered_owner) AS faa_name
     FROM aircraft_profiles p
-    LEFT JOIN faa_master m ON UPPER(m.mode_s_code_hex) = UPPER(p.icao_hex)
+    LEFT JOIN faa_master m ON m.mode_s_code_hex = UPPER(p.icao_hex)
     WHERE p.total_detections IS NOT NULL
     ORDER BY p.total_detections DESC NULLS LAST
     LIMIT 500
@@ -1570,7 +1570,7 @@ export const getUnmappedMilitarySuspects = createServerFn({ method: "GET" }).han
                p.total_detections, p.min_altitude, p.avg_altitude, p.night_pct,
                p.first_seen, p.last_seen, m.name AS reg_name
         FROM aircraft_profiles p
-        LEFT JOIN faa_master m ON UPPER(m.mode_s_code_hex) = UPPER(p.icao_hex)
+        LEFT JOIN faa_master m ON m.mode_s_code_hex = UPPER(p.icao_hex)
         WHERE COALESCE(p.observed_registration, '') !~ '^[Nn][0-9]'
         ORDER BY p.total_detections DESC NULLS LAST
         LIMIT 1500
@@ -1767,7 +1767,7 @@ export const searchByTail = createServerFn({ method: "GET" })
                p.night_pct, p.first_seen, p.last_seen,
                m.name AS reg_name, m.city AS reg_city, m.state AS reg_state
         FROM aircraft_profiles p
-        LEFT JOIN faa_master m ON UPPER(m.mode_s_code_hex) = UPPER(p.icao_hex)
+        LEFT JOIN faa_master m ON m.mode_s_code_hex = UPPER(p.icao_hex)
         WHERE UPPER(p.observed_registration) IN (${tail}, ${nform}, ${nless})
            OR UPPER(p.icao_hex) = ${tail}
            OR UPPER(m.n_number) = ${nless}
@@ -1881,7 +1881,7 @@ export const getMilitaryAircraft = createServerFn({ method: "GET" }).handler(
       profile_mil AS (
         SELECT UPPER(p.icao_hex) AS icao_hex
         FROM aircraft_profiles p
-        LEFT JOIN faa_master m ON UPPER(m.mode_s_code_hex) = UPPER(p.icao_hex)
+        LEFT JOIN faa_master m ON m.mode_s_code_hex = UPPER(p.icao_hex)
         WHERE UPPER(p.icao_hex) LIKE 'AE%'
            OR UPPER(COALESCE(p.registered_owner, m.name, '')) ~ '(NAVY|ARMY|AIR FORCE|USAF|MARINE CORPS|USMC|COAST GUARD|USCG|NATIONAL GUARD|DEPARTMENT OF DEFENSE|DEPT OF DEFENSE)'
       ),
