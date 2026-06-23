@@ -16,6 +16,7 @@ import { Route as TailSearchRouteImport } from './routes/tail-search'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as RulesRouteImport } from './routes/rules'
 import { Route as ReportsRouteImport } from './routes/reports'
+import { Route as PodcastsRouteImport } from './routes/podcasts'
 import { Route as OperatorsRouteImport } from './routes/operators'
 import { Route as MosaicRouteImport } from './routes/mosaic'
 import { Route as MlDetectionsRouteImport } from './routes/ml-detections'
@@ -68,6 +69,11 @@ const RulesRoute = RulesRouteImport.update({
 const ReportsRoute = ReportsRouteImport.update({
   id: '/reports',
   path: '/reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PodcastsRoute = PodcastsRouteImport.update({
+  id: '/podcasts',
+  path: '/podcasts',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OperatorsRoute = OperatorsRouteImport.update({
@@ -177,6 +183,7 @@ export interface FileRoutesByFullPath {
   '/ml-detections': typeof MlDetectionsRoute
   '/mosaic': typeof MosaicRoute
   '/operators': typeof OperatorsRoute
+  '/podcasts': typeof PodcastsRoute
   '/reports': typeof ReportsRoute
   '/rules': typeof RulesRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -204,6 +211,7 @@ export interface FileRoutesByTo {
   '/ml-detections': typeof MlDetectionsRoute
   '/mosaic': typeof MosaicRoute
   '/operators': typeof OperatorsRoute
+  '/podcasts': typeof PodcastsRoute
   '/reports': typeof ReportsRoute
   '/rules': typeof RulesRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -231,6 +239,7 @@ export interface FileRoutesById {
   '/ml-detections': typeof MlDetectionsRoute
   '/mosaic': typeof MosaicRoute
   '/operators': typeof OperatorsRoute
+  '/podcasts': typeof PodcastsRoute
   '/reports': typeof ReportsRoute
   '/rules': typeof RulesRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -260,6 +269,7 @@ export interface FileRouteTypes {
     | '/ml-detections'
     | '/mosaic'
     | '/operators'
+    | '/podcasts'
     | '/reports'
     | '/rules'
     | '/sitemap.xml'
@@ -287,6 +297,7 @@ export interface FileRouteTypes {
     | '/ml-detections'
     | '/mosaic'
     | '/operators'
+    | '/podcasts'
     | '/reports'
     | '/rules'
     | '/sitemap.xml'
@@ -313,6 +324,7 @@ export interface FileRouteTypes {
     | '/ml-detections'
     | '/mosaic'
     | '/operators'
+    | '/podcasts'
     | '/reports'
     | '/rules'
     | '/sitemap.xml'
@@ -341,6 +353,7 @@ export interface RootRouteChildren {
   MlDetectionsRoute: typeof MlDetectionsRoute
   MosaicRoute: typeof MosaicRoute
   OperatorsRoute: typeof OperatorsRoute
+  PodcastsRoute: typeof PodcastsRoute
   ReportsRoute: typeof ReportsRoute
   RulesRoute: typeof RulesRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
@@ -400,6 +413,13 @@ declare module '@tanstack/react-router' {
       path: '/reports'
       fullPath: '/reports'
       preLoaderRoute: typeof ReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/podcasts': {
+      id: '/podcasts'
+      path: '/podcasts'
+      fullPath: '/podcasts'
+      preLoaderRoute: typeof PodcastsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/operators': {
@@ -560,6 +580,7 @@ const rootRouteChildren: RootRouteChildren = {
   MlDetectionsRoute: MlDetectionsRoute,
   MosaicRoute: MosaicRoute,
   OperatorsRoute: OperatorsRoute,
+  PodcastsRoute: PodcastsRoute,
   ReportsRoute: ReportsRoute,
   RulesRoute: RulesRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
