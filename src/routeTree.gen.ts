@@ -33,6 +33,7 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ToolkitIndexRouteImport } from './routes/toolkit.index'
 import { Route as ToolkitFoiaRouteImport } from './routes/toolkit.foia'
+import { Route as ApiTtsRouteImport } from './routes/api/tts'
 
 const ViolationsRoute = ViolationsRouteImport.update({
   id: '/violations',
@@ -154,6 +155,11 @@ const ToolkitFoiaRoute = ToolkitFoiaRouteImport.update({
   path: '/foia',
   getParentRoute: () => ToolkitRoute,
 } as any)
+const ApiTtsRoute = ApiTtsRouteImport.update({
+  id: '/api/tts',
+  path: '/api/tts',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -178,6 +184,7 @@ export interface FileRoutesByFullPath {
   '/threat-index': typeof ThreatIndexRoute
   '/toolkit': typeof ToolkitRouteWithChildren
   '/violations': typeof ViolationsRoute
+  '/api/tts': typeof ApiTtsRoute
   '/toolkit/foia': typeof ToolkitFoiaRoute
   '/toolkit/': typeof ToolkitIndexRoute
 }
@@ -203,6 +210,7 @@ export interface FileRoutesByTo {
   '/tail-search': typeof TailSearchRoute
   '/threat-index': typeof ThreatIndexRoute
   '/violations': typeof ViolationsRoute
+  '/api/tts': typeof ApiTtsRoute
   '/toolkit/foia': typeof ToolkitFoiaRoute
   '/toolkit': typeof ToolkitIndexRoute
 }
@@ -230,6 +238,7 @@ export interface FileRoutesById {
   '/threat-index': typeof ThreatIndexRoute
   '/toolkit': typeof ToolkitRouteWithChildren
   '/violations': typeof ViolationsRoute
+  '/api/tts': typeof ApiTtsRoute
   '/toolkit/foia': typeof ToolkitFoiaRoute
   '/toolkit/': typeof ToolkitIndexRoute
 }
@@ -258,6 +267,7 @@ export interface FileRouteTypes {
     | '/threat-index'
     | '/toolkit'
     | '/violations'
+    | '/api/tts'
     | '/toolkit/foia'
     | '/toolkit/'
   fileRoutesByTo: FileRoutesByTo
@@ -283,6 +293,7 @@ export interface FileRouteTypes {
     | '/tail-search'
     | '/threat-index'
     | '/violations'
+    | '/api/tts'
     | '/toolkit/foia'
     | '/toolkit'
   id:
@@ -309,6 +320,7 @@ export interface FileRouteTypes {
     | '/threat-index'
     | '/toolkit'
     | '/violations'
+    | '/api/tts'
     | '/toolkit/foia'
     | '/toolkit/'
   fileRoutesById: FileRoutesById
@@ -336,6 +348,7 @@ export interface RootRouteChildren {
   ThreatIndexRoute: typeof ThreatIndexRoute
   ToolkitRoute: typeof ToolkitRouteWithChildren
   ViolationsRoute: typeof ViolationsRoute
+  ApiTtsRoute: typeof ApiTtsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -508,6 +521,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ToolkitFoiaRouteImport
       parentRoute: typeof ToolkitRoute
     }
+    '/api/tts': {
+      id: '/api/tts'
+      path: '/api/tts'
+      fullPath: '/api/tts'
+      preLoaderRoute: typeof ApiTtsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -547,6 +567,7 @@ const rootRouteChildren: RootRouteChildren = {
   ThreatIndexRoute: ThreatIndexRoute,
   ToolkitRoute: ToolkitRouteWithChildren,
   ViolationsRoute: ViolationsRoute,
+  ApiTtsRoute: ApiTtsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
