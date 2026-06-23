@@ -34,7 +34,7 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ToolkitIndexRouteImport } from './routes/toolkit.index'
 import { Route as ToolkitFoiaRouteImport } from './routes/toolkit.foia'
-import { Route as ApiTtsRouteImport } from './routes/api/tts'
+import { Route as ApiPublicTtsRouteImport } from './routes/api/public/tts'
 
 const ViolationsRoute = ViolationsRouteImport.update({
   id: '/violations',
@@ -161,9 +161,9 @@ const ToolkitFoiaRoute = ToolkitFoiaRouteImport.update({
   path: '/foia',
   getParentRoute: () => ToolkitRoute,
 } as any)
-const ApiTtsRoute = ApiTtsRouteImport.update({
-  id: '/api/tts',
-  path: '/api/tts',
+const ApiPublicTtsRoute = ApiPublicTtsRouteImport.update({
+  id: '/api/public/tts',
+  path: '/api/public/tts',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -191,9 +191,9 @@ export interface FileRoutesByFullPath {
   '/threat-index': typeof ThreatIndexRoute
   '/toolkit': typeof ToolkitRouteWithChildren
   '/violations': typeof ViolationsRoute
-  '/api/tts': typeof ApiTtsRoute
   '/toolkit/foia': typeof ToolkitFoiaRoute
   '/toolkit/': typeof ToolkitIndexRoute
+  '/api/public/tts': typeof ApiPublicTtsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -218,9 +218,9 @@ export interface FileRoutesByTo {
   '/tail-search': typeof TailSearchRoute
   '/threat-index': typeof ThreatIndexRoute
   '/violations': typeof ViolationsRoute
-  '/api/tts': typeof ApiTtsRoute
   '/toolkit/foia': typeof ToolkitFoiaRoute
   '/toolkit': typeof ToolkitIndexRoute
+  '/api/public/tts': typeof ApiPublicTtsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -247,9 +247,9 @@ export interface FileRoutesById {
   '/threat-index': typeof ThreatIndexRoute
   '/toolkit': typeof ToolkitRouteWithChildren
   '/violations': typeof ViolationsRoute
-  '/api/tts': typeof ApiTtsRoute
   '/toolkit/foia': typeof ToolkitFoiaRoute
   '/toolkit/': typeof ToolkitIndexRoute
+  '/api/public/tts': typeof ApiPublicTtsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -277,9 +277,9 @@ export interface FileRouteTypes {
     | '/threat-index'
     | '/toolkit'
     | '/violations'
-    | '/api/tts'
     | '/toolkit/foia'
     | '/toolkit/'
+    | '/api/public/tts'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -304,9 +304,9 @@ export interface FileRouteTypes {
     | '/tail-search'
     | '/threat-index'
     | '/violations'
-    | '/api/tts'
     | '/toolkit/foia'
     | '/toolkit'
+    | '/api/public/tts'
   id:
     | '__root__'
     | '/'
@@ -332,9 +332,9 @@ export interface FileRouteTypes {
     | '/threat-index'
     | '/toolkit'
     | '/violations'
-    | '/api/tts'
     | '/toolkit/foia'
     | '/toolkit/'
+    | '/api/public/tts'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -361,7 +361,7 @@ export interface RootRouteChildren {
   ThreatIndexRoute: typeof ThreatIndexRoute
   ToolkitRoute: typeof ToolkitRouteWithChildren
   ViolationsRoute: typeof ViolationsRoute
-  ApiTtsRoute: typeof ApiTtsRoute
+  ApiPublicTtsRoute: typeof ApiPublicTtsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -541,11 +541,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ToolkitFoiaRouteImport
       parentRoute: typeof ToolkitRoute
     }
-    '/api/tts': {
-      id: '/api/tts'
-      path: '/api/tts'
-      fullPath: '/api/tts'
-      preLoaderRoute: typeof ApiTtsRouteImport
+    '/api/public/tts': {
+      id: '/api/public/tts'
+      path: '/api/public/tts'
+      fullPath: '/api/public/tts'
+      preLoaderRoute: typeof ApiPublicTtsRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -588,7 +588,7 @@ const rootRouteChildren: RootRouteChildren = {
   ThreatIndexRoute: ThreatIndexRoute,
   ToolkitRoute: ToolkitRouteWithChildren,
   ViolationsRoute: ViolationsRoute,
-  ApiTtsRoute: ApiTtsRoute,
+  ApiPublicTtsRoute: ApiPublicTtsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
