@@ -196,7 +196,7 @@ function Operators() {
                     </td>
                     <td className="p-3 text-right font-bold">{o.occurrences.toLocaleString()}</td>
                     <td className="p-3 text-right">{o.confidence != null ? o.confidence.toFixed(2) : "—"}</td>
-                    <td className="p-3 whitespace-nowrap text-xs">{o.lastSeen ? new Date(o.lastSeen).toLocaleDateString() : "—"}</td>
+                    <td className="p-3 whitespace-nowrap text-xs">{o.lastSeen ? new Date(o.lastSeen).toISOString().slice(0, 10) : "—"}</td>
                     <td className="p-3">
                       <ShareRow
                         text={`${o.operatorResolved || o.faaName || o.registration} (${o.registration}) — ${o.occurrences.toLocaleString()} detections in the current window.${o.kcso ? " Flagged: law enforcement." : ""}${o.military ? " Flagged: military." : ""}${isShell(o) ? " Registered as anonymous LLC / shell." : ""} Source: Watchtower / The Architecture of Never — https://advocacywatch.live/operators`}
