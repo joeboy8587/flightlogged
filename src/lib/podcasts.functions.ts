@@ -11,19 +11,34 @@ export type PodcastEpisode = {
   dataPoints: { label: string; value: string }[];
 };
 
+type DbRow = Record<string, unknown>;
+
+function toCount(value: unknown) {
+  return Number(value ?? 0);
+}
+
 async function snapshotForScript() {
   const w = watchtower();
-  const settle = async <T,>(p: Promise<T>, fallback: T): Promise<T> => {
-    try { return await p; } catch (e) { console.warn("podcast query failed", (e as Error).message); return fallback; }
+  const settle = async <T>(p: Promise<T>, fallback: T): Promise<T> => {
+    try {
+      return await p;
+    } catch (e) {
+      console.warn("podcast query failed", (e as Error).message);
+      return fallback;
+    }
   };
   const [snap, ops, anom, county] = await Promise.all([
-    settle(w`SELECT
+    settle(
+      w`SELECT
         (SELECT COUNT(*)::int FROM detections) AS detections,
         (SELECT COUNT(DISTINCT icao_hex)::int FROM detections) AS aircraft,
         (SELECT COUNT(*)::int FROM anomaly_events) AS anomalies,
         (SELECT COUNT(*)::int FROM violation_classifications) AS violations,
-        (SELECT MAX(captured_at) FROM detections) AS last_seen`, [] as any[]),
-    settle(w`WITH raw_aircraft AS (
+        (SELECT MAX(captured_at) FROM detections) AS last_seen`,
+      [] as DbRow[],
+    ),
+    settle(
+      w`WITH raw_aircraft AS (
             SELECT icao_hex, COUNT(*)::int AS raw_detections
             FROM detections
             WHERE icao_hex IS NOT NULL
@@ -42,20 +57,28 @@ async function snapshotForScript() {
           FROM resolved
           GROUP BY canonical_name
           ORDER BY total_detections DESC
-          LIMIT 5`, [] as any[]),
-    settle(w`SELECT anomaly_type, COUNT(*)::int AS c
+          LIMIT 5`,
+      [] as DbRow[],
+    ),
+    settle(
+      w`SELECT anomaly_type, COUNT(*)::int AS c
         FROM anomaly_events
         WHERE anomaly_type IS NOT NULL
-        GROUP BY anomaly_type ORDER BY c DESC LIMIT 5`, [] as any[]),
-    settle(w`SELECT county, COUNT(*)::int AS c
+        GROUP BY anomaly_type ORDER BY c DESC LIMIT 5`,
+      [] as DbRow[],
+    ),
+    settle(
+      w`SELECT county, COUNT(*)::int AS c
         FROM detections WHERE county IS NOT NULL
-        GROUP BY county ORDER BY c DESC LIMIT 5`, [] as any[]),
+        GROUP BY county ORDER BY c DESC LIMIT 5`,
+      [] as DbRow[],
+    ),
   ]);
   return {
-    snap: (snap as any[])[0] ?? {},
-    operators: ops as any[],
-    anomalies: anom as any[],
-    counties: county as any[],
+    snap: (snap as DbRow[])[0] ?? {},
+    operators: ops as DbRow[],
+    anomalies: anom as DbRow[],
+    counties: county as DbRow[],
   };
 }
 
@@ -63,7 +86,7 @@ export const listPodcasts = createServerFn({ method: "GET" }).handler(
   async (): Promise<PodcastEpisode[]> => {
     try {
       const d = await snapshotForScript();
-      const s: any = d.snap;
+      const s = d.snap;
       return [
         {
           id: "daily-briefing",
@@ -72,10 +95,10 @@ export const listPodcasts = createServerFn({ method: "GET" }).handler(
           duration: "~90 sec",
           voice: "alloy",
           dataPoints: [
-            { label: "Detections", value: Number(s.detections ?? 0).toLocaleString() },
-            { label: "Unique aircraft", value: Number(s.aircraft ?? 0).toLocaleString() },
-            { label: "Anomalies", value: Number(s.anomalies ?? 0).toLocaleString() },
-            { label: "Violations", value: Number(s.violations ?? 0).toLocaleString() },
+            { label: "Detections", value: toCount(s.detections).toLocaleString() },
+            { label: "Unique aircraft", value: toCount(s.aircraft).toLocaleString() },
+            { label: "Anomalies", value: toCount(s.anomalies).toLocaleString() },
+            { label: "Violations", value: toCount(s.violations).toLocaleString() },
           ],
         },
         {
@@ -85,8 +108,8 @@ export const listPodcasts = createServerFn({ method: "GET" }).handler(
           duration: "~90 sec",
           voice: "sage",
           dataPoints: d.operators.slice(0, 4).map((o) => ({
-            label: o.canonical_name ?? "Unknown",
-            value: `${Number(o.total_detections ?? 0).toLocaleString()} det · ${o.fleet_size ?? 0} a/c`,
+            label: String(o.canonical_name ?? "Unknown"),
+            value: `${toCount(o.total_detections).toLocaleString()} det · ${toCount(o.fleet_size)} a/c`,
           })),
         },
         {
@@ -96,8 +119,8 @@ export const listPodcasts = createServerFn({ method: "GET" }).handler(
           duration: "~90 sec",
           voice: "verse",
           dataPoints: d.anomalies.map((a) => ({
-            label: a.anomaly_type,
-            value: `${Number(a.c).toLocaleString()} events`,
+            label: String(a.anomaly_type ?? "Unknown"),
+            value: `${toCount(a.c).toLocaleString()} events`,
           })),
         },
         {
@@ -107,8 +130,8 @@ export const listPodcasts = createServerFn({ method: "GET" }).handler(
           duration: "~90 sec",
           voice: "coral",
           dataPoints: d.counties.map((c) => ({
-            label: c.county,
-            value: `${Number(c.c).toLocaleString()} pings`,
+            label: String(c.county ?? "Unknown"),
+            value: `${toCount(c.c).toLocaleString()} pings`,
           })),
         },
       ];
