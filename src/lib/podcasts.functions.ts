@@ -55,6 +55,8 @@ async function snapshotForScript() {
                  SUM(raw_detections)::int AS total_detections,
                  COUNT(DISTINCT icao_hex)::int AS fleet_size
           FROM resolved
+          WHERE canonical_name IS NOT NULL
+            AND canonical_name !~* '(southwest|american airlines|delta air|united air|jetblue|alaska air|spirit air|frontier air|hawaiian air|allegiant|sun country|fedex|ups |united parcel|atlas air|kalitta|polar air|amerijet|air canada|aeromexico|volaris|aeromex|lufthansa|british airways|air france|klm|emirates|qatar|singapore air|cathay|korean air|ana |japan air|jal |skywest|republic air|envoy air|mesa air|piedmont air|psa air|endeavor air|gojet|horizon air|commutair|cape air|silver airways)'
           GROUP BY canonical_name
           ORDER BY total_detections DESC
           LIMIT 5`,
