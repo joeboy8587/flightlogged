@@ -68,14 +68,17 @@ function EpisodeCard({ ep }: { ep: PodcastEpisode }) {
   const [state, setState] = useState<"idle" | "scripting" | "playing" | "done" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
   const [script, setScript] = useState<string | null>(null);
-  const audioCtxRef = useRef<AudioContext | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   const stop = () => {
     abortRef.current?.abort();
     abortRef.current = null;
-    audioCtxRef.current?.close().catch(() => {});
-    audioCtxRef.current = null;
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
     setState("idle");
   };
 
@@ -87,31 +90,6 @@ function EpisodeCard({ ep }: { ep: PodcastEpisode }) {
       setScript(text);
       setState("playing");
 
-      const Ctx = (window.AudioContext || (window as any).webkitAudioContext) as typeof AudioContext;
-      const ctx = new Ctx({ sampleRate: 24000 });
-      audioCtxRef.current = ctx;
-      if (ctx.state === "suspended") await ctx.resume().catch(() => {});
-      let playhead = 0;
-      let pending = new Uint8Array(0);
-
-      const playChunk = (incoming: Uint8Array) => {
-        const bytes = new Uint8Array(pending.length + incoming.length);
-        bytes.set(pending); bytes.set(incoming, pending.length);
-        const usable = bytes.length - (bytes.length % 2);
-        pending = bytes.slice(usable);
-        if (usable === 0) return;
-        const samples = new Int16Array(bytes.buffer, 0, usable / 2);
-        const floats = Float32Array.from(samples, (s) => s / 32768);
-        const buf = ctx.createBuffer(1, floats.length, 24000);
-        buf.copyToChannel(floats, 0);
-        const src = ctx.createBufferSource();
-        src.buffer = buf; src.connect(ctx.destination);
-        if (playhead === 0) playhead = ctx.currentTime + 0.05;
-        else playhead = Math.max(playhead, ctx.currentTime);
-        src.start(playhead);
-        playhead += buf.duration;
-      };
-
       const ac = new AbortController();
       abortRef.current = ac;
       const res = await fetch("/api/public/tts", {
@@ -120,31 +98,27 @@ function EpisodeCard({ ep }: { ep: PodcastEpisode }) {
         body: JSON.stringify({ input: text, voice }),
         signal: ac.signal,
       });
-      if (!res.ok || !res.body) throw new Error(`TTS failed: ${res.status}`);
-      const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
-      let buf = "";
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        buf += value;
-        let idx: number;
-        while ((idx = buf.indexOf("\n\n")) !== -1) {
-          const block = buf.slice(0, idx); buf = buf.slice(idx + 2);
-          const dataLines = block.split("\n").filter((l) => l.startsWith("data:")).map((l) => l.slice(5).trim());
-          if (dataLines.length === 0) continue;
-          const payloadRaw = dataLines.join("");
-          if (!payloadRaw || payloadRaw === "[DONE]") continue;
-          let payload: any;
-          try { payload = JSON.parse(payloadRaw); } catch { continue; }
-          if (payload?.type === "speech.audio.delta" && payload.audio) {
-            const bin = atob(payload.audio);
-            const arr = new Uint8Array(bin.length);
-            for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
-            playChunk(arr);
-          }
+      if (!res.ok) {
+        const msg = await res.text().catch(() => "");
+        throw new Error(`TTS failed: ${res.status} ${msg.slice(0, 160)}`);
+      }
+      const blob = await res.blob();
+      if (!blob.size) throw new Error("Empty audio response");
+      const url = URL.createObjectURL(blob);
+      if (audioUrl) URL.revokeObjectURL(audioUrl);
+      setAudioUrl(url);
+      // Wait a tick so the <audio> element picks up the new src
+      await new Promise((r) => setTimeout(r, 0));
+      const el = audioRef.current;
+      if (el) {
+        el.src = url;
+        el.onended = () => setState("done");
+        el.onerror = () => { setError("Playback error"); setState("error"); };
+        try { await el.play(); } catch (e) {
+          // Autoplay block — user can press the inline audio control
+          console.warn("autoplay blocked", e);
         }
       }
-      setState("done");
     } catch (err) {
       if ((err as Error).name === "AbortError") return;
       console.error(err);
@@ -189,6 +163,12 @@ function EpisodeCard({ ep }: { ep: PodcastEpisode }) {
         </span>
       </div>
       {error && <div className="mt-2 text-xs font-mono text-alert">{error}</div>}
+      <audio
+        ref={audioRef}
+        controls
+        preload="none"
+        className={`mt-3 w-full ${audioUrl ? "" : "hidden"}`}
+      />
       {script && (
         <details className="mt-3">
           <summary className="label-stamp cursor-pointer">Transcript</summary>
