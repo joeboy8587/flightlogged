@@ -114,7 +114,7 @@ function EpisodeCard({ ep }: { ep: PodcastEpisode }) {
 
       const ac = new AbortController();
       abortRef.current = ac;
-      const res = await fetch("/api/tts", {
+      const res = await fetch("/api/public/tts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ input: text, voice }),
