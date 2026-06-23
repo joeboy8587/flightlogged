@@ -145,7 +145,7 @@ export const getRecentLowAltitude = createServerFn({ method: "GET" }).handler(as
              m.name AS reg_name, m.type_registrant, m.city AS reg_city, m.state AS reg_state
       FROM detections d
       LEFT JOIN aircraft_profiles p ON p.icao_hex = d.icao_hex
-      LEFT JOIN faa_master m ON UPPER(m.mode_s_code_hex) = UPPER(d.icao_hex)
+      LEFT JOIN faa_master m ON m.mode_s_code_hex = UPPER(d.icao_hex)
       WHERE d.altitude_ft IS NOT NULL
         AND d.altitude_ft < 1500
         AND d.altitude_ft >= -100      -- exclude transponder/barometric anomalies from public display
@@ -1079,7 +1079,7 @@ export const getLocalAgencyAircraft = createServerFn({ method: "GET" }).handler(
            MIN(d.captured_at) AS first_seen,
            MAX(d.captured_at) AS last_seen
     FROM detections d
-    JOIN faa_master m ON UPPER(m.mode_s_code_hex) = UPPER(d.icao_hex)
+    JOIN faa_master m ON m.mode_s_code_hex = UPPER(d.icao_hex)
     WHERE (m.name ILIKE '%kern county%'
         OR m.name ILIKE '%bakersfield%'
         OR m.city ILIKE '%bakersfield%')
@@ -1189,7 +1189,7 @@ export const getBehavioralCoordination = createServerFn({ method: "GET" }).handl
              MAX(d.captured_at) AS last_seen,
              MAX(ap.night_pct) AS night_pct
       FROM detections d
-      LEFT JOIN faa_master m ON UPPER(m.mode_s_code_hex) = UPPER(d.icao_hex)
+      LEFT JOIN faa_master m ON m.mode_s_code_hex = UPPER(d.icao_hex)
       LEFT JOIN aircraft_profiles ap ON UPPER(ap.icao_hex) = UPPER(d.icao_hex)
       WHERE d.altitude_ft IS NOT NULL
         AND d.altitude_ft >= -100
@@ -1904,7 +1904,7 @@ export const getMilitaryAircraft = createServerFn({ method: "GET" }).handler(
       FROM all_mil al
       LEFT JOIN det_mil d ON d.icao_hex = al.icao_hex
       LEFT JOIN aircraft_profiles p ON UPPER(p.icao_hex) = al.icao_hex
-      LEFT JOIN faa_master m ON UPPER(m.mode_s_code_hex) = al.icao_hex
+      LEFT JOIN faa_master m ON m.mode_s_code_hex = UPPER(al.icao_hex)
       ORDER BY total_detections DESC NULLS LAST
       LIMIT 500
     `;
