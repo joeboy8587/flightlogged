@@ -163,8 +163,12 @@ function parseMetric(value: string) {
 }
 
 function hasUnsupportedLargeClaim(script: string, allowedNumbers: number[]) {
-  const allowed = new Set(allowedNumbers.filter((n) => Number.isFinite(n) && n >= 1000).map((n) => Math.round(n)));
-  for (const match of script.matchAll(/(?:\b(\d[\d,]*(?:\.\d+)?)\s*million\b|\b(one|two|three|four|five|six|seven|eight|nine|ten)\s+million\b)/gi)) {
+  const allowed = new Set(
+    allowedNumbers.filter((n) => Number.isFinite(n) && n >= 1000).map((n) => Math.round(n)),
+  );
+  for (const match of script.matchAll(
+    /(?:\b(\d[\d,]*(?:\.\d+)?)\s*million\b|\b(one|two|three|four|five|six|seven|eight|nine|ten)\s+million\b)/gi,
+  )) {
     const raw = match[1] ? Number(match[1].replace(/,/g, "")) : numberWords[match[2].toLowerCase()];
     const claimed = Math.round(raw * 1_000_000);
     if (!allowed.has(claimed)) return true;
@@ -187,7 +191,9 @@ export const generatePodcastScript = createServerFn({ method: "POST" })
     if (!ep) throw new Error("Episode not found");
 
     const dataBlock = ep.dataPoints.map((p) => `- ${p.label}: ${p.value}`).join("\n");
-    const allowedNumbers = ep.dataPoints.map((p) => parseMetric(p.value)).filter((n): n is number => n !== null);
+    const allowedNumbers = ep.dataPoints
+      .map((p) => parseMetric(p.value))
+      .filter((n): n is number => n !== null);
     const prompt = `You are the narrator of "The Architecture of Never", a non-partisan civilian airspace watchdog podcast. Write a tight 90-second spoken-word briefing titled "${ep.title}". Speak plainly, no jargon. Cite the numbers below verbatim. Do NOT invent, estimate, multiply, round up, or convert any count. Do NOT use the word million unless one of the exact source values below is at least 1,000,000. End with one sentence reminding listeners the data is hash-fingerprinted and court-ready. Output ONLY the spoken script — no stage directions, no markdown, no headings.
 
 Topic: ${ep.subtitle}
@@ -207,12 +213,14 @@ ${dataBlock}`;
       const t = await res.text().catch(() => "");
       throw new Error(`AI gateway error ${res.status}: ${t.slice(0, 200)}`);
     }
-    const json: any = await res.json();
-    const script: string = json?.choices?.[0]?.message?.content ?? "";
+    const json = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+    const script = json.choices?.[0]?.message?.content ?? "";
     if (!script.trim()) throw new Error("Empty script from model");
     const cleanScript = script.trim();
     return {
-      script: hasUnsupportedLargeClaim(cleanScript, allowedNumbers) ? deterministicScript(ep) : cleanScript,
+      script: hasUnsupportedLargeClaim(cleanScript, allowedNumbers)
+        ? deterministicScript(ep)
+        : cleanScript,
       voice: ep.voice,
       title: ep.title,
     };
