@@ -83,7 +83,7 @@ function MosaicPage() {
 
   useEffect(() => {
     let mounted = true;
-    import("@/components/mosaic/MosaicMap.client").then((mod) => {
+    import("@/components/mosaic/MosaicMap").then((mod) => {
       if (mounted) setMosaicMapComponent(() => mod.MosaicMap);
     });
     return () => { mounted = false; };
