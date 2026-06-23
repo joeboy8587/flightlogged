@@ -145,7 +145,7 @@ export const getRecentLowAltitude = createServerFn({ method: "GET" }).handler(as
              m.name AS reg_name, m.type_registrant, m.city AS reg_city, m.state AS reg_state
       FROM detections d
       LEFT JOIN aircraft_profiles p ON p.icao_hex = d.icao_hex
-      LEFT JOIN faa_master m ON UPPER(m.mode_s_code_hex) = UPPER(d.icao_hex)
+      LEFT JOIN faa_master m ON m.mode_s_code_hex = UPPER(d.icao_hex)
       WHERE d.altitude_ft IS NOT NULL
         AND d.altitude_ft < 1500
         AND d.altitude_ft >= -100      -- exclude transponder/barometric anomalies from public display
@@ -288,7 +288,7 @@ export const getIdentifiedOperators = createServerFn({ method: "GET" }).handler(
     SELECT p.icao_hex, p.observed_registration, p.total_detections,
            m.name, m.type_registrant, m.city, m.state
     FROM aircraft_profiles p
-    LEFT JOIN faa_master m ON UPPER(m.mode_s_code_hex) = UPPER(p.icao_hex)
+    LEFT JOIN faa_master m ON m.mode_s_code_hex = UPPER(p.icao_hex)
     WHERE m.name IS NOT NULL
     ORDER BY p.total_detections DESC
     LIMIT 30
@@ -446,7 +446,7 @@ export const getCanonicalOperators = createServerFn({ method: "GET" }).handler(a
            p.confirmed_coord_partners,
            COALESCE(m.name, p.registered_owner) AS faa_name
     FROM aircraft_profiles p
-    LEFT JOIN faa_master m ON UPPER(m.mode_s_code_hex) = UPPER(p.icao_hex)
+    LEFT JOIN faa_master m ON m.mode_s_code_hex = UPPER(p.icao_hex)
     WHERE p.total_detections IS NOT NULL
     ORDER BY p.total_detections DESC NULLS LAST
     LIMIT 500
@@ -1079,7 +1079,7 @@ export const getLocalAgencyAircraft = createServerFn({ method: "GET" }).handler(
            MIN(d.captured_at) AS first_seen,
            MAX(d.captured_at) AS last_seen
     FROM detections d
-    JOIN faa_master m ON UPPER(m.mode_s_code_hex) = UPPER(d.icao_hex)
+    JOIN faa_master m ON m.mode_s_code_hex = UPPER(d.icao_hex)
     WHERE (m.name ILIKE '%kern county%'
         OR m.name ILIKE '%bakersfield%'
         OR m.city ILIKE '%bakersfield%')
@@ -1189,7 +1189,7 @@ export const getBehavioralCoordination = createServerFn({ method: "GET" }).handl
              MAX(d.captured_at) AS last_seen,
              MAX(ap.night_pct) AS night_pct
       FROM detections d
-      LEFT JOIN faa_master m ON UPPER(m.mode_s_code_hex) = UPPER(d.icao_hex)
+      LEFT JOIN faa_master m ON m.mode_s_code_hex = UPPER(d.icao_hex)
       LEFT JOIN aircraft_profiles ap ON UPPER(ap.icao_hex) = UPPER(d.icao_hex)
       WHERE d.altitude_ft IS NOT NULL
         AND d.altitude_ft >= -100
@@ -1570,7 +1570,7 @@ export const getUnmappedMilitarySuspects = createServerFn({ method: "GET" }).han
                p.total_detections, p.min_altitude, p.avg_altitude, p.night_pct,
                p.first_seen, p.last_seen, m.name AS reg_name
         FROM aircraft_profiles p
-        LEFT JOIN faa_master m ON UPPER(m.mode_s_code_hex) = UPPER(p.icao_hex)
+        LEFT JOIN faa_master m ON m.mode_s_code_hex = UPPER(p.icao_hex)
         WHERE COALESCE(p.observed_registration, '') !~ '^[Nn][0-9]'
         ORDER BY p.total_detections DESC NULLS LAST
         LIMIT 1500
@@ -1767,7 +1767,7 @@ export const searchByTail = createServerFn({ method: "GET" })
                p.night_pct, p.first_seen, p.last_seen,
                m.name AS reg_name, m.city AS reg_city, m.state AS reg_state
         FROM aircraft_profiles p
-        LEFT JOIN faa_master m ON UPPER(m.mode_s_code_hex) = UPPER(p.icao_hex)
+        LEFT JOIN faa_master m ON m.mode_s_code_hex = UPPER(p.icao_hex)
         WHERE UPPER(p.observed_registration) IN (${tail}, ${nform}, ${nless})
            OR UPPER(p.icao_hex) = ${tail}
            OR UPPER(m.n_number) = ${nless}
@@ -1881,7 +1881,7 @@ export const getMilitaryAircraft = createServerFn({ method: "GET" }).handler(
       profile_mil AS (
         SELECT UPPER(p.icao_hex) AS icao_hex
         FROM aircraft_profiles p
-        LEFT JOIN faa_master m ON UPPER(m.mode_s_code_hex) = UPPER(p.icao_hex)
+        LEFT JOIN faa_master m ON m.mode_s_code_hex = UPPER(p.icao_hex)
         WHERE UPPER(p.icao_hex) LIKE 'AE%'
            OR UPPER(COALESCE(p.registered_owner, m.name, '')) ~ '(NAVY|ARMY|AIR FORCE|USAF|MARINE CORPS|USMC|COAST GUARD|USCG|NATIONAL GUARD|DEPARTMENT OF DEFENSE|DEPT OF DEFENSE)'
       ),
@@ -1904,7 +1904,7 @@ export const getMilitaryAircraft = createServerFn({ method: "GET" }).handler(
       FROM all_mil al
       LEFT JOIN det_mil d ON d.icao_hex = al.icao_hex
       LEFT JOIN aircraft_profiles p ON UPPER(p.icao_hex) = al.icao_hex
-      LEFT JOIN faa_master m ON UPPER(m.mode_s_code_hex) = al.icao_hex
+      LEFT JOIN faa_master m ON m.mode_s_code_hex = UPPER(al.icao_hex)
       ORDER BY total_detections DESC NULLS LAST
       LIMIT 500
     `;
