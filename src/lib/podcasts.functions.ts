@@ -13,27 +13,33 @@ export type PodcastEpisode = {
 
 async function snapshotForScript() {
   const w = watchtower();
+  const settle = async <T,>(p: Promise<T>, fallback: T): Promise<T> => {
+    try { return await p; } catch (e) { console.warn("podcast query failed", (e as Error).message); return fallback; }
+  };
   const [snap, ops, anom, county] = await Promise.all([
-    w`SELECT
+    settle(w`SELECT
         (SELECT COUNT(*)::int FROM detections) AS detections,
         (SELECT COUNT(DISTINCT icao_hex)::int FROM detections) AS aircraft,
         (SELECT COUNT(*)::int FROM anomaly_events) AS anomalies,
         (SELECT COUNT(*)::int FROM violation_classifications) AS violations,
-        (SELECT MAX(captured_at) FROM detections) AS last_seen`,
-    w`SELECT canonical_name, total_detections, fleet_size
-        FROM canonical_operators
-        WHERE canonical_name IS NOT NULL
-        ORDER BY total_detections DESC NULLS LAST LIMIT 5`,
-    w`SELECT anomaly_type, COUNT(*)::int AS c
+        (SELECT MAX(captured_at) FROM detections) AS last_seen`, [] as any[]),
+    settle(w`SELECT COALESCE(m.name, p.registered_owner) AS canonical_name,
+               p.total_detections,
+               1 AS fleet_size
+          FROM aircraft_profiles p
+          LEFT JOIN faa_master m ON UPPER(m.mode_s_code_hex) = UPPER(p.icao_hex)
+         WHERE p.total_detections IS NOT NULL
+         ORDER BY p.total_detections DESC NULLS LAST LIMIT 5`, [] as any[]),
+    settle(w`SELECT anomaly_type, COUNT(*)::int AS c
         FROM anomaly_events
         WHERE anomaly_type IS NOT NULL
-        GROUP BY anomaly_type ORDER BY c DESC LIMIT 5`,
-    w`SELECT county, COUNT(*)::int AS c
+        GROUP BY anomaly_type ORDER BY c DESC LIMIT 5`, [] as any[]),
+    settle(w`SELECT county, COUNT(*)::int AS c
         FROM detections WHERE county IS NOT NULL
-        GROUP BY county ORDER BY c DESC LIMIT 5`,
+        GROUP BY county ORDER BY c DESC LIMIT 5`, [] as any[]),
   ]);
   return {
-    snap: snap[0] ?? {},
+    snap: (snap as any[])[0] ?? {},
     operators: ops as any[],
     anomalies: anom as any[],
     counties: county as any[],
