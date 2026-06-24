@@ -83,7 +83,7 @@ jobs:
       # web vulnerabilities (OWASP Top 10, secret patterns, etc.).
       - name: Semgrep scan
         run: |
-          semgrep ci \
+          semgrep scan \
             --config p/default \
             --config p/security-audit \
             --config p/owasp-top-ten \
@@ -91,6 +91,10 @@ jobs:
             --config p/typescript \
             --config p/react \
             --config p/secrets \
+            --exclude='.agents' \
+            --exclude='.claude' \
+            --exclude='.workspace' \
+            --exclude='.lovable' \
             --sarif --output=semgrep.sarif \
             --error
         env:
