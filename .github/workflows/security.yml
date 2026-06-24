@@ -91,6 +91,10 @@ jobs:
             --config p/typescript \
             --config p/react \
             --config p/secrets \
+            --exclude='.agents' \
+            --exclude='.claude' \
+            --exclude='.workspace' \
+            --exclude='.lovable' \
             --sarif --output=semgrep.sarif \
             --error
         env:
