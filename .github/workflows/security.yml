@@ -83,7 +83,7 @@ jobs:
       # web vulnerabilities (OWASP Top 10, secret patterns, etc.).
       - name: Semgrep scan
         run: |
-          semgrep ci \
+          semgrep scan \
             --config p/default \
             --config p/security-audit \
             --config p/owasp-top-ten \
