@@ -1,93 +1,65 @@
-# Fix preview + build the Surveillance Mosaic
+## What I scanned
 
-## Part 1 — The "Preview has not been built yet" message
+I read every table and column in your quiet-math Neon database (65 tables) and compared them to what the site currently shows. Every page already reads from quiet-math only — the legacy `evidence()` call is a silent redirect to `watchtower()`, so the "one source of truth" rule is intact. The gaps below are about **data we already have but aren't showing**, and **consistency tweaks** so the same value looks the same on every page.
 
-Quick diagnosis I just ran:
+## Group A — New data your tables now expose but the UI ignores
 
-- Dev server (sandbox): running clean, no errors in the Vite log.
-- Published site (`advocacywatch.live`): returns **HTTP 200** with HTML — the build is healthy.
-- Preview URL: returns a normal **302 → auth-bridge** redirect (expected behavior; not a build failure).
+Each item lists the table → field → where it should appear. None of these require new DB work; they're already populated.
 
-So there is no actual build error in the code right now. The message you're seeing is the Lovable preview pane telling you the **last preview build hasn't finished yet** (or the preview iframe is stuck behind the auth-bridge handshake). The published site at `advocacywatch.live` is live and serving the latest deploy.
+1. **`aircraft_profiles.tactical_role` + `confirmed_coord_partners`** → add a "Tactical role" column on **Operators** and a "Confirmed coordination partners" chip on **Tail Search**. This is your new entity-resolved coordination data.
+2. **`aircraft_profiles.reg_violation_count` + `integrity_failure_rate`** → add to the Operators table as a "Registry integrity" badge (e.g. "3 violations · 12% integrity failure"). High-signal, currently hidden.
+3. **`detections.is_91_227_violator` + `max_obstacle_amsl_2k_ft`** → surface on **Violations** as a dedicated "FAR 91.227 (ADS-B integrity)" filter chip and an "Obstacle proximity" column on the Live Feed.
+4. **`detections.loiter_ratio` + `is_congested`** → use on **Live Feed** story cards ("loitered 73% of pass over a congested area") — pairs perfectly with the existing `StoryCard` template.
+5. **`anomaly_events.kinematic_anomaly_score`, `graph_anomaly_score`, `physics_violation`, `surveillance_indicator`, `county_z_score`** → expand **ML Detections** with a multi-model score breakdown row instead of the single number it shows today.
+6. **`ensemble_anomaly_scores`** (multi-model agreement: wavenet / isolation forest / LOF / temporal) → add a new section on **ML Detections** titled "Models that agreed" with the per-model bars and the `disagreement` metric.
+7. **`cases` table** (WTI tier, Bradford-Hill flags, `is_published`, `publish_tier`, `public_summary`, `report_url`) → add a new public **Cases** page (`/cases`) listing every published case dossier. This is the highest-leverage missing surface — the machine is already opening and scoring cases, but the public can't see them.
+8. **`wtpr_registry` + `wtpr_convergent_locks`** (court-ready fingerprints) → new **Court-Ready Evidence** page (`/wtpr`) showing the legal-grade chain hashes and convergent locks. Strengthens the "evidence integrity" pitch.
+9. **`weekly_investigator_report`** → add to **Reports** page: a weekly auto-brief list with `kcso_detections`, `military_detections`, `convergence_events`, and the rendered `report_content`.
+10. **`monitoring_reports` + `compliance_items` + `reform_areas`** → new **Consent Decree** page (`/consent-decree`) tracking the SJ paragraphs and 2023/2024/2025 status columns. Connects the airspace data to the existing legal accountability framework.
+11. **`radar_screenshots` + `visual_evidence` + `flightradar24_vision_extracts`** → new **Visual Corroboration** section on Tail Search that pulls matching screenshots by tail. The `best_match_id`/`match_status` columns already link these to detections.
+12. **`learned_patterns`** (active ML patterns with `confidence`, `peak_hour`, `active_days`) → new **Patterns** page (`/patterns`) listing what the system has learned to recognize.
+13. **`corridor_zones` + `corridor_aircraft`** → new **Corridors** page (`/corridors`) with a zone-by-zone breakdown and the heavy-rotation aircraft per zone.
+14. **`aoi_alerts`** (Area-of-Interest alert level, distance, reason) → small "Active alerts" banner on the home page when fresh rows exist.
+15. **`digital_obstacles`** → use in the Violations page to label which low-altitude events were near a charted tower (joins via `max_obstacle_amsl_2k_ft`).
+16. **`ml_brain_reports.top_hypothesis` + `four_factor_links`** → add to Tail Search as "AI brief" panel for that registration when one exists.
 
-What I'll do to make sure it stays that way:
+## Group B — Consistency fixes across existing pages
 
-1. Re-read `src/lib/watchtower.functions.ts` end-to-end and confirm none of the recently-rewired functions still reference removed types or stale field names (the file has a leftover `biometricEvents: 0` line on the snapshot — harmless, but I'll keep it to avoid breaking JSX that still reads it, OR remove it everywhere in lockstep).
-2. Hit each server function once via `invoke-server-function` (`/`, `/operators`, `/military`, `/threat-index`, `/live`, `/findings`, `/ml-detections`) and confirm every one returns 200. Any 500 gets fixed before moving on.
-3. Trigger a fresh preview build by saving a no-op edit if the preview iframe is still showing the "not built yet" state after step 2.
+Things that already exist but render differently page-to-page.
 
-If after that the preview pane still says "not built yet," it's a Lovable preview-infra issue, not a code issue — refreshing the editor tab clears it.
+- **Percent rendering**: enforce `fmtPct()` everywhere `night_pct`, `weekend_pct`, `below_1000ft_rate`, `hover_rate`, `integrity_failure_rate` appear (some pages call `.toFixed(0) + "%"` directly).
+- **Date rendering**: a shared `fmtClock()` / `fmtDate()` helper. Today some pages show ISO, others `toLocaleString`.
+- **County name**: route everything through `normalizeCountyKey()` already in `watchtower.functions.ts` so "Kern", "KERN", "kern county" stop appearing as three different rows.
+- **Tail / ICAO display**: always prefer registration, fall back to ICAO hex with a `mono` style. Codify in a tiny `<TailBadge />` component.
+- **Detection count source**: after the recent fix, all detection counts come from raw `detections` rows. Audit the remaining pages (Mosaic, Threat Index, Foreign, Military) that still reference `total_detections` / `occurrences_total` directly and switch them to the raw-count CTE pattern so headline numbers match across pages.
+- **Flag chips** (KCSO / MIL / MED / SHELL / XP): extract the inline `<Flag>` from `operators.tsx` into `src/components/flag-chips.tsx` and reuse it on Tail Search, Foreign, Military.
+- **Share row** is already a component but not on every page (Reports, ML Detections, Violations don't have it). Add it.
 
-## Part 2 — The Surveillance Mosaic
+## Group C — Small quality improvements
 
-A new route, `/mosaic`, that stacks six independent data layers over a single Kern-centered map. Every layer reads from **quiet-math** (the unbiased DB) via existing or new server functions — no lucky-wildflower, no new tables.
+- **SEO**: add `og:image` per-route where a page has a hero/cover; today every page inherits the root og image.
+- **JSON-LD**: extend the `Dataset` schema currently on Operators to Violations, Threat Index, Cases (once added). Same shape, different `name` / `description`.
+- **Stale-time alignment**: every dataset page caches 5–10 min already; align the few outliers (Mosaic, Live) on the same `staleTime` so headline numbers don't drift between tabs.
 
-### What the user sees
-
-A full-bleed map (centered ~35.43°N, −119.05°W, zoom 10) with:
-
-- A **layer toggle panel** (top-right) — six checkboxes, each layer can be turned on/off independently. Default: Density + Violations on, others off.
-- A **time filter** (top-left) — All / Last 7 days / Last 24h / Friday-Saturday nights only.
-- A **legend** (bottom-left) that updates based on which layers are active.
-- A **detail drawer** (right side) — clicking any tile / pin / arrow opens a popup with the underlying rows + a "Copy SHA-256 hash" button so it stays evidence-grade.
-
-### The six layers
+## Recommended sequence
 
 ```text
-┌─ Layer 1  Density Heatmap          choropleth 1km² tiles, color = total pings
-├─ Layer 2  Violation Heatmap        overlay 60% opacity, color = dominant anomaly type
-├─ Layer 3  Time-of-Day Calendar     7×24 grid below the map (not on the map)
-├─ Layer 4  Anomaly Type Pins        point markers, color = anomaly_type, size = count
-├─ Layer 5  Handoff Arrows           lines between aircraft pairs, thickness = handoff count
-└─ Layer 6  Entity Network Pins      named pins (KCSO, ALF IX, AERO EQUITIES…), click = dossier
+P0 — Group B (consistency): no new pages, just makes existing numbers agree.
+P1 — Group A items 1, 2, 3, 4 (in-place column additions on existing pages).
+P2 — Group A item 7 (Cases page) — biggest narrative payoff.
+P3 — Group A items 5, 6 (richer ML Detections).
+P4 — Group A items 10, 12, 13 (Consent Decree, Patterns, Corridors pages).
+P5 — Group A items 8, 9, 11, 14, 15, 16 (WTPR, Weekly, Visual, AOI, Obstacles, Brain).
+P6 — Group C (SEO + JSON-LD + stale-time polish).
 ```
 
-### Map library
+## How I'd like to proceed
 
-Use **Leaflet** + **react-leaflet** (MIT-licensed, no API key, works with OpenStreetMap tiles). It bundles cleanly into the Worker runtime and doesn't require Mapbox / Google Maps tokens. Heatmap layer uses `leaflet.heat`. The Lovable Google Maps connector is overkill here — we don't need geocoding, just a tile background.
+Tell me which priority bands to ship (e.g. "do P0 and P1 now", or "do everything through P3"). I'll keep the data source restricted to `watchtower()` (quiet-math) only, reuse the existing brutal-border / label-stamp styling, and won't add any new components outside what's listed above.
 
-### Server functions to add (all in `src/lib/watchtower.functions.ts`, all read quiet-math)
+## Technical notes (skip if not interested)
 
-Each function bins on a **0.01°×0.01° tile** (~1 km at this latitude) using `floor(lat*100)/100` and `floor(lon*100)/100` so the six layers share a tile grid and can be cross-referenced.
-
-| Function | Source table(s) | Returns |
-|---|---|---|
-| `getDensityTiles({ since })` | `detections` | `[{ lat, lon, pings, uniqueAircraft, avgAltitude }]` |
-| `getViolationTiles({ since })` | `anomaly_events` | `[{ lat, lon, events, uniqueAircraft, criticalCount, maxScore, dominantType }]` |
-| `getTimeOfDayHeat({ since })` | `detections` + `anomaly_events` | `[{ dow, hour, pings, belowFloor, aircraft }]` (7×24 = 168 rows) |
-| `getAnomalyPoints({ since, limit: 2000 })` | `anomaly_events` | `[{ lat, lon, anomalyType, anomalyScore, icao, registration, detectedAt }]` |
-| `getHandoffPairs({ since })` | `detections` self-join on time + distance | `[{ fromIcao, toIcao, fromLat, fromLon, toLat, toLon, count }]` (existing `convergence_events` table may already have this — confirm and use it if so) |
-| `getEntityCentroids()` | `aircraft_profiles` ⨝ `faa_master` + regex bucketing | `[{ entity, lat, lon, totalPings, aircraftCount, color }]` |
-
-All tile queries cap at top-N tiles (500) and use `staleTime: 5 * 60_000` so the map isn't refetched on every layer toggle.
-
-### Files
-
-- **New**: `src/routes/mosaic.tsx` — the page (head/SEO, map, layer panel, time filter, legend, drawer).
-- **New**: `src/components/mosaic/` — `MosaicMap.tsx`, `LayerPanel.tsx`, `TimeFilter.tsx`, `Legend.tsx`, `CalendarHeatmap.tsx`, `DetailDrawer.tsx`.
-- **Edited**: `src/lib/watchtower.functions.ts` — add the 6 new server functions above.
-- **Edited**: `src/components/site-header.tsx` — add "Mosaic" to nav between "Live" and "Threat Index".
-- **Edited**: `src/routes/methodology.tsx` — add a short "Mosaic" section explaining the 1km² tile binning and the six layers.
-- **Edited**: `package.json` — add `leaflet`, `react-leaflet`, `leaflet.heat`, `@types/leaflet`.
-
-### Evidence integrity
-
-Every tile and pin payload includes:
-- `sha256_hash` for the underlying detection/anomaly rows (already in quiet-math).
-- `tileFingerprint` = SHA-256 of `(lat, lon, count, since)` so a screenshot of the mosaic can be verified later.
-- A "Copy evidence bundle" button in the detail drawer that produces a JSON blob with the rows + their hashes for FOIA / legal export.
-
-### Out of scope (will not do unless asked)
-
-- No write-back to the database.
-- No ML re-training — we read existing `anomaly_events.anomaly_type` as-is.
-- No real-time WebSocket layer (5-minute cache is plenty; can add later).
-- No mobile-optimized layout v1 — map is desktop-first; mobile gets a "Open on desktop for full mosaic" notice.
-
-## What you'll see when it's done
-
-- A new "Mosaic" link in the header. Click it and the Kern map renders within ~2s with Density + Violations layers on by default. The KCSO ramp tile glows dark red on both layers — that's the finding visualized.
-- Toggle Layer 5 and the handoff arrows draw between `N787FA ↔ N790FA` and friends, with line thickness proportional to handoff count.
-- Toggle Layer 3 and the 7×24 calendar appears below the map showing Fri 21:00 PDT as the hottest cell.
-- Every tile and pin has a "Copy evidence bundle" button so anything you screenshot is chain-of-custody verifiable.
-- The "Preview has not been built yet" message disappears as soon as the preview build completes (no code change required for that — but Part 1's verification pass ensures no server function is silently 500-ing and blocking the build probe).
+- All new queries go through `src/lib/watchtower.functions.ts` as new `createServerFn` handlers next to the existing ones, following the SSR-loader + `useSuspenseQuery` pattern the rest of the site uses.
+- New routes follow the existing flat naming (`src/routes/cases.tsx`, `src/routes/corridors.tsx`, etc.) with `head()` metadata + breadcrumb + JSON-LD + share row, matching `operators.tsx` as the template.
+- The flag-chip / tail-badge / fmt helpers go in `src/components/` and `src/lib/format.ts` (extending the existing `fmtPct`).
+- Nothing here touches `evidence()`; the deprecation shim stays so any forgotten caller still ends up on quiet-math.
