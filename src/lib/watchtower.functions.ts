@@ -427,6 +427,11 @@ export type CanonicalOperator = {
   occurrences: number;
   confidence: number | null;
   lastSeen: string | null;
+  /** New: high-signal fields surfaced from aircraft_profiles. */
+  tacticalRole: string | null;
+  coordPartnerCount: number;
+  regViolationCount: number;
+  integrityFailureRate: number | null;
 };
 
 export const getCanonicalOperators = createServerFn({ method: "GET" }).handler(async (): Promise<CanonicalOperator[]> => {
@@ -444,6 +449,8 @@ export const getCanonicalOperators = createServerFn({ method: "GET" }).handler(a
            p.last_seen,
            p.reg_violation_count,
            p.confirmed_coord_partners,
+           p.tactical_role,
+           p.integrity_failure_rate,
            COALESCE(m.name, p.registered_owner) AS faa_name
     FROM aircraft_profiles p
     LEFT JOIN faa_master m ON m.mode_s_code_hex = UPPER(p.icao_hex)
@@ -474,6 +481,10 @@ export const getCanonicalOperators = createServerFn({ method: "GET" }).handler(a
       occurrences: Number(r.total_detections ?? 0),
       confidence: r.classification_confidence != null ? Number(r.classification_confidence) : null,
       lastSeen: r.last_seen ? new Date(r.last_seen).toISOString() : null,
+      tacticalRole: r.tactical_role ?? null,
+      coordPartnerCount: partners,
+      regViolationCount: Number(r.reg_violation_count ?? 0),
+      integrityFailureRate: r.integrity_failure_rate != null ? Number(r.integrity_failure_rate) : null,
     };
   });
 });
