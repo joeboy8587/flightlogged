@@ -29,6 +29,7 @@ import { Route as ForeignRouteImport } from './routes/foreign'
 import { Route as FindingsRouteImport } from './routes/findings'
 import { Route as CoordinationRouteImport } from './routes/coordination'
 import { Route as CitationsRouteImport } from './routes/citations'
+import { Route as CasesRouteImport } from './routes/cases'
 import { Route as ActRouteImport } from './routes/act'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
@@ -136,6 +137,11 @@ const CitationsRoute = CitationsRouteImport.update({
   path: '/citations',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CasesRoute = CasesRouteImport.update({
+  id: '/cases',
+  path: '/cases',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ActRoute = ActRouteImport.update({
   id: '/act',
   path: '/act',
@@ -171,6 +177,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/act': typeof ActRoute
+  '/cases': typeof CasesRoute
   '/citations': typeof CitationsRoute
   '/coordination': typeof CoordinationRoute
   '/findings': typeof FindingsRoute
@@ -199,6 +206,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/act': typeof ActRoute
+  '/cases': typeof CasesRoute
   '/citations': typeof CitationsRoute
   '/coordination': typeof CoordinationRoute
   '/findings': typeof FindingsRoute
@@ -227,6 +235,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/act': typeof ActRoute
+  '/cases': typeof CasesRoute
   '/citations': typeof CitationsRoute
   '/coordination': typeof CoordinationRoute
   '/findings': typeof FindingsRoute
@@ -257,6 +266,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/act'
+    | '/cases'
     | '/citations'
     | '/coordination'
     | '/findings'
@@ -285,6 +295,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/act'
+    | '/cases'
     | '/citations'
     | '/coordination'
     | '/findings'
@@ -312,6 +323,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/act'
+    | '/cases'
     | '/citations'
     | '/coordination'
     | '/findings'
@@ -341,6 +353,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
   ActRoute: typeof ActRoute
+  CasesRoute: typeof CasesRoute
   CitationsRoute: typeof CitationsRoute
   CoordinationRoute: typeof CoordinationRoute
   FindingsRoute: typeof FindingsRoute
@@ -506,6 +519,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CitationsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/cases': {
+      id: '/cases'
+      path: '/cases'
+      fullPath: '/cases'
+      preLoaderRoute: typeof CasesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/act': {
       id: '/act'
       path: '/act'
@@ -568,6 +588,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
   ActRoute: ActRoute,
+  CasesRoute: CasesRoute,
   CitationsRoute: CitationsRoute,
   CoordinationRoute: CoordinationRoute,
   FindingsRoute: FindingsRoute,
