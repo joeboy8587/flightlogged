@@ -7,6 +7,9 @@ import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
 import { breadcrumbScript } from "@/lib/breadcrumbs";
 import { getCanonicalOperators } from "@/lib/watchtower.functions";
 import { ShareRow } from "@/components/share-row";
+import { FlagChips } from "@/components/flag-chips";
+import { TailBadge } from "@/components/tail-badge";
+import { fmtDate, fmtPct } from "@/lib/format";
 
 const opsQO = queryOptions({
   queryKey: ["canonical-operators"],
@@ -59,12 +62,6 @@ export const Route = createFileRoute("/operators")({
       </div></div>
   ),
 });
-
-function Flag({ on, label, tone }: { on: boolean; label: string; tone: "alert" | "warning" | "ink" }) {
-  if (!on) return null;
-  const cls = tone === "alert" ? "bg-alert text-paper" : tone === "warning" ? "bg-warning text-ink" : "bg-ink text-paper";
-  return <span className={`label-stamp px-2 py-0.5 ${cls}`}>{label}</span>;
-}
 
 function Operators() {
   const { data } = useSuspenseQuery(opsQO);
@@ -170,6 +167,7 @@ function Operators() {
                   <th className="text-left p-3 label-stamp">Model</th>
                   <th className="text-left p-3 label-stamp">Flags</th>
                   <th className="text-right p-3 label-stamp">Detections</th>
+                  <th className="text-right p-3 label-stamp">Registry integrity</th>
                   <th className="text-right p-3 label-stamp">Confidence</th>
                   <th className="text-left p-3 label-stamp">Last seen</th>
                   <th className="text-left p-3 label-stamp">Share</th>
@@ -177,26 +175,31 @@ function Operators() {
               </thead>
               <tbody className="font-mono">
                 {rows.length === 0 && (
-                  <tr><td colSpan={8} className="p-6 text-center">No operators match this filter.</td></tr>
+                  <tr><td colSpan={9} className="p-6 text-center">No operators match this filter.</td></tr>
                 )}
                 {rows.map((o) => (
                   <tr key={o.registration} className="border-t border-ink/20 hover:bg-warning/30">
-                    <td className="p-3 font-bold">{o.registration}</td>
+                    <td className="p-3"><TailBadge registration={o.registration} icao={o.icao24} /></td>
                     <td className="p-3">{o.operatorResolved || o.faaName || "—"}</td>
                     <td className="p-3">{o.aircraftModel || "—"}</td>
                     <td className="p-3">
-                      <div className="flex flex-wrap gap-1">
-                        <Flag on={o.kcso} label="KCSO" tone="alert" />
-                        <Flag on={o.military} label="MIL" tone="ink" />
-                        <Flag on={o.medical} label="MED" tone="warning" />
-                        <Flag on={o.xpServices} label="XP" tone="ink" />
-                        {o.shellLinks > 0 && <span className="label-stamp px-2 py-0.5 bg-alert text-paper">SHELL {o.shellLinks}</span>}
-                        {isShell(o) && o.shellLinks === 0 && <span className="label-stamp px-2 py-0.5 bg-ink text-paper">LLC</span>}
-                      </div>
+                      <FlagChips
+                        kcso={o.kcso} military={o.military} medical={o.medical}
+                        xpServices={o.xpServices} shellLinks={o.shellLinks}
+                        llcLike={isShell(o)} tacticalRole={o.tacticalRole}
+                      />
                     </td>
                     <td className="p-3 text-right font-bold">{o.occurrences.toLocaleString()}</td>
+                    <td className="p-3 text-right text-xs">
+                      {o.regViolationCount > 0 ? (
+                        <span className="label-stamp bg-alert text-paper px-1.5 py-0.5">
+                          {o.regViolationCount} viol
+                        </span>
+                      ) : <span className="opacity-50">0</span>}
+                      <div className="opacity-70">{fmtPct(o.integrityFailureRate, { decimals: 0 })} fail</div>
+                    </td>
                     <td className="p-3 text-right">{o.confidence != null ? o.confidence.toFixed(2) : "—"}</td>
-                    <td className="p-3 whitespace-nowrap text-xs">{o.lastSeen ? new Date(o.lastSeen).toISOString().slice(0, 10) : "—"}</td>
+                    <td className="p-3 whitespace-nowrap text-xs">{fmtDate(o.lastSeen)}</td>
                     <td className="p-3">
                       <ShareRow
                         text={`${o.operatorResolved || o.faaName || o.registration} (${o.registration}) — ${o.occurrences.toLocaleString()} detections in the current window.${o.kcso ? " Flagged: law enforcement." : ""}${o.military ? " Flagged: military." : ""}${isShell(o) ? " Registered as anonymous LLC / shell." : ""} Source: Watchtower / The Architecture of Never — https://advocacywatch.live/operators`}

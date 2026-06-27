@@ -427,6 +427,11 @@ export type CanonicalOperator = {
   occurrences: number;
   confidence: number | null;
   lastSeen: string | null;
+  /** New: high-signal fields surfaced from aircraft_profiles. */
+  tacticalRole: string | null;
+  coordPartnerCount: number;
+  regViolationCount: number;
+  integrityFailureRate: number | null;
 };
 
 export const getCanonicalOperators = createServerFn({ method: "GET" }).handler(async (): Promise<CanonicalOperator[]> => {
@@ -444,6 +449,8 @@ export const getCanonicalOperators = createServerFn({ method: "GET" }).handler(a
            p.last_seen,
            p.reg_violation_count,
            p.confirmed_coord_partners,
+           p.tactical_role,
+           p.integrity_failure_rate,
            COALESCE(m.name, p.registered_owner) AS faa_name
     FROM aircraft_profiles p
     LEFT JOIN faa_master m ON m.mode_s_code_hex = UPPER(p.icao_hex)
@@ -474,6 +481,10 @@ export const getCanonicalOperators = createServerFn({ method: "GET" }).handler(a
       occurrences: Number(r.total_detections ?? 0),
       confidence: r.classification_confidence != null ? Number(r.classification_confidence) : null,
       lastSeen: r.last_seen ? new Date(r.last_seen).toISOString() : null,
+      tacticalRole: r.tactical_role ?? null,
+      coordPartnerCount: partners,
+      regViolationCount: Number(r.reg_violation_count ?? 0),
+      integrityFailureRate: r.integrity_failure_rate != null ? Number(r.integrity_failure_rate) : null,
     };
   });
 });
@@ -2520,3 +2531,81 @@ export const getEntityCentroids = createServerFn({ method: "GET" })
       }));
   } catch (err) { console.error("getEntityCentroids failed:", err); return []; }
 });
+
+// ---- Published case dossiers ----
+// Surfaces the `cases` table built by the machine: WTI score, tier, Bradford-Hill
+// factor flags, the auto-summary, and (when present) the public report URL.
+// Only published cases are returned so the page never leaks internal review state.
+export type PublishedCase = {
+  id: string;
+  caseId: string;
+  caseType: string | null;
+  severity: string | null;
+  subjectReg: string | null;
+  subjectIcao: string | null;
+  subjectOwner: string | null;
+  primaryCounty: string | null;
+  anomalyType: string | null;
+  wtiScore: number | null;
+  wtiTier: number | null;
+  totalEvents: number;
+  bhStrength: boolean;
+  bhConsistency: boolean;
+  bhSpecificity: boolean;
+  bhTemporality: boolean;
+  bhCorroboration: boolean;
+  evidenceSufficient: boolean;
+  publicSummary: string | null;
+  publishTier: string | null;
+  reportUrl: string | null;
+  publishedAt: string | null;
+  hashShort: string | null;
+};
+
+export const getPublishedCases = createServerFn({ method: "GET" }).handler(
+  async (): Promise<PublishedCase[]> => {
+    try {
+      const w = watchtower();
+      const rows = await w`
+        SELECT id::text AS id, case_id, case_type, severity,
+               subject_reg, subject_icao, subject_owner, primary_county, anomaly_type,
+               wti_score, wti_tier, total_events,
+               bh_strength, bh_consistency, bh_specificity, bh_temporality, bh_corroboration,
+               evidence_sufficient,
+               public_summary, publish_tier, report_url, published_at, sha256_hash
+        FROM cases
+        WHERE is_published = TRUE
+        ORDER BY published_at DESC NULLS LAST
+        LIMIT 200
+      `;
+      return (rows as any[]).map((r) => ({
+        id: r.id,
+        caseId: r.case_id,
+        caseType: r.case_type ?? null,
+        severity: r.severity ?? null,
+        subjectReg: r.subject_reg ?? null,
+        subjectIcao: r.subject_icao ?? null,
+        subjectOwner: r.subject_owner ?? null,
+        primaryCounty: r.primary_county ?? null,
+        anomalyType: r.anomaly_type ?? null,
+        wtiScore: r.wti_score != null ? Number(r.wti_score) : null,
+        wtiTier: r.wti_tier != null ? Number(r.wti_tier) : null,
+        totalEvents: Number(r.total_events ?? 0),
+        bhStrength: !!r.bh_strength,
+        bhConsistency: !!r.bh_consistency,
+        bhSpecificity: !!r.bh_specificity,
+        bhTemporality: !!r.bh_temporality,
+        bhCorroboration: !!r.bh_corroboration,
+        evidenceSufficient: !!r.evidence_sufficient,
+        publicSummary: r.public_summary ?? null,
+        publishTier: r.publish_tier ?? null,
+        reportUrl: r.report_url ?? null,
+        publishedAt: r.published_at ? new Date(r.published_at).toISOString() : null,
+        hashShort: r.sha256_hash ? String(r.sha256_hash).slice(0, 16) : null,
+      }));
+    } catch (err) {
+      console.error("getPublishedCases failed:", err);
+      return [];
+    }
+  },
+);
