@@ -149,14 +149,14 @@ export const getRecentLowAltitude = createServerFn({ method: "GET" }).handler(as
     w`
       SELECT d.icao_hex, d.registration, d.captured_at, d.altitude_ft, d.speed_kts, d.county,
              p.registered_owner, p.aircraft_model,
-             p.total_detections, p.tactical_role, p.confirmed_coord_partners, p.reg_violation_count,
+             p.total_detections, p.tactical_role, p.reg_violation_count,
              m.name AS reg_name, m.type_registrant, m.city AS reg_city, m.state AS reg_state
       FROM detections d
       LEFT JOIN aircraft_profiles p ON p.icao_hex = d.icao_hex
       LEFT JOIN faa_master m ON m.mode_s_code_hex = UPPER(d.icao_hex)
       WHERE d.altitude_ft IS NOT NULL
         AND d.altitude_ft < 1500
-        AND d.altitude_ft >= -100      -- exclude transponder/barometric anomalies from public display
+        AND d.altitude_ft >= -100
         AND d.on_ground = false
       ORDER BY d.captured_at DESC
       LIMIT 400
@@ -165,6 +165,32 @@ export const getRecentLowAltitude = createServerFn({ method: "GET" }).handler(as
       FROM regulatory_baselines WHERE is_active = true
       ORDER BY violation_score DESC`,
   ]);
+
+  // ── FIX: Compute coordination partners on-the-fly for aircraft in this result set ──
+  const uniqueIcaos = Array.from(new Set((rows as any[]).map((r: any) => r.icao_hex).filter(Boolean)));
+  let coordMap = new Map<string, string[]>();
+  if (uniqueIcaos.length > 0) {
+    const coordRows = await w`
+      SELECT 
+        d1.icao_hex,
+        ARRAY_AGG(DISTINCT d2.registration) FILTER (WHERE d2.registration IS NOT NULL AND d2.registration != d1.registration) as partners
+      FROM detections d1
+      JOIN detections d2 ON (
+        d1.county = d2.county
+        AND d2.captured_at BETWEEN d1.captured_at - INTERVAL '30 minutes' AND d1.captured_at + INTERVAL '30 minutes'
+        AND d2.altitude_ft BETWEEN d1.altitude_ft - 1000 AND d1.altitude_ft + 1000
+        AND d1.icao_hex != d2.icao_hex
+      )
+      WHERE d1.icao_hex = ANY(${uniqueIcaos}::text[])
+        AND d1.captured_at >= NOW() - INTERVAL '24 hours'
+      GROUP BY d1.icao_hex
+    `;
+    for (const cr of coordRows as any[]) {
+      coordMap.set(cr.icao_hex, cr.partners ?? []);
+    }
+  }
+  // ── END FIX ──
+
   const matchViolation = (alt: number | null) => {
     if (alt == null) return null;
     let best: any = null;
@@ -175,7 +201,8 @@ export const getRecentLowAltitude = createServerFn({ method: "GET" }).handler(as
     }
     return best;
   };
-  return rows.map((r: any) => {
+
+  return (rows as any[]).map((r: any) => {
     const ownerName: string = (r.reg_name || r.registered_owner || "").toString();
     const stateRaw = (r.reg_state || "").toString().toUpperCase();
     const isLLC = /\bLLC\b|\bL\.L\.C\.|\bINC\b|\bCORP\b|\bTRUST\b/.test(ownerName.toUpperCase());
@@ -184,35 +211,40 @@ export const getRecentLowAltitude = createServerFn({ method: "GET" }).handler(as
     const shellReason = isShellLikely
       ? `${ownerName} is registered in ${stateRaw} — a jurisdiction commonly used for shell entities.`
       : null;
-    const partners = Array.isArray(r.confirmed_coord_partners)
-      ? (r.confirmed_coord_partners as unknown[]).map((x) => String(x)).filter(Boolean)
-      : [];
+
+    // ── FIX: Use computed partners instead of empty DB column ──
+    const partners = coordMap.get(r.icao_hex) ?? 
+      (Array.isArray(r.confirmed_coord_partners)
+        ? (r.confirmed_coord_partners as unknown[]).map((x) => String(x)).filter(Boolean)
+        : []);
+    // ── END FIX ──
+
     return ({
-    icao: r.icao_hex,
-    registration: r.registration,
-    owner: r.registered_owner,
-    model: r.aircraft_model,
-    capturedAt: new Date(r.captured_at).toISOString(),
-    altitude: r.altitude_ft,
-    speed: r.speed_kts ? Number(r.speed_kts) : null,
-    county: r.county,
-    identifiedName: r.reg_name ?? null,
-    registrantType: r.type_registrant ?? null,
-    registrantCity: r.reg_city ?? null,
-    registrantState: r.reg_state ?? null,
-    totalDetections: r.total_detections != null ? Number(r.total_detections) : null,
-    tacticalRole: r.tactical_role ?? null,
-    coordPartners: partners,
-    regViolationCount: r.reg_violation_count != null ? Number(r.reg_violation_count) : null,
-    isShellLikely,
-    shellReason,
-    ...(function () {
-      const v = matchViolation(r.altitude_ft);
-      return v
-        ? { violationRule: v.rule_name as string, violationSource: v.rule_source as string, violationScore: Number(v.violation_score) }
-        : { violationRule: null, violationSource: null, violationScore: null };
-    })(),
-  });
+      icao: r.icao_hex,
+      registration: r.registration,
+      owner: r.registered_owner,
+      model: r.aircraft_model,
+      capturedAt: new Date(r.captured_at).toISOString(),
+      altitude: r.altitude_ft,
+      speed: r.speed_kts ? Number(r.speed_kts) : null,
+      county: r.county,
+      identifiedName: r.reg_name ?? null,
+      registrantType: r.type_registrant ?? null,
+      registrantCity: r.reg_city ?? null,
+      registrantState: r.reg_state ?? null,
+      totalDetections: r.total_detections != null ? Number(r.total_detections) : null,
+      tacticalRole: r.tactical_role ?? null,
+      coordPartners: partners,
+      regViolationCount: r.reg_violation_count != null ? Number(r.reg_violation_count) : null,
+      isShellLikely,
+      shellReason,
+      ...(function () {
+        const v = matchViolation(r.altitude_ft);
+        return v
+          ? { violationRule: v.rule_name as string, violationSource: v.rule_source as string, violationScore: Number(v.violation_score) }
+          : { violationRule: null, violationSource: null, violationScore: null };
+      })(),
+    });
   });
 });
 
