@@ -138,7 +138,7 @@ function Violations() {
                 {neon.rows.length === 0 && <tr><td colSpan={6} className="p-6 text-center">No classified violations on record.</td></tr>}
                 {neon.rows.map((r, i) => (
                   <tr key={(r.detectionId ?? r.icao) + r.capturedAt + i} className="border-t border-ink/20 hover:bg-warning/30">
-                    <td className="p-3 whitespace-nowrap text-xs">{new Date(r.capturedAt).toLocaleString()}</td>
+                    <td className="p-3 whitespace-nowrap text-xs">{fmtClock(r.capturedAt)}</td>
                     <td className="p-3"><span className="font-bold">{r.registration || r.icao}</span></td>
                     <td className="p-3 text-xs">{r.ownerName ? <><span className="font-bold">{r.ownerName}</span>{(r.ownerCity || r.ownerState) && <div className="opacity-60">{[r.ownerCity, r.ownerState].filter(Boolean).join(", ")}</div>}</> : <span className="opacity-40">—</span>}</td>
                     <td className="p-3 text-xs"><span className="label-stamp bg-alert text-paper px-2 py-1">{r.rule}</span></td>
@@ -174,7 +174,7 @@ function Violations() {
                 {data.length === 0 && <tr><td colSpan={9} className="p-6 text-center">No violations on record.</td></tr>}
                 {data.map((v) => (
                   <tr key={v.id} className="border-t border-ink/20 hover:bg-warning/30">
-                    <td className="p-3 whitespace-nowrap text-xs">{new Date(v.timestamp).toLocaleString()}</td>
+                    <td className="p-3 whitespace-nowrap text-xs">{fmtClock(v.timestamp)}</td>
                     <td className="p-3 font-bold">{v.registration || "—"}</td>
                     <td className="p-3 text-xs">
                       {v.identifiedName ? (
