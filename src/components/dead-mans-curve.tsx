@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import { getDeadMansCurveStats } from "@/lib/watchtower.functions";
+import { fmtDate } from "@/lib/format";
 
 export const dmcQO = queryOptions({
   queryKey: ["dead-mans-curve"],
@@ -57,7 +58,7 @@ export function DeadMansCurveTiles() {
             label="Window"
             value={
               data.firstSeen && data.lastSeen
-                ? `${new Date(data.firstSeen).toLocaleDateString()} → ${new Date(data.lastSeen).toLocaleDateString()}`
+                ? `${fmtDate(data.firstSeen)} → ${fmtDate(data.lastSeen)}`
                 : "—"
             }
           />
