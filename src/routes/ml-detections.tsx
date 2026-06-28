@@ -5,6 +5,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
 import { breadcrumbScript } from "@/lib/breadcrumbs";
 import { getMlAnomalies } from "@/lib/watchtower.functions";
+import { fmtClock } from "@/lib/format";
 
 const mlQO = queryOptions({ queryKey: ["ml-anomalies"], queryFn: () => getMlAnomalies() });
 
@@ -141,7 +142,7 @@ function MlDetections() {
                 {rows.length === 0 && <tr><td colSpan={10} className="p-6 text-center">No ML detections on record.</td></tr>}
                 {rows.map((m) => (
                   <tr key={m.id} className="border-t border-ink/20 hover:bg-warning/30">
-                    <td className="p-3 whitespace-nowrap text-xs">{new Date(m.detectedAt).toLocaleString()}</td>
+                    <td className="p-3 whitespace-nowrap text-xs">{fmtClock(m.detectedAt)}</td>
                     <td className="p-3 font-bold">{m.registration || m.icao24 || m.callsign || "—"}</td>
                     <td className="p-3 text-xs">
                       {m.identifiedName ? (

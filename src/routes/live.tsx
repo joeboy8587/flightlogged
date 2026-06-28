@@ -7,7 +7,7 @@ import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
 import { breadcrumbScript } from "@/lib/breadcrumbs";
 import { getSnapshot, getRecentLowAltitude, getRepeatOffenders, getIdentifiedOperators, getLocalAgencyAircraft, getKernAlerts } from "@/lib/watchtower.functions";
 import { ShareRow } from "@/components/share-row";
-import { fmtPct } from "@/lib/format";
+import { fmtPct, DISPLAY_TZ } from "@/lib/format";
 import { StoryCard } from "@/components/story-card";
 
 const snapQO = queryOptions({ queryKey: ["snapshot"], queryFn: () => getSnapshot(), refetchInterval: 30000 });
@@ -51,7 +51,7 @@ export const Route = createFileRoute("/live")({
 });
 
 function fmt(n: number | null) { return n == null ? "—" : n.toLocaleString(); }
-function fmtTime(iso: string) { return new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" }); }
+function fmtTime(iso: string) { return new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: DISPLAY_TZ, timeZoneName: "short" }); }
 function altClass(alt: number | null) {
   if (alt == null) return "";
   if (alt < 500) return "bg-alert text-paper";

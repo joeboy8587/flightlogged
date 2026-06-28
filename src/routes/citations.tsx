@@ -5,6 +5,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
 import { breadcrumbScript } from "@/lib/breadcrumbs";
 import { getCitationsMap } from "@/lib/watchtower.functions";
+import { fmtDate } from "@/lib/format";
 
 const cQO = queryOptions({ queryKey: ["citations-map"], queryFn: () => getCitationsMap() });
 
@@ -126,7 +127,7 @@ function Citations() {
               <article key={d.provision + i} className="brutal-border p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3 mb-2">
                   <div>
-                    <div className="label-stamp opacity-60 mb-1">{d.date ? new Date(d.date).toLocaleDateString() : "—"}</div>
+                    <div className="label-stamp opacity-60 mb-1">{fmtDate(d.date)}</div>
                     <h3 className="text-lg">{d.provision}</h3>
                   </div>
                   <div className="flex items-center gap-2">
