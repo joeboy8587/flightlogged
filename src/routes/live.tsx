@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
@@ -71,6 +71,7 @@ function Live() {
 
   // County filter — multi-county, non-biased default ("all").
   const [county, setCounty] = useState<string>("all");
+  const [expanded, setExpanded] = useState<string | null>(null);
 
   const countyOptions = useMemo(() => {
     const seen = new Map<string, number>();
@@ -338,10 +339,18 @@ function Live() {
               </thead>
               <tbody className="font-mono">
                 {lowFiltered.length === 0 && <tr><td colSpan={8} className="p-6 text-center">No low-altitude activity in this county for the current window.</td></tr>}
-                {lowFiltered.map((r) => (
-                  <tr key={r.icao + r.capturedAt} className="border-t border-ink/20 hover:bg-warning/30">
+                {lowFiltered.map((r) => {
+                  const key = r.icao + r.capturedAt;
+                  const isOpen = expanded === key;
+                  return (
+                  <Fragment key={key}>
+                  <tr className="border-t border-ink/20 hover:bg-warning/30 cursor-pointer" onClick={() => setExpanded(isOpen ? null : key)}>
                     <td className="p-3 whitespace-nowrap">{fmtTime(r.capturedAt)}</td>
-                    <td className="p-3"><span className="font-bold">{r.registration || r.icao}</span>{r.model && <div className="text-xs opacity-60">{r.model}</div>}</td>
+                    <td className="p-3">
+                      <span className="font-bold">{r.registration || r.icao}</span>
+                      {r.model && <div className="text-xs opacity-60">{r.model}</div>}
+                      <div className="text-[10px] font-mono opacity-60 mt-0.5">{isOpen ? "▼ hide translation" : "▶ show translation"}</div>
+                    </td>
                     <td className="p-3 text-xs">
                       {r.identifiedName ? (
                         <>
@@ -349,26 +358,84 @@ function Live() {
                           {(r.registrantCity || r.registrantState) && (
                             <div className="opacity-60">{[r.registrantCity, r.registrantState].filter(Boolean).join(", ")}</div>
                           )}
+                          {r.isShellLikely && <div className="mt-1"><span className="label-stamp bg-alert text-paper px-1.5 py-0.5">SHELL-LIKELY</span></div>}
                         </>
                       ) : r.owner ? <span className="opacity-70">{r.owner}</span> : "—"}
                     </td>
                     <td className={`p-3 text-right font-bold ${altClass(r.altitude)}`}>{fmt(r.altitude)} ft</td>
                     <td className="p-3 text-xs">
                       {r.violationSource ? (
-                        <Link to="/rules" className="inline-block bg-alert text-paper px-2 py-1 label-stamp hover:bg-ink">
+                        <Link to="/rules" onClick={(e) => e.stopPropagation()} className="inline-block bg-alert text-paper px-2 py-1 label-stamp hover:bg-ink">
                           {r.violationSource}
                         </Link>
                       ) : <span className="opacity-40">—</span>}
                     </td>
                     <td className="p-3 text-right">{r.speed ? Math.round(r.speed) + " kts" : "—"}</td>
                     <td className="p-3 text-xs">{r.county || "—"}</td>
-                    <td className="p-3">
+                    <td className="p-3" onClick={(e) => e.stopPropagation()}>
                       <ShareRow
                         text={`${r.identifiedName || r.owner || "Unidentified operator"} — ${r.registration || r.icao} at ${fmt(r.altitude)} ft over ${r.county || "Kern County area"} on ${fmtTime(r.capturedAt)}.${r.violationSource ? ` Flagged: ${r.violationSource}.` : ""} Source: Watchtower / The Architecture of Never — https://advocacywatch.live/live`}
                       />
                     </td>
                   </tr>
-                ))}
+                  {isOpen && (
+                    <tr className="border-t border-ink/20 bg-ink/5">
+                      <td colSpan={8} className="p-5">
+                        <div className="brutal-border bg-paper p-4">
+                          <div className="label-stamp bg-ink text-paper inline-block px-2 py-0.5 mb-3">Translation · public record only · ML scoring untouched</div>
+                          <div className="grid md:grid-cols-2 gap-4 text-sm">
+                            <div>
+                              <div className="label-stamp opacity-60 mb-1">Who owns this aircraft</div>
+                              <p>
+                                <strong>{r.identifiedName || r.owner || "Unidentified"}</strong>
+                                {r.registrantCity || r.registrantState ? <> — registered in {[r.registrantCity, r.registrantState].filter(Boolean).join(", ")}.</> : "."}
+                                {r.registrantType && <> Registrant type: <span className="font-mono">{r.registrantType}</span>.</>}
+                              </p>
+                              {r.shellReason && (
+                                <p className="mt-2 text-xs"><span className="label-stamp bg-alert text-paper px-1.5 py-0.5 mr-1">SHELL-LIKELY</span>{r.shellReason} No FAA Part 135 operating certificate is listed in the public registry for this entity.</p>
+                              )}
+                              {r.tacticalRole && (
+                                <p className="mt-2 text-xs">Observed tactical role: <strong>{r.tacticalRole}</strong>.</p>
+                              )}
+                            </div>
+                            <div>
+                              <div className="label-stamp opacity-60 mb-1">What the system has logged on this tail</div>
+                              <ul className="text-xs space-y-1">
+                                <li><strong>{r.totalDetections != null ? r.totalDetections.toLocaleString() : "—"}</strong> total detections logged by Watchtower for this aircraft.</li>
+                                {r.regViolationCount != null && r.regViolationCount > 0 && (
+                                  <li><strong>{r.regViolationCount}</strong> prior registry-integrity flag{r.regViolationCount === 1 ? "" : "s"} recorded.</li>
+                                )}
+                                {r.coordPartners.length > 0 && (
+                                  <li>
+                                    Confirmed coordination partners ({r.coordPartners.length}):{" "}
+                                    <span className="font-mono">{r.coordPartners.slice(0, 5).join(", ")}{r.coordPartners.length > 5 ? "…" : ""}</span>
+                                  </li>
+                                )}
+                                {r.coordPartners.length === 0 && (
+                                  <li className="opacity-60">No coordination partners on record.</li>
+                                )}
+                              </ul>
+                            </div>
+                          </div>
+                          {r.violationSource && (
+                            <div className="mt-4 brutal-border bg-warning/40 p-3 text-xs">
+                              <strong>Legal context.</strong> This detection at <strong>{fmt(r.altitude)} ft</strong> sits below the floor cited by <strong>{r.violationSource}</strong>
+                              {r.violationRule ? <> ({r.violationRule})</> : null}. The rule is reproduced verbatim on <Link to="/rules" className="underline">/rules</Link>. This is a math-flagged comparison against the published floor, not an allegation.
+                            </div>
+                          )}
+                          <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                            <Link to="/tail-search" search={{ tail: r.registration || r.icao }} className="label-stamp brutal-border px-2 py-1 hover:bg-warning">View tail profile →</Link>
+                            <Link to="/coordination" className="label-stamp brutal-border px-2 py-1 hover:bg-warning">Coordination network →</Link>
+                            <Link to="/methodology" className="label-stamp brutal-border px-2 py-1 hover:bg-warning">How scoring works →</Link>
+                          </div>
+                          <p className="mt-3 text-[10px] font-mono opacity-60">Sources: FAA Aircraft Registry · state business filings · Watchtower detection history. The ML's z-score and anomaly flag are unmodified — this panel adds public-record context only.</p>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  </Fragment>
+                  );
+                })}
               </tbody>
             </table>
           </div>
