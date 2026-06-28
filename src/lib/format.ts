@@ -22,10 +22,15 @@ export function toPct(value: number | null | undefined): number | null {
   return Math.max(0, Math.min(100, scaled));
 }
 
+/** Bakersfield, CA local time zone. DB stores UTC; UI renders here. */
+export const DISPLAY_TZ = "America/Los_Angeles";
+
 /**
  * Shared clock formatter. All UI surfaces that show a captured-at,
  * detected-at, or last-seen timestamp should route through this helper so
  * the same value reads the same way across every page.
+ * Renders in Bakersfield local time (PDT/PST) with a TZ suffix so it's
+ * unambiguous against the UTC values stored in the database.
  */
 export function fmtClock(value: string | number | Date | null | undefined, dash = "—"): string {
   if (value == null) return dash;
@@ -33,15 +38,17 @@ export function fmtClock(value: string | number | Date | null | undefined, dash 
   if (Number.isNaN(d.getTime())) return dash;
   return d.toLocaleString("en-US", {
     month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
+    timeZone: DISPLAY_TZ, timeZoneName: "short",
   });
 }
 
-/** Date-only renderer (no time component). YYYY-MM-DD for table cells. */
+/** Date-only renderer (no time component). YYYY-MM-DD in Bakersfield local time. */
 export function fmtDate(value: string | number | Date | null | undefined, dash = "—"): string {
   if (value == null) return dash;
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return dash;
-  return d.toISOString().slice(0, 10);
+  // en-CA gives YYYY-MM-DD; timeZone makes it local-date, not UTC-date.
+  return d.toLocaleDateString("en-CA", { timeZone: DISPLAY_TZ });
 }
 
 /**
