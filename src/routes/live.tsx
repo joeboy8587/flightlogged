@@ -424,7 +424,7 @@ function Live() {
                             </div>
                           )}
                           <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                            <Link to="/tail-search" search={{ q: r.registration || r.icao }} className="label-stamp brutal-border px-2 py-1 hover:bg-warning">View tail profile →</Link>
+                            <Link to="/tail-search" search={{ tail: r.registration || r.icao }} className="label-stamp brutal-border px-2 py-1 hover:bg-warning">View tail profile →</Link>
                             <Link to="/coordination" className="label-stamp brutal-border px-2 py-1 hover:bg-warning">Coordination network →</Link>
                             <Link to="/methodology" className="label-stamp brutal-border px-2 py-1 hover:bg-warning">How scoring works →</Link>
                           </div>
