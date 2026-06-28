@@ -134,6 +134,13 @@ export type LowAltDescent = {
   violationRule: string | null;
   violationSource: string | null;
   violationScore: number | null;
+  // Translation-layer context (public-record only; ML output untouched)
+  totalDetections: number | null;
+  tacticalRole: string | null;
+  coordPartners: string[];
+  regViolationCount: number | null;
+  isShellLikely: boolean;
+  shellReason: string | null;
 };
 
 export const getRecentLowAltitude = createServerFn({ method: "GET" }).handler(async (): Promise<LowAltDescent[]> => {
@@ -142,6 +149,7 @@ export const getRecentLowAltitude = createServerFn({ method: "GET" }).handler(as
     w`
       SELECT d.icao_hex, d.registration, d.captured_at, d.altitude_ft, d.speed_kts, d.county,
              p.registered_owner, p.aircraft_model,
+             p.total_detections, p.tactical_role, p.confirmed_coord_partners, p.reg_violation_count,
              m.name AS reg_name, m.type_registrant, m.city AS reg_city, m.state AS reg_state
       FROM detections d
       LEFT JOIN aircraft_profiles p ON p.icao_hex = d.icao_hex
@@ -167,7 +175,19 @@ export const getRecentLowAltitude = createServerFn({ method: "GET" }).handler(as
     }
     return best;
   };
-  return rows.map((r: any) => ({
+  return rows.map((r: any) => {
+    const ownerName: string = (r.reg_name || r.registered_owner || "").toString();
+    const stateRaw = (r.reg_state || "").toString().toUpperCase();
+    const isLLC = /\bLLC\b|\bL\.L\.C\.|\bINC\b|\bCORP\b|\bTRUST\b/.test(ownerName.toUpperCase());
+    const shellState = ["DE", "WY", "NV"].includes(stateRaw);
+    const isShellLikely = isLLC && shellState;
+    const shellReason = isShellLikely
+      ? `${ownerName} is registered in ${stateRaw} — a jurisdiction commonly used for shell entities.`
+      : null;
+    const partners = Array.isArray(r.confirmed_coord_partners)
+      ? (r.confirmed_coord_partners as unknown[]).map((x) => String(x)).filter(Boolean)
+      : [];
+    return ({
     icao: r.icao_hex,
     registration: r.registration,
     owner: r.registered_owner,
@@ -180,13 +200,20 @@ export const getRecentLowAltitude = createServerFn({ method: "GET" }).handler(as
     registrantType: r.type_registrant ?? null,
     registrantCity: r.reg_city ?? null,
     registrantState: r.reg_state ?? null,
+    totalDetections: r.total_detections != null ? Number(r.total_detections) : null,
+    tacticalRole: r.tactical_role ?? null,
+    coordPartners: partners,
+    regViolationCount: r.reg_violation_count != null ? Number(r.reg_violation_count) : null,
+    isShellLikely,
+    shellReason,
     ...(function () {
       const v = matchViolation(r.altitude_ft);
       return v
         ? { violationRule: v.rule_name as string, violationSource: v.rule_source as string, violationScore: Number(v.violation_score) }
         : { violationRule: null, violationSource: null, violationScore: null };
     })(),
-  }));
+  });
+  });
 });
 
 export type RegulatoryBaseline = {
