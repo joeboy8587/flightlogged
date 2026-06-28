@@ -7,7 +7,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
 import { breadcrumbScript } from "@/lib/breadcrumbs";
 import { searchByTail, type TailSearchResult } from "@/lib/watchtower.functions";
-import { fmtPct } from "@/lib/format";
+import { fmtPct, fmtClock, fmtDate } from "@/lib/format";
 
 const crumbs = [{ label: "Home", href: "/" }, { label: "Tail Search" }];
 
@@ -145,7 +145,7 @@ function TailSearch() {
                   <Stat label="Min altitude" value={r.minAlt != null ? `${r.minAlt} ft` : "—"} />
                   <Stat label="Avg altitude" value={r.avgAlt != null ? `${Math.round(r.avgAlt)} ft` : "—"} />
                   <Stat label="Night share" value={fmtPct(r.nightPct)} />
-                  <Stat label="Last seen" value={r.lastSeen ? new Date(r.lastSeen).toLocaleDateString() : "—"} />
+                  <Stat label="Last seen" value={fmtDate(r.lastSeen)} />
                 </div>
               </div>
 
@@ -169,7 +169,7 @@ function TailSearch() {
                     )}
                     {r.detections.slice(0, 200).map((d, i) => (
                       <tr key={i} className="border-t border-ink/20 hover:bg-warning/30">
-                        <td className="p-2 whitespace-nowrap text-xs">{new Date(d.capturedAt).toLocaleString()}</td>
+                        <td className="p-2 whitespace-nowrap text-xs">{fmtClock(d.capturedAt)}</td>
                         <td className="p-2 text-right">{d.altitude ?? "—"}</td>
                         <td className="p-2 text-right">{d.speed != null ? Math.round(d.speed) : "—"}</td>
                         <td className="p-2">{d.county ?? "—"}</td>
