@@ -7,6 +7,7 @@ import { breadcrumbScript } from "@/lib/breadcrumbs";
 import { getSentinelViolations, getNeonViolations } from "@/lib/watchtower.functions";
 import { UndergroundClub } from "@/components/underground-club";
 import { DeadMansCurveTiles, dmcQO } from "@/components/dead-mans-curve";
+import { fmtClock, fmtDate } from "@/lib/format";
 
 const vQO = queryOptions({ queryKey: ["sentinel-violations"], queryFn: () => getSentinelViolations() });
 const nQO = queryOptions({ queryKey: ["neon-violations"], queryFn: () => getNeonViolations() });
@@ -94,7 +95,7 @@ function Violations() {
           <h2 className="text-3xl sm:text-4xl mb-2">Fresh violations from regulatory engine</h2>
           <p className="text-sm opacity-70 mb-6 max-w-3xl">
             Source: <code>violation_classifications</code> table. Each row is a flight matched against an
-            active FAA baseline. Window: {neon.firstSeen ? new Date(neon.firstSeen).toLocaleDateString() : "—"} → {neon.lastSeen ? new Date(neon.lastSeen).toLocaleDateString() : "—"}.
+            active FAA baseline. Window: {fmtDate(neon.firstSeen)} → {fmtDate(neon.lastSeen)}.
           </p>
 
           <div className="grid md:grid-cols-2 gap-6 mb-8">
