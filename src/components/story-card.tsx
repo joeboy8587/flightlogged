@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import type { LowAltDescent } from "@/lib/watchtower.functions";
+import { fmtClock } from "@/lib/format";
 
 /**
  * StoryCard — turns a raw low-altitude detection row into a human-readable
@@ -11,12 +12,6 @@ export type StoryCardProps = {
   /** Optional override headline ("They Flew So Low They Couldn't Survive a Crash"). */
   headline?: string;
 };
-
-function fmtClock(iso: string) {
-  return new Date(iso).toLocaleString("en-US", {
-    month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
-  });
-}
 
 function ownerLabel(r: LowAltDescent): string {
   return r.identifiedName ?? r.owner ?? "Unidentified operator";
