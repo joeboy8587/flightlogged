@@ -166,7 +166,7 @@ export const getRecentLowAltitude = createServerFn({ method: "GET" }).handler(as
       ORDER BY violation_score DESC`,
   ]);
 
-  // ── FIX: Compute coordination partners on-the-fly for aircraft in this result set ──
+  // ── FIX: Compute coordination partners on-the-fly for aircraft in this result set (rebuild trigger) ──
   const uniqueIcaos = Array.from(new Set((rows as any[]).map((r: any) => r.icao_hex).filter(Boolean)));
   let coordMap = new Map<string, string[]>();
   if (uniqueIcaos.length > 0) {
