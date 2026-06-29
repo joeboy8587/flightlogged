@@ -1,8 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
 import { breadcrumbScript } from "@/lib/breadcrumbs";
+import { getSnapshot } from "@/lib/watchtower.functions";
+
+const snapshotQO = queryOptions({ queryKey: ["snapshot"], queryFn: () => getSnapshot() });
 
 const crumbs = [{ label: "Home", href: "/" }, { label: "About" }];
 
@@ -18,10 +22,12 @@ export const Route = createFileRoute("/about")({
     links: [{ rel: "canonical", href: "https://flightlogged.lovable.app/about" }],
     scripts: [breadcrumbScript(crumbs)],
   }),
+  loader: ({ context }) => context.queryClient.ensureQueryData(snapshotQO),
   component: About,
 });
 
 function About() {
+  const { data: s } = useSuspenseQuery(snapshotQO);
   return (
     <div className="min-h-screen bg-paper text-ink">
       <SiteHeader />
@@ -32,7 +38,9 @@ function About() {
           <h1 className="text-5xl sm:text-7xl mb-6">An institution, not a tool.</h1>
           <p className="text-lg max-w-3xl">
             We are the first civilian-led, AI-assisted airspace accountability organization.
-            Most advocacy orgs spend years building what we have running right now at 137,000+ detections and counting.
+            Most advocacy orgs spend years building what we have running right now at{" "}
+            <strong>{s.totalDetections.toLocaleString()}</strong> detections across{" "}
+            <strong>{s.uniqueAircraft.toLocaleString()}</strong> aircraft — and counting.
             We didn't wait. The machine is watching. The machine is learning. And in time, it will have earned the right to speak.
           </p>
         </div>

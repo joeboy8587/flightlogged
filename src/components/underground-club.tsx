@@ -1,19 +1,19 @@
-// Static, public-record callout — six aircraft that logged ADS-B
-// positions below ground level while moving. Names + tail numbers
-// are pulled from the FAA registry (public).
+// Live public-record callout — every aircraft that logged ADS-B positions
+// below ground level while in motion, pulled live from the quiet-math Neon
+// detections table. Nothing here is hard-coded.
+import { queryOptions, useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
+import { getAdsbIntegrityFailures } from "@/lib/watchtower.functions";
 
-type Row = { tail: string; owner: string; note?: string };
-
-const ROWS: Row[] = [
-  { tail: "N7670F", owner: "AKAYA LLC" },
-  { tail: "N4593X", owner: "CLUBS 2 LLC" },
-  { tail: "N46826", owner: "JPO AVIATION LLC" },
-  { tail: "N875DM", owner: "KILO ALFA 200 LLC" },
-  { tail: "N80616", owner: "AERO EQUITIES LLC" },
-  { tail: "N916NT", owner: "9K AIR LLC" },
-];
+const qo = queryOptions({
+  queryKey: ["adsb-integrity-failures"],
+  queryFn: () => getAdsbIntegrityFailures(),
+  staleTime: 5 * 60_000,
+});
 
 export function UndergroundClub() {
+  const { data, isLoading } = useQuery(qo);
+  const rows = data ?? [];
   return (
     <section className="border-b-4 border-ink bg-alert text-paper">
       <div className="max-w-[1400px] mx-auto px-4 py-12">
@@ -22,10 +22,18 @@ export function UndergroundClub() {
         </div>
         <h2 className="text-4xl sm:text-5xl mb-3">The Underground Club.</h2>
         <p className="max-w-3xl mb-4">
-          Six aircraft logged ADS-B altitudes <span className="font-bold">below ground level</span>{" "}
-          while in motion. Negative altitudes from a moving aircraft are not a sensor glitch —
-          they are consistent with deliberate transponder manipulation. The FAA has a statutory
-          duty to investigate.
+          {isLoading
+            ? "Loading aircraft that logged altitudes below ground level while in motion…"
+            : rows.length === 0
+              ? "No aircraft currently flagged with sub-surface broadcasts. This list updates from live detections."
+              : `${rows.length.toLocaleString()} aircraft logged ADS-B altitudes `}
+          {!isLoading && rows.length > 0 && (
+            <>
+              <span className="font-bold">below ground level</span> while in motion. Negative
+              altitudes from a moving aircraft are not a sensor glitch — they are consistent with
+              deliberate transponder manipulation. The FAA has a statutory duty to investigate.
+            </>
+          )}
         </p>
         <p className="max-w-3xl mb-6 text-sm opacity-90">
           Cited authority: <span className="font-mono">14 CFR § 91.227</span> (ADS-B Out performance
@@ -34,29 +42,40 @@ export function UndergroundClub() {
           (false statements to a federal agency, when the broadcast feeds FAA surveillance).
         </p>
 
-        <div className="brutal-border-thick bg-paper text-ink">
+        {rows.length > 0 && (
+        <div className="brutal-border-thick bg-paper text-ink overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-ink text-paper">
               <tr>
                 <th className="text-left p-3 label-stamp">Registration</th>
                 <th className="text-left p-3 label-stamp">Registered owner (FAA)</th>
-                <th className="text-left p-3 label-stamp">Anomaly</th>
+                <th className="text-left p-3 label-stamp">Min altitude</th>
+                <th className="text-left p-3 label-stamp">Detections</th>
               </tr>
             </thead>
             <tbody className="font-mono">
-              {ROWS.map((r) => (
-                <tr key={r.tail} className="border-t border-ink/20">
-                  <td className="p-3 font-bold">{r.tail}</td>
-                  <td className="p-3">{r.owner}</td>
-                  <td className="p-3 text-xs">Logged altitude &lt; -100 ft while moving</td>
+              {rows.map((r) => {
+                const tail = r.registration ?? r.icao;
+                return (
+                <tr key={r.icao} className="border-t border-ink/20">
+                  <td className="p-3 font-bold">
+                    <Link to="/tail-search" search={{ tail }} className="underline hover:bg-warning">
+                      {tail}
+                    </Link>
+                  </td>
+                  <td className="p-3">{r.owner ?? "—"}</td>
+                  <td className="p-3 text-xs">{r.minAltitude != null ? `${r.minAltitude} ft` : "—"}</td>
+                  <td className="p-3 text-xs">{r.detections.toLocaleString()}</td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
+        )}
 
         <p className="mt-4 text-xs opacity-80 font-mono">
-          Source: FAA public registry + civilian ADS-B receivers. Each record is SHA-256 fingerprinted
+          Source: live <code>detections</code> table (quiet-math) joined to FAA public registry. SHA-256 fingerprinted
           in our evidence chain and independently reproducible from public broadcasts.
         </p>
       </div>

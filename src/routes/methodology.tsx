@@ -1,8 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
 import { breadcrumbScript } from "@/lib/breadcrumbs";
+import { getSnapshot } from "@/lib/watchtower.functions";
+
+const snapshotQO = queryOptions({ queryKey: ["snapshot"], queryFn: () => getSnapshot() });
 
 const crumbs = [{ label: "Home", href: "/" }, { label: "Methodology" }];
 
@@ -18,10 +22,14 @@ export const Route = createFileRoute("/methodology")({
     links: [{ rel: "canonical", href: "https://flightlogged.lovable.app/methodology" }],
     scripts: [breadcrumbScript(crumbs)],
   }),
+  loader: ({ context }) => context.queryClient.ensureQueryData(snapshotQO),
   component: Methodology,
 });
 
 function Methodology() {
+  const { data: s } = useSuspenseQuery(snapshotQO);
+  const det = s.totalDetections.toLocaleString();
+  const ac = s.uniqueAircraft.toLocaleString();
   return (
     <div className="min-h-screen bg-paper text-ink">
       <SiteHeader />
@@ -41,7 +49,7 @@ function Methodology() {
       <section className="border-b-4 border-ink">
         <div className="max-w-[1400px] mx-auto px-4 py-16 grid lg:grid-cols-2 gap-0 brutal-border-thick">
           {[
-            { n: "01", t: "Population-scale capture", d: "We log every ADS-B / MLAT detection in the observation zone — not a curated subset. 137,000+ records, 3,995 aircraft, growing." },
+            { n: "01", t: "Population-scale capture", d: `We log every ADS-B / MLAT detection in the observation zone — not a curated subset. ${det} records across ${ac} aircraft, growing.` },
             { n: "02", t: "48-hour baseline", d: "Before flagging anything, the system observes for 48 hours to learn what NORMAL looks like for that airspace at that time of day, season, and weather." },
             { n: "03", t: "Statistical anomaly detection", d: "Outliers are scored against the learned distribution. The threshold is published. We don't pick — math picks." },
             { n: "04", t: "Chain of custody", d: "Each record receives a SHA-256 hash linked into a Merkle chain. Any tampering is detectable. Evidence is reproducible by any third party." },
