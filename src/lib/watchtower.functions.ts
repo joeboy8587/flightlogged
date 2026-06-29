@@ -2699,3 +2699,53 @@ export const getPublishedCases = createServerFn({ method: "GET" }).handler(
     }
   },
 );
+
+// ============= ADS-B integrity failures ("Underground Club") =============
+// Aircraft broadcasting altitudes below ground level while in motion.
+// Pulled live from the detections table; nothing here is hard-coded.
+export type IntegrityFailure = {
+  icao: string;
+  registration: string | null;
+  owner: string | null;
+  minAltitude: number | null;
+  detections: number;
+  lastSeen: string | null;
+};
+
+export const getAdsbIntegrityFailures = createServerFn({ method: "GET" }).handler(
+  async (): Promise<IntegrityFailure[]> => {
+    const w = watchtower();
+    try {
+      const rows = await w`
+        SELECT icao_hex,
+               MAX(registration)  AS registration,
+               MIN(altitude_ft)::int AS min_alt,
+               COUNT(*)::int       AS detections,
+               MAX(captured_at)    AS last_seen
+        FROM detections
+        WHERE altitude_ft < -100
+          AND COALESCE(speed_kts, 0) > 30
+        GROUP BY icao_hex
+        ORDER BY detections DESC, min_alt ASC
+        LIMIT 20
+      `;
+      const idMap = await faaIdentityMap(
+        (rows as any[]).map((r) => ({ registration: r.registration, icao: r.icao_hex })),
+      );
+      return (rows as any[]).map((r) => {
+        const id = lookupIdentity(idMap, r.registration, r.icao_hex);
+        return {
+          icao: r.icao_hex,
+          registration: r.registration ?? null,
+          owner: id?.name ?? null,
+          minAltitude: r.min_alt != null ? Number(r.min_alt) : null,
+          detections: Number(r.detections ?? 0),
+          lastSeen: r.last_seen ? new Date(r.last_seen).toISOString() : null,
+        };
+      });
+    } catch (err) {
+      console.error("getAdsbIntegrityFailures failed:", err);
+      return [];
+    }
+  },
+);
