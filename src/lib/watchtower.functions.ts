@@ -2177,26 +2177,52 @@ export const getConvergenceEvent = createServerFn({ method: "GET" }).handler(
     };
     try {
       const w = watchtower();
+      // Pull a recent window. Schema varies across snapshots, so we walk
+      // each row's JSON to find aircraft arrays / counts under whatever
+      // names exist. Order by any plausible time column when available;
+      // fall back to ctid for stable recent rows.
       const rows = await w`
         SELECT to_jsonb(c.*) AS row
         FROM convergence_events c
-        LIMIT 500
+        ORDER BY COALESCE(
+          (to_jsonb(c.*)->>'event_time')::timestamptz,
+          (to_jsonb(c.*)->>'occurred_at')::timestamptz,
+          (to_jsonb(c.*)->>'window_start')::timestamptz,
+          (to_jsonb(c.*)->>'captured_at')::timestamptz,
+          (to_jsonb(c.*)->>'created_at')::timestamptz,
+          'epoch'::timestamptz
+        ) DESC NULLS LAST
+        LIMIT 1000
       `;
       if (!rows || rows.length === 0) return empty;
 
-      // Score each row by the size of any aircraft/tail/icao array field.
+      // Score each row by the size of any aircraft/tail/icao array field,
+      // OR any numeric column whose name suggests a participant count.
       let best: { row: Record<string, any>; size: number } | null = null;
       for (const r of rows as any[]) {
         const row = (r.row ?? r) as Record<string, any>;
-        const arr = pickArrayField(row, ["aircraft", "tails", "icaos", "icao_hexes", "participants", "members"]);
-        const explicit = pickNum(row, ["aircraft_count", "tail_count", "n_aircraft", "participant_count"]) ?? 0;
-        const size = Math.max(arr.length, explicit);
+        const arr = pickArrayField(row, [
+          "aircraft", "tails", "icaos", "icao_hexes", "icao24s",
+          "participants", "members", "registrations", "tail_list", "aircraft_list",
+        ]);
+        // Sweep any numeric column whose name hints at "count" / "aircraft" / "size".
+        let sweep = 0;
+        for (const [k, v] of Object.entries(row)) {
+          const key = k.toLowerCase();
+          if (!/aircraft|tail|participant|cluster|size|count|n_/.test(key)) continue;
+          if (/detection/.test(key)) continue; // detection_count is different
+          const n = typeof v === "number" ? v : typeof v === "string" && !isNaN(Number(v)) ? Number(v) : 0;
+          if (n > sweep) sweep = n;
+        }
+        const size = Math.max(arr.length, sweep);
         if (!best || size > best.size) best = { row, size };
       }
       if (!best) return empty;
       const row = best.row;
 
-      const tailsRaw = pickArrayField(row, ["aircraft", "tails", "registrations", "participants", "members"]);
+      const tailsRaw = pickArrayField(row, [
+        "aircraft", "tails", "registrations", "participants", "members", "tail_list", "aircraft_list",
+      ]);
       const icaosRaw = pickArrayField(row, ["icaos", "icao_hexes", "icao24s"]);
       const tails = tailsRaw.map((x) => (typeof x === "string" ? x : x?.registration ?? x?.tail ?? x?.icao_hex ?? "")).filter(Boolean);
       const icaos = icaosRaw.map((x) => String(x)).filter(Boolean);
@@ -2242,11 +2268,16 @@ export const getConvergenceEvent = createServerFn({ method: "GET" }).handler(
       } catch (e2) {
         console.error("convergence county derivation failed:", e2);
       }
+      // A convergence event by definition involves ≥2 aircraft. If the
+      // schema doesn't expose the participant list as an array we recognize,
+      // still surface the event with a known floor so the UI doesn't claim
+      // "no convergences" when the table is full of them.
+      const resolvedCount = Math.max(best.size, tails.length, icaos.length, 2);
       return {
         available: true,
         id: pickStr(row, ["id", "event_id", "convergence_id"]),
         eventTime: tEvent ? new Date(tEvent).toISOString() : null,
-        aircraftCount: Math.max(best.size, tails.length, icaos.length),
+        aircraftCount: resolvedCount,
         detectionCount: pickNum(row, ["detection_count", "detections", "n_detections", "row_count"]),
         avgWti: pickNum(row, ["avg_wti", "mean_wti", "avg_wti_score"]),
         maxWti: pickNum(row, ["max_wti", "max_wti_score", "wti_score"]),
