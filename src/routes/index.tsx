@@ -94,9 +94,9 @@ function Home() {
             <div className="label-stamp text-warning mb-3">Live count · 5-min cache</div>
             <div className="space-y-4">
               {stats.map((st) => (
-                <div key={st.label} className="flex items-baseline justify-between border-b border-paper/20 pb-3 last:border-0">
+                <div key={st.label} className="flex flex-wrap items-baseline justify-between gap-x-3 border-b border-paper/20 pb-3 last:border-0">
                   <span className="label-stamp opacity-70">{st.label}</span>
-                  <span className={`font-mono text-2xl font-bold ${st.accent ? "text-warning" : ""}`}>{st.value}</span>
+                  <span className={`font-mono text-2xl font-bold tabular-nums break-words text-right ${st.accent ? "text-warning" : ""}`}>{st.value}</span>
                 </div>
               ))}
             </div>
