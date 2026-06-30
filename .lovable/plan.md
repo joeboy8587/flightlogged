@@ -1,65 +1,50 @@
-## What I scanned
+## Problem
 
-I read every table and column in your quiet-math Neon database (65 tables) and compared them to what the site currently shows. Every page already reads from quiet-math only — the legacy `evidence()` call is a silent redirect to `watchtower()`, so the "one source of truth" rule is intact. The gaps below are about **data we already have but aren't showing**, and **consistency tweaks** so the same value looks the same on every page.
+Two pages display contradictory totals because they count from different sources:
 
-## Group A — New data your tables now expose but the UI ignores
+- **Home / About / Live** read `SELECT COUNT(*) FROM detections` (via `getSnapshot`) → **3,505,773** detections.
+- **Operators** sums `aircraft_profiles.total_detections` across the top 500 rows → **742,003,051**, which is ~200× the real detection count.
 
-Each item lists the table → field → where it should appear. None of these require new DB work; they're already populated.
+`aircraft_profiles.total_detections` is a per-aircraft ML rollup that double-counts (it accumulates across feeds / windows / re-ingest passes), so summing it as a headline "Detections" number is wrong and undermines the page's whole "verifiable, factual" promise. The detections table is the single source of truth — every other number must reconcile to it.
 
-1. **`aircraft_profiles.tactical_role` + `confirmed_coord_partners`** → add a "Tactical role" column on **Operators** and a "Confirmed coordination partners" chip on **Tail Search**. This is your new entity-resolved coordination data.
-2. **`aircraft_profiles.reg_violation_count` + `integrity_failure_rate`** → add to the Operators table as a "Registry integrity" badge (e.g. "3 violations · 12% integrity failure"). High-signal, currently hidden.
-3. **`detections.is_91_227_violator` + `max_obstacle_amsl_2k_ft`** → surface on **Violations** as a dedicated "FAR 91.227 (ADS-B integrity)" filter chip and an "Obstacle proximity" column on the Live Feed.
-4. **`detections.loiter_ratio` + `is_congested`** → use on **Live Feed** story cards ("loitered 73% of pass over a congested area") — pairs perfectly with the existing `StoryCard` template.
-5. **`anomaly_events.kinematic_anomaly_score`, `graph_anomaly_score`, `physics_violation`, `surveillance_indicator`, `county_z_score`** → expand **ML Detections** with a multi-model score breakdown row instead of the single number it shows today.
-6. **`ensemble_anomaly_scores`** (multi-model agreement: wavenet / isolation forest / LOF / temporal) → add a new section on **ML Detections** titled "Models that agreed" with the per-model bars and the `disagreement` metric.
-7. **`cases` table** (WTI tier, Bradford-Hill flags, `is_published`, `publish_tier`, `public_summary`, `report_url`) → add a new public **Cases** page (`/cases`) listing every published case dossier. This is the highest-leverage missing surface — the machine is already opening and scoring cases, but the public can't see them.
-8. **`wtpr_registry` + `wtpr_convergent_locks`** (court-ready fingerprints) → new **Court-Ready Evidence** page (`/wtpr`) showing the legal-grade chain hashes and convergent locks. Strengthens the "evidence integrity" pitch.
-9. **`weekly_investigator_report`** → add to **Reports** page: a weekly auto-brief list with `kcso_detections`, `military_detections`, `convergence_events`, and the rendered `report_content`.
-10. **`monitoring_reports` + `compliance_items` + `reform_areas`** → new **Consent Decree** page (`/consent-decree`) tracking the SJ paragraphs and 2023/2024/2025 status columns. Connects the airspace data to the existing legal accountability framework.
-11. **`radar_screenshots` + `visual_evidence` + `flightradar24_vision_extracts`** → new **Visual Corroboration** section on Tail Search that pulls matching screenshots by tail. The `best_match_id`/`match_status` columns already link these to detections.
-12. **`learned_patterns`** (active ML patterns with `confidence`, `peak_hour`, `active_days`) → new **Patterns** page (`/patterns`) listing what the system has learned to recognize.
-13. **`corridor_zones` + `corridor_aircraft`** → new **Corridors** page (`/corridors`) with a zone-by-zone breakdown and the heavy-rotation aircraft per zone.
-14. **`aoi_alerts`** (Area-of-Interest alert level, distance, reason) → small "Active alerts" banner on the home page when fresh rows exist.
-15. **`digital_obstacles`** → use in the Violations page to label which low-altitude events were near a charted tower (joins via `max_obstacle_amsl_2k_ft`).
-16. **`ml_brain_reports.top_hypothesis` + `four_factor_links`** → add to Tail Search as "AI brief" panel for that registration when one exists.
+The user also pasted a truncated "Court-ready detections 3,505,773 vs " string; that's the home page right-rail stat block stacking awkwardly on a 469px viewport (the label "vs" is actually the next nav item bleeding through). The stat card needs a mobile fix.
 
-## Group B — Consistency fixes across existing pages
+## Fix
 
-Things that already exist but render differently page-to-page.
+### 1. Operators page — reconcile to the snapshot (single source of truth)
 
-- **Percent rendering**: enforce `fmtPct()` everywhere `night_pct`, `weekend_pct`, `below_1000ft_rate`, `hover_rate`, `integrity_failure_rate` appear (some pages call `.toFixed(0) + "%"` directly).
-- **Date rendering**: a shared `fmtClock()` / `fmtDate()` helper. Today some pages show ISO, others `toLocaleString`.
-- **County name**: route everything through `normalizeCountyKey()` already in `watchtower.functions.ts` so "Kern", "KERN", "kern county" stop appearing as three different rows.
-- **Tail / ICAO display**: always prefer registration, fall back to ICAO hex with a `mono` style. Codify in a tiny `<TailBadge />` component.
-- **Detection count source**: after the recent fix, all detection counts come from raw `detections` rows. Audit the remaining pages (Mosaic, Threat Index, Foreign, Military) that still reference `total_detections` / `occurrences_total` directly and switch them to the raw-count CTE pattern so headline numbers match across pages.
-- **Flag chips** (KCSO / MIL / MED / SHELL / XP): extract the inline `<Flag>` from `operators.tsx` into `src/components/flag-chips.tsx` and reuse it on Tail Search, Foreign, Military.
-- **Share row** is already a component but not on every page (Reports, ML Detections, Violations don't have it). Add it.
+In `src/routes/operators.tsx`:
 
-## Group C — Small quality improvements
+- Add `getSnapshot` to the loader alongside `getCanonicalOperators` so the page has the canonical `totalDetections` (3.5M).
+- Replace the hero headline `{counts.totalDetections.toLocaleString()} Detections.` with the snapshot total, and clarify the framing:
 
-- **SEO**: add `og:image` per-route where a page has a hero/cover; today every page inherits the root og image.
-- **JSON-LD**: extend the `Dataset` schema currently on Operators to Violations, Threat Index, Cases (once added). Same shape, different `name` / `description`.
-- **Stale-time alignment**: every dataset page caches 5–10 min already; align the few outliers (Mosaic, Live) on the same `staleTime` so headline numbers don't drift between tabs.
+  > "3,505,773 detections across 500 resolved operators. 386 shell companies. 13 law enforcement. 13 military."
 
-## Recommended sequence
+- In the "INDICTMENT SUMMARY" band, drop the `{counts.totalDetections}` sum and replace with: "Together they appear across the **{snapshot.totalDetections}** detections in this window." (no more 742M.)
+- Rename the per-row table column **Detections** → **Profile detections** and add a one-line footnote under the table:
 
-```text
-P0 — Group B (consistency): no new pages, just makes existing numbers agree.
-P1 — Group A items 1, 2, 3, 4 (in-place column additions on existing pages).
-P2 — Group A item 7 (Cases page) — biggest narrative payoff.
-P3 — Group A items 5, 6 (richer ML Detections).
-P4 — Group A items 10, 12, 13 (Consent Decree, Patterns, Corridors pages).
-P5 — Group A items 8, 9, 11, 14, 15, 16 (WTPR, Weekly, Visual, AOI, Obstacles, Brain).
-P6 — Group C (SEO + JSON-LD + stale-time polish).
-```
+  > "Profile detections are the ML's per-aircraft lifetime counter from `aircraft_profiles` — they accumulate across re-ingests and can exceed the snapshot's distinct detection count. The canonical detection total is `SELECT COUNT(*) FROM detections` shown in the page hero."
 
-## How I'd like to proceed
+- Keep sorting by `occurrences` (still the right ordering signal) — only the headline math changes.
 
-Tell me which priority bands to ship (e.g. "do P0 and P1 now", or "do everything through P3"). I'll keep the data source restricted to `watchtower()` (quiet-math) only, reuse the existing brutal-border / label-stamp styling, and won't add any new components outside what's listed above.
+### 2. Convergence card — same reconciliation pattern
 
-## Technical notes (skip if not interested)
+`src/components/convergence-event-card.tsx` is fine; no change needed (it counts aircraft, not detections).
 
-- All new queries go through `src/lib/watchtower.functions.ts` as new `createServerFn` handlers next to the existing ones, following the SSR-loader + `useSuspenseQuery` pattern the rest of the site uses.
-- New routes follow the existing flat naming (`src/routes/cases.tsx`, `src/routes/corridors.tsx`, etc.) with `head()` metadata + breadcrumb + JSON-LD + share row, matching `operators.tsx` as the template.
-- The flag-chip / tail-badge / fmt helpers go in `src/components/` and `src/lib/format.ts` (extending the existing `fmtPct`).
-- Nothing here touches `evidence()`; the deprecation shim stays so any forgotten caller still ends up on quiet-math.
+### 3. Home page right-rail stat card — mobile clipping
+
+In `src/routes/index.tsx` the right-rail `stats` block sits at 469px CSS width and the `font-mono text-2xl` value gets visually adjacent to the nav. Add `break-words tabular-nums text-right` to the value span and wrap the row in `flex-wrap gap-x-3` so the number wraps under the label on narrow screens instead of bleeding into the nav.
+
+### 4. Methodology / About already consume `getSnapshot`
+
+No change — they're already aligned with the 3.5M canonical number.
+
+## Files touched
+
+- `src/routes/operators.tsx` — loader, hero copy, indictment band, table column label + footnote.
+- `src/routes/index.tsx` — right-rail stat row mobile wrap fix.
+
+## Out of scope
+
+- The ML's `aircraft_profiles.total_detections` column itself is untouched (per the standing rule: the ML core stays pure). We only stop summing it as a public headline.
+- No DB writes, no migrations, no changes to `watchtower.functions.ts` logic — only the consuming UI is corrected.
