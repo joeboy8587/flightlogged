@@ -5,7 +5,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
 import { breadcrumbScript } from "@/lib/breadcrumbs";
-import { getCanonicalOperators } from "@/lib/watchtower.functions";
+import { getCanonicalOperators, getSnapshot } from "@/lib/watchtower.functions";
 import { ShareRow } from "@/components/share-row";
 import { FlagChips } from "@/components/flag-chips";
 import { TailBadge } from "@/components/tail-badge";
@@ -16,6 +16,13 @@ const opsQO = queryOptions({
   queryFn: () => getCanonicalOperators(),
   // Prevent client refetch on mount; SSR-hydrated data is reused so the
   // detection totals don't shift between server and client render.
+  staleTime: 5 * 60_000,
+  gcTime: 10 * 60_000,
+});
+
+const snapshotQO = queryOptions({
+  queryKey: ["snapshot"],
+  queryFn: () => getSnapshot(),
   staleTime: 5 * 60_000,
   gcTime: 10 * 60_000,
 });
@@ -51,7 +58,10 @@ export const Route = createFileRoute("/operators")({
       },
     ],
   }),
-  loader: ({ context }) => context.queryClient.ensureQueryData(opsQO),
+  loader: ({ context }) => Promise.all([
+    context.queryClient.ensureQueryData(opsQO),
+    context.queryClient.ensureQueryData(snapshotQO),
+  ]),
   component: Operators,
   errorComponent: ({ reset }) => (
     <div className="min-h-screen bg-paper"><SiteHeader />
@@ -65,6 +75,7 @@ export const Route = createFileRoute("/operators")({
 
 function Operators() {
   const { data } = useSuspenseQuery(opsQO);
+  const { data: snap } = useSuspenseQuery(snapshotQO);
   const [filter, setFilter] = useState<"all" | "shell" | "agency" | "military" | "medical">("all");
 
   const isShell = (o: typeof data[number]) => {
@@ -78,8 +89,7 @@ function Operators() {
     const agency = data.filter((o) => o.kcso).length;
     const military = data.filter((o) => o.military).length;
     const medical = data.filter((o) => o.medical).length;
-    const totalDetections = data.reduce((acc, o) => acc + (o.occurrences || 0), 0);
-    return { total, shell, agency, military, medical, totalDetections };
+    return { total, shell, agency, military, medical };
   }, [data]);
 
   const rows = useMemo(() => {
@@ -94,6 +104,7 @@ function Operators() {
     }
   }, [data, filter]);
 
+  const canonicalDetections = snap.totalDetections;
   const chips: { id: typeof filter; label: string; count: number }[] = [
     { id: "all", label: "All", count: counts.total },
     { id: "shell", label: "Shell / LLC", count: counts.shell },
@@ -110,11 +121,12 @@ function Operators() {
         <div className="max-w-[1400px] mx-auto px-4 py-12">
           <div className="label-stamp text-warning mb-4">Public FAA registry · Entity-resolved</div>
           <h1 className="text-5xl sm:text-7xl mb-4">
-            {counts.totalDetections.toLocaleString()} Detections. {counts.shell} Shell Companies. {counts.agency} Law Enforcement. {counts.military} Military.
+            {canonicalDetections.toLocaleString()} detections across {counts.total} resolved operators. {counts.shell} shell companies. {counts.agency} law enforcement. {counts.military} military.
           </h1>
           <p className="max-w-3xl text-sm opacity-80">
             The machine resolved <strong>{counts.total}</strong> operators from the public FAA registry,
-            joined them to <strong>{counts.totalDetections.toLocaleString()}</strong> observed detections, and
+            joined them to the <strong>{canonicalDetections.toLocaleString()}</strong> detections in the
+            current snapshot (<code>SELECT COUNT(*) FROM detections</code>), and
             auto-flagged shell companies, law enforcement, military, and medical cover. The public record
             named them. We just display it. No human picked this list.
           </p>
@@ -130,8 +142,8 @@ function Operators() {
             <strong className="bg-ink text-warning px-1">{counts.agency}</strong> are law-enforcement-flagged tails.{" "}
             <strong className="bg-ink text-warning px-1">{counts.military}</strong> register as military.{" "}
             <strong className="bg-ink text-warning px-1">{counts.medical}</strong> fly under medical cover.
-            Together they account for{" "}
-            <strong className="bg-ink text-warning px-1">{counts.totalDetections.toLocaleString()}</strong> detections in this window.
+            Together they appear across the{" "}
+            <strong className="bg-ink text-warning px-1">{canonicalDetections.toLocaleString()}</strong> detections in this window.
           </p>
         </div>
       </section>
@@ -166,7 +178,7 @@ function Operators() {
                   <th className="text-left p-3 label-stamp">Operator / Owner</th>
                   <th className="text-left p-3 label-stamp">Model</th>
                   <th className="text-left p-3 label-stamp">Flags</th>
-                  <th className="text-right p-3 label-stamp">Detections</th>
+                  <th className="text-right p-3 label-stamp">Profile detections</th>
                   <th className="text-right p-3 label-stamp">Registry integrity</th>
                   <th className="text-right p-3 label-stamp">Confidence</th>
                   <th className="text-left p-3 label-stamp">Last seen</th>
@@ -212,6 +224,12 @@ function Operators() {
           </div>
           <p className="mt-3 text-xs opacity-70 font-mono">
             Source: <code>aircraft_profiles</code> ⨝ <code>faa_master</code> (quiet-math). Flags derive from public records (FAA registry).
+          </p>
+          <p className="mt-1 text-xs opacity-70 font-mono max-w-3xl">
+            Note: <strong>Profile detections</strong> is the ML's per-aircraft lifetime counter from
+            <code> aircraft_profiles</code>. It accumulates across re-ingests and can exceed the snapshot's
+            distinct detection count. The canonical total is{" "}
+            <code>SELECT COUNT(*) FROM detections</code> = {canonicalDetections.toLocaleString()} (shown in the hero).
           </p>
         </div>
       </section>
