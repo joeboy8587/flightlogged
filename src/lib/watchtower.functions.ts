@@ -594,7 +594,7 @@ export const getSentinelViolations = createServerFn({ method: "GET" }).handler(a
            aircraft_mfr
     FROM violation_classifications
     WHERE captured_at IS NOT NULL
-      AND (rule_violated NOT LIKE 'KCSO_%' OR registration = ANY(${KCSO_TAILS}))
+      AND (rule_violated NOT LIKE 'KCSO_%' OR registration = ANY(${KCSO_TAILS as readonly string[]}))
     ORDER BY captured_at DESC NULLS LAST
     LIMIT 100
   `;
