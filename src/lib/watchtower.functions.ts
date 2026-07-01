@@ -1752,10 +1752,12 @@ function parseFarRule(rule: string): { part: string | null; section: string | nu
 export const getCitationsMap = createServerFn({ method: "GET" }).handler(
   async (): Promise<CitationsPayload> => {
     const w = watchtower();
+    const tails = KCSO_TAILS as readonly string[];
     const [ruleAgg, regs, decrees, totals] = await Promise.all([
       w`SELECT rule_violated AS rule, COUNT(*)::int AS c
         FROM violation_classifications
         WHERE rule_violated IS NOT NULL
+          AND (rule_violated NOT LIKE 'KCSO_%' OR registration = ANY(${tails}))
         GROUP BY rule_violated
         ORDER BY c DESC`,
       w`SELECT part, section, heading, sha256_hash FROM faa_regulations`,
@@ -1765,7 +1767,8 @@ export const getCitationsMap = createServerFn({ method: "GET" }).handler(
         ORDER BY created_at DESC NULLS LAST
         LIMIT 50`,
       Promise.all([
-        w`SELECT COUNT(*)::int AS c FROM violation_classifications`,
+        w`SELECT COUNT(*)::int AS c FROM violation_classifications
+          WHERE (rule_violated NOT LIKE 'KCSO_%' OR registration = ANY(${tails}))`,
         w`SELECT COUNT(*)::int AS total, COUNT(sha256_hash)::int AS hashed FROM faa_regulations`,
         w`SELECT COUNT(*)::int AS total, COUNT(sha256_hash)::int AS hashed FROM regulatory_statutes`,
         w`SELECT COUNT(*)::int AS c FROM consent_decree_violations`,
