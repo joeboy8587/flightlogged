@@ -1,6 +1,20 @@
 import { createServerFn } from "@tanstack/react-start";
 import { watchtower } from "./neon.server";
 
+// KCSO_* rules in violation_classifications are Kern County Sheriff's Office
+// policy rules (e.g. B301 minimums, night VFR, practice-emergency). They are
+// only enforceable against KCSO-operated aircraft. Every other tail is bound
+// by FAA CFR/USC, not by KCSO policy — so anywhere we surface KCSO_* rules
+// in the UI we must first restrict them to this allow-list.
+export const KCSO_TAILS = ["N912KC", "N913KC", "N597E", "N911KC"] as const;
+function isKcsoTail(reg: string | null | undefined): boolean {
+  if (!reg) return false;
+  return (KCSO_TAILS as readonly string[]).includes(String(reg).trim().toUpperCase());
+}
+function isKcsoPolicyRule(rule: string | null | undefined): boolean {
+  return !!rule && String(rule).toUpperCase().startsWith("KCSO_");
+}
+
 // ---- FAA identity enrichment ----
 export type FaaIdentity = {
   name: string | null;
@@ -569,6 +583,9 @@ export type SentinelViolation = {
 export const getSentinelViolations = createServerFn({ method: "GET" }).handler(async (): Promise<SentinelViolation[]> => {
   // Sourced from violation_classifications in quiet-math. Owner identity is
   // already joined into that table, so no extra FAA round-trip is needed.
+  // KCSO_* rules are policy rules that only apply to KCSO-owned tails; for
+  // every other aircraft they are suppressed so the public log shows only
+  // FAA regulations/statutes that actually bind that operator.
   const w = watchtower();
   const rows = await w`
     SELECT detection_id::text AS id, captured_at, registration, aircraft_model AS aircraft_type,
@@ -577,6 +594,7 @@ export const getSentinelViolations = createServerFn({ method: "GET" }).handler(a
            aircraft_mfr
     FROM violation_classifications
     WHERE captured_at IS NOT NULL
+      AND (rule_violated NOT LIKE 'KCSO_%' OR registration = ANY(${KCSO_TAILS as readonly string[]}))
     ORDER BY captured_at DESC NULLS LAST
     LIMIT 100
   `;
@@ -1071,18 +1089,24 @@ export type NeonViolationSummary = {
 
 export const getNeonViolations = createServerFn({ method: "GET" }).handler(async (): Promise<NeonViolationSummary> => {
   const w = watchtower();
+  // KCSO_* rules only bind KCSO-operated tails; strip them from every
+  // aggregate/list for other operators. See KCSO_TAILS above.
+  const tails = KCSO_TAILS as readonly string[];
   const [meta, ruleCounts, topOps, rows] = await Promise.all([
     w`SELECT COUNT(*)::int AS total,
              MIN(captured_at) AS first_seen,
              MAX(captured_at) AS last_seen
-      FROM violation_classifications`,
+      FROM violation_classifications
+      WHERE (rule_violated NOT LIKE 'KCSO_%' OR registration = ANY(${tails}))`,
     w`SELECT rule_violated, COUNT(*)::int AS c
       FROM violation_classifications
+      WHERE (rule_violated NOT LIKE 'KCSO_%' OR registration = ANY(${tails}))
       GROUP BY rule_violated
       ORDER BY c DESC`,
     w`SELECT owner_name, owner_city, owner_state, COUNT(*)::int AS c
       FROM violation_classifications
       WHERE owner_name IS NOT NULL
+        AND (rule_violated NOT LIKE 'KCSO_%' OR registration = ANY(${tails}))
       GROUP BY owner_name, owner_city, owner_state
       ORDER BY c DESC
       LIMIT 15`,
@@ -1090,7 +1114,8 @@ export const getNeonViolations = createServerFn({ method: "GET" }).handler(async
              latitude, longitude, rule_violated, owner_name, owner_city, owner_state,
              type_registrant, aircraft_mfr, aircraft_model
       FROM violation_classifications
-      WHERE altitude_ft IS NULL OR altitude_ft >= -100
+      WHERE (altitude_ft IS NULL OR altitude_ft >= -100)
+        AND (rule_violated NOT LIKE 'KCSO_%' OR registration = ANY(${tails}))
       ORDER BY captured_at DESC NULLS LAST
       LIMIT 100`,
   ]);
@@ -1727,10 +1752,12 @@ function parseFarRule(rule: string): { part: string | null; section: string | nu
 export const getCitationsMap = createServerFn({ method: "GET" }).handler(
   async (): Promise<CitationsPayload> => {
     const w = watchtower();
+    const tails = KCSO_TAILS as readonly string[];
     const [ruleAgg, regs, decrees, totals] = await Promise.all([
       w`SELECT rule_violated AS rule, COUNT(*)::int AS c
         FROM violation_classifications
         WHERE rule_violated IS NOT NULL
+          AND (rule_violated NOT LIKE 'KCSO_%' OR registration = ANY(${tails}))
         GROUP BY rule_violated
         ORDER BY c DESC`,
       w`SELECT part, section, heading, sha256_hash FROM faa_regulations`,
@@ -1740,7 +1767,8 @@ export const getCitationsMap = createServerFn({ method: "GET" }).handler(
         ORDER BY created_at DESC NULLS LAST
         LIMIT 50`,
       Promise.all([
-        w`SELECT COUNT(*)::int AS c FROM violation_classifications`,
+        w`SELECT COUNT(*)::int AS c FROM violation_classifications
+          WHERE (rule_violated NOT LIKE 'KCSO_%' OR registration = ANY(${tails}))`,
         w`SELECT COUNT(*)::int AS total, COUNT(sha256_hash)::int AS hashed FROM faa_regulations`,
         w`SELECT COUNT(*)::int AS total, COUNT(sha256_hash)::int AS hashed FROM regulatory_statutes`,
         w`SELECT COUNT(*)::int AS c FROM consent_decree_violations`,
