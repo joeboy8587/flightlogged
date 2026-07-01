@@ -1089,18 +1089,24 @@ export type NeonViolationSummary = {
 
 export const getNeonViolations = createServerFn({ method: "GET" }).handler(async (): Promise<NeonViolationSummary> => {
   const w = watchtower();
+  // KCSO_* rules only bind KCSO-operated tails; strip them from every
+  // aggregate/list for other operators. See KCSO_TAILS above.
+  const kcsoFilter = w`(rule_violated NOT LIKE 'KCSO_%' OR registration = ANY(${KCSO_TAILS}))`;
   const [meta, ruleCounts, topOps, rows] = await Promise.all([
     w`SELECT COUNT(*)::int AS total,
              MIN(captured_at) AS first_seen,
              MAX(captured_at) AS last_seen
-      FROM violation_classifications`,
+      FROM violation_classifications
+      WHERE ${kcsoFilter}`,
     w`SELECT rule_violated, COUNT(*)::int AS c
       FROM violation_classifications
+      WHERE ${kcsoFilter}
       GROUP BY rule_violated
       ORDER BY c DESC`,
     w`SELECT owner_name, owner_city, owner_state, COUNT(*)::int AS c
       FROM violation_classifications
       WHERE owner_name IS NOT NULL
+        AND ${kcsoFilter}
       GROUP BY owner_name, owner_city, owner_state
       ORDER BY c DESC
       LIMIT 15`,
@@ -1109,6 +1115,7 @@ export const getNeonViolations = createServerFn({ method: "GET" }).handler(async
              type_registrant, aircraft_mfr, aircraft_model
       FROM violation_classifications
       WHERE altitude_ft IS NULL OR altitude_ft >= -100
+        AND ${kcsoFilter}
       ORDER BY captured_at DESC NULLS LAST
       LIMIT 100`,
   ]);
