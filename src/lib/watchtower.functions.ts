@@ -1,6 +1,20 @@
 import { createServerFn } from "@tanstack/react-start";
 import { watchtower } from "./neon.server";
 
+// KCSO_* rules in violation_classifications are Kern County Sheriff's Office
+// policy rules (e.g. B301 minimums, night VFR, practice-emergency). They are
+// only enforceable against KCSO-operated aircraft. Every other tail is bound
+// by FAA CFR/USC, not by KCSO policy — so anywhere we surface KCSO_* rules
+// in the UI we must first restrict them to this allow-list.
+export const KCSO_TAILS = ["N912KC", "N913KC", "N597E", "N911KC"] as const;
+function isKcsoTail(reg: string | null | undefined): boolean {
+  if (!reg) return false;
+  return (KCSO_TAILS as readonly string[]).includes(String(reg).trim().toUpperCase());
+}
+function isKcsoPolicyRule(rule: string | null | undefined): boolean {
+  return !!rule && String(rule).toUpperCase().startsWith("KCSO_");
+}
+
 // ---- FAA identity enrichment ----
 export type FaaIdentity = {
   name: string | null;
