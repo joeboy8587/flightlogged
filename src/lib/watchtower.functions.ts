@@ -14,6 +14,12 @@ function isKcsoTail(reg: string | null | undefined): boolean {
 function isKcsoPolicyRule(rule: string | null | undefined): boolean {
   return !!rule && String(rule).toUpperCase().startsWith("KCSO_");
 }
+function isKcsoPolicyCitation(...values: Array<string | null | undefined>): boolean {
+  return values.some((value) => {
+    const text = String(value ?? "").toUpperCase();
+    return text.startsWith("KCSO_") || text.includes("KCSO") || text.includes("KERN COUNTY SHERIFF") || text.includes("AIR SUPPORT UNIT OPERATIONS MANUAL");
+  });
+}
 
 // ---- FAA identity enrichment ----
 export type FaaIdentity = {
@@ -205,10 +211,11 @@ export const getRecentLowAltitude = createServerFn({ method: "GET" }).handler(as
   }
   // ── END FIX ──
 
-  const matchViolation = (alt: number | null) => {
+  const matchViolation = (alt: number | null, registration: string | null | undefined) => {
     if (alt == null) return null;
     let best: any = null;
     for (const b of baselines) {
+      if (isKcsoPolicyCitation(b.rule_name, b.rule_source) && !isKcsoTail(registration)) continue;
       if (alt < b.min_altitude_violation_ft) {
         if (!best || Number(b.violation_score) > Number(best.violation_score)) best = b;
       }
@@ -253,7 +260,7 @@ export const getRecentLowAltitude = createServerFn({ method: "GET" }).handler(as
       isShellLikely,
       shellReason,
       ...(function () {
-        const v = matchViolation(r.altitude_ft);
+        const v = matchViolation(r.altitude_ft, r.registration);
         return v
           ? { violationRule: v.rule_name as string, violationSource: v.rule_source as string, violationScore: Number(v.violation_score) }
           : { violationRule: null, violationSource: null, violationScore: null };
