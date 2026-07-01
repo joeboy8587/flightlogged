@@ -569,6 +569,9 @@ export type SentinelViolation = {
 export const getSentinelViolations = createServerFn({ method: "GET" }).handler(async (): Promise<SentinelViolation[]> => {
   // Sourced from violation_classifications in quiet-math. Owner identity is
   // already joined into that table, so no extra FAA round-trip is needed.
+  // KCSO_* rules are policy rules that only apply to KCSO-owned tails; for
+  // every other aircraft they are suppressed so the public log shows only
+  // FAA regulations/statutes that actually bind that operator.
   const w = watchtower();
   const rows = await w`
     SELECT detection_id::text AS id, captured_at, registration, aircraft_model AS aircraft_type,
@@ -577,6 +580,7 @@ export const getSentinelViolations = createServerFn({ method: "GET" }).handler(a
            aircraft_mfr
     FROM violation_classifications
     WHERE captured_at IS NOT NULL
+      AND (rule_violated NOT LIKE 'KCSO_%' OR registration = ANY(${KCSO_TAILS}))
     ORDER BY captured_at DESC NULLS LAST
     LIMIT 100
   `;
