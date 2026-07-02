@@ -4,6 +4,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { PullQuote } from "@/components/pull-quote";
 import { StoryCard } from "@/components/story-card";
+import { Mascot } from "@/components/mascot";
 import { getSnapshot, getRecentLowAltitude } from "@/lib/watchtower.functions";
 
 const snapshotQO = queryOptions({
@@ -62,9 +63,12 @@ function Home() {
             <div className="label-stamp inline-flex items-center gap-2 bg-warning px-2 py-1 mb-6">
               <span className="w-2 h-2 bg-ink blink" /> System online · Baseline learning · {s.windowHours}h observed
             </div>
-            <p className="font-display text-2xl sm:text-3xl mb-4 italic opacity-80">
-              They don&apos;t cause fear anymore. They build evidence.
-            </p>
+            <div className="flex items-start gap-4 mb-4">
+              <Mascot size="lg" className="hidden sm:block shrink-0 -mt-2" />
+              <p className="font-display text-2xl sm:text-3xl italic opacity-80">
+                They don&apos;t cause fear anymore. They build evidence.
+              </p>
+            </div>
             <h1 className="text-5xl sm:text-7xl lg:text-8xl mb-6">
               The sky over Kern County<br />
               <span className="bg-ink text-paper px-2">is not normal.</span>

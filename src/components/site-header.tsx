@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { Mascot } from "@/components/mascot";
 
 const NAV = [
   { to: "/", label: "Home" },
@@ -37,6 +38,7 @@ export function SiteHeader() {
       </div>
       <div className="max-w-[1400px] mx-auto px-4 py-4 flex items-center justify-between gap-6">
         <Link to="/" className="flex items-baseline gap-2 group">
+          <Mascot size="xs" className="self-center -mt-1" />
           <span className="text-xl sm:text-2xl font-display uppercase leading-none">
             The Architecture
           </span>

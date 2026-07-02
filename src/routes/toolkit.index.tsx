@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
+import { Mascot } from "@/components/mascot";
 import { breadcrumbScript } from "@/lib/breadcrumbs";
 
 const crumbs = [{ label: "Home", href: "/" }, { label: "Toolkit" }];
@@ -83,17 +84,20 @@ function ToolkitIndex() {
       <SiteBreadcrumbs items={crumbs} />
 
       <section className="border-b-4 border-ink bg-ink text-paper">
-        <div className="max-w-[1400px] mx-auto px-4 py-16">
-          <div className="label-stamp text-warning mb-4">Public Toolkit · Free · No account</div>
-          <h1 className="text-5xl sm:text-7xl mb-6">Watchtower Toolkit.</h1>
-          <p className="text-lg max-w-3xl opacity-90 mb-3">
+        <div className="max-w-[1400px] mx-auto px-4 py-16 grid md:grid-cols-[1fr_auto] gap-8 items-center">
+          <div>
+            <div className="label-stamp text-warning mb-4">Public Toolkit · Free · No account</div>
+            <h1 className="text-5xl sm:text-7xl mb-6">Watchtower Toolkit.</h1>
+            <p className="text-lg max-w-3xl opacity-90 mb-3">
             You have the same right to document your airspace that we do. These tools give the
             public the shortcut to what took thirteen months and 472,000 detections to build.
-          </p>
-          <p className="text-sm max-w-3xl opacity-70">
+            </p>
+            <p className="text-sm max-w-3xl opacity-70">
             No account required. No data sold. No surveillance of the people documenting surveillance.
             Everything runs in your browser unless you explicitly choose to send it.
-          </p>
+            </p>
+          </div>
+          <Mascot size="xl" className="hidden md:block justify-self-end" />
         </div>
       </section>
 
