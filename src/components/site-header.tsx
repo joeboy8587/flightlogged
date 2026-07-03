@@ -17,6 +17,7 @@ const NAV = [
   { to: "/tail-search", label: "Tail Search" },
   { to: "/ml-detections", label: "ML" },
   { to: "/podcasts", label: "Podcasts" },
+  { to: "/blog", label: "Blog" },
   { to: "/citations", label: "Citations" },
   { to: "/reports", label: "Reports" },
   { to: "/rules", label: "Rules" },

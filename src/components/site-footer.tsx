@@ -28,6 +28,7 @@ export function SiteFooter() {
             <li><Link to="/live" className="hover:text-warning">Live Feed</Link></li>
             <li><Link to="/findings" className="hover:text-warning">Findings Archive</Link></li>
             <li><Link to="/methodology" className="hover:text-warning">Methodology</Link></li>
+            <li><Link to="/blog" className="hover:text-warning">Blog / Analysis</Link></li>
           </ul>
         </div>
         <div>
