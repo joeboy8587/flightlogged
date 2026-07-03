@@ -30,11 +30,15 @@ import { Route as FindingsRouteImport } from './routes/findings'
 import { Route as CoordinationRouteImport } from './routes/coordination'
 import { Route as CitationsRouteImport } from './routes/citations'
 import { Route as CasesRouteImport } from './routes/cases'
+import { Route as BlogRouteImport } from './routes/blog'
 import { Route as ActRouteImport } from './routes/act'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ToolkitIndexRouteImport } from './routes/toolkit.index'
+import { Route as BlogIndexRouteImport } from './routes/blog.index'
 import { Route as ToolkitFoiaRouteImport } from './routes/toolkit.foia'
+import { Route as BlogWeeklyRouteImport } from './routes/blog.weekly'
+import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as ApiPublicTtsRouteImport } from './routes/api/public/tts'
 
 const ViolationsRoute = ViolationsRouteImport.update({
@@ -142,6 +146,11 @@ const CasesRoute = CasesRouteImport.update({
   path: '/cases',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BlogRoute = BlogRouteImport.update({
+  id: '/blog',
+  path: '/blog',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ActRoute = ActRouteImport.update({
   id: '/act',
   path: '/act',
@@ -162,10 +171,25 @@ const ToolkitIndexRoute = ToolkitIndexRouteImport.update({
   path: '/',
   getParentRoute: () => ToolkitRoute,
 } as any)
+const BlogIndexRoute = BlogIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => BlogRoute,
+} as any)
 const ToolkitFoiaRoute = ToolkitFoiaRouteImport.update({
   id: '/foia',
   path: '/foia',
   getParentRoute: () => ToolkitRoute,
+} as any)
+const BlogWeeklyRoute = BlogWeeklyRouteImport.update({
+  id: '/weekly',
+  path: '/weekly',
+  getParentRoute: () => BlogRoute,
+} as any)
+const BlogSlugRoute = BlogSlugRouteImport.update({
+  id: '/$slug',
+  path: '/$slug',
+  getParentRoute: () => BlogRoute,
 } as any)
 const ApiPublicTtsRoute = ApiPublicTtsRouteImport.update({
   id: '/api/public/tts',
@@ -177,6 +201,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/act': typeof ActRoute
+  '/blog': typeof BlogRouteWithChildren
   '/cases': typeof CasesRoute
   '/citations': typeof CitationsRoute
   '/coordination': typeof CoordinationRoute
@@ -198,7 +223,10 @@ export interface FileRoutesByFullPath {
   '/threat-index': typeof ThreatIndexRoute
   '/toolkit': typeof ToolkitRouteWithChildren
   '/violations': typeof ViolationsRoute
+  '/blog/$slug': typeof BlogSlugRoute
+  '/blog/weekly': typeof BlogWeeklyRoute
   '/toolkit/foia': typeof ToolkitFoiaRoute
+  '/blog/': typeof BlogIndexRoute
   '/toolkit/': typeof ToolkitIndexRoute
   '/api/public/tts': typeof ApiPublicTtsRoute
 }
@@ -226,7 +254,10 @@ export interface FileRoutesByTo {
   '/tail-search': typeof TailSearchRoute
   '/threat-index': typeof ThreatIndexRoute
   '/violations': typeof ViolationsRoute
+  '/blog/$slug': typeof BlogSlugRoute
+  '/blog/weekly': typeof BlogWeeklyRoute
   '/toolkit/foia': typeof ToolkitFoiaRoute
+  '/blog': typeof BlogIndexRoute
   '/toolkit': typeof ToolkitIndexRoute
   '/api/public/tts': typeof ApiPublicTtsRoute
 }
@@ -235,6 +266,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/act': typeof ActRoute
+  '/blog': typeof BlogRouteWithChildren
   '/cases': typeof CasesRoute
   '/citations': typeof CitationsRoute
   '/coordination': typeof CoordinationRoute
@@ -256,7 +288,10 @@ export interface FileRoutesById {
   '/threat-index': typeof ThreatIndexRoute
   '/toolkit': typeof ToolkitRouteWithChildren
   '/violations': typeof ViolationsRoute
+  '/blog/$slug': typeof BlogSlugRoute
+  '/blog/weekly': typeof BlogWeeklyRoute
   '/toolkit/foia': typeof ToolkitFoiaRoute
+  '/blog/': typeof BlogIndexRoute
   '/toolkit/': typeof ToolkitIndexRoute
   '/api/public/tts': typeof ApiPublicTtsRoute
 }
@@ -266,6 +301,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/act'
+    | '/blog'
     | '/cases'
     | '/citations'
     | '/coordination'
@@ -287,7 +323,10 @@ export interface FileRouteTypes {
     | '/threat-index'
     | '/toolkit'
     | '/violations'
+    | '/blog/$slug'
+    | '/blog/weekly'
     | '/toolkit/foia'
+    | '/blog/'
     | '/toolkit/'
     | '/api/public/tts'
   fileRoutesByTo: FileRoutesByTo
@@ -315,7 +354,10 @@ export interface FileRouteTypes {
     | '/tail-search'
     | '/threat-index'
     | '/violations'
+    | '/blog/$slug'
+    | '/blog/weekly'
     | '/toolkit/foia'
+    | '/blog'
     | '/toolkit'
     | '/api/public/tts'
   id:
@@ -323,6 +365,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/act'
+    | '/blog'
     | '/cases'
     | '/citations'
     | '/coordination'
@@ -344,7 +387,10 @@ export interface FileRouteTypes {
     | '/threat-index'
     | '/toolkit'
     | '/violations'
+    | '/blog/$slug'
+    | '/blog/weekly'
     | '/toolkit/foia'
+    | '/blog/'
     | '/toolkit/'
     | '/api/public/tts'
   fileRoutesById: FileRoutesById
@@ -353,6 +399,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
   ActRoute: typeof ActRoute
+  BlogRoute: typeof BlogRouteWithChildren
   CasesRoute: typeof CasesRoute
   CitationsRoute: typeof CitationsRoute
   CoordinationRoute: typeof CoordinationRoute
@@ -526,6 +573,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CasesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/blog': {
+      id: '/blog'
+      path: '/blog'
+      fullPath: '/blog'
+      preLoaderRoute: typeof BlogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/act': {
       id: '/act'
       path: '/act'
@@ -554,12 +608,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ToolkitIndexRouteImport
       parentRoute: typeof ToolkitRoute
     }
+    '/blog/': {
+      id: '/blog/'
+      path: '/'
+      fullPath: '/blog/'
+      preLoaderRoute: typeof BlogIndexRouteImport
+      parentRoute: typeof BlogRoute
+    }
     '/toolkit/foia': {
       id: '/toolkit/foia'
       path: '/foia'
       fullPath: '/toolkit/foia'
       preLoaderRoute: typeof ToolkitFoiaRouteImport
       parentRoute: typeof ToolkitRoute
+    }
+    '/blog/weekly': {
+      id: '/blog/weekly'
+      path: '/weekly'
+      fullPath: '/blog/weekly'
+      preLoaderRoute: typeof BlogWeeklyRouteImport
+      parentRoute: typeof BlogRoute
+    }
+    '/blog/$slug': {
+      id: '/blog/$slug'
+      path: '/$slug'
+      fullPath: '/blog/$slug'
+      preLoaderRoute: typeof BlogSlugRouteImport
+      parentRoute: typeof BlogRoute
     }
     '/api/public/tts': {
       id: '/api/public/tts'
@@ -570,6 +645,20 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface BlogRouteChildren {
+  BlogSlugRoute: typeof BlogSlugRoute
+  BlogWeeklyRoute: typeof BlogWeeklyRoute
+  BlogIndexRoute: typeof BlogIndexRoute
+}
+
+const BlogRouteChildren: BlogRouteChildren = {
+  BlogSlugRoute: BlogSlugRoute,
+  BlogWeeklyRoute: BlogWeeklyRoute,
+  BlogIndexRoute: BlogIndexRoute,
+}
+
+const BlogRouteWithChildren = BlogRoute._addFileChildren(BlogRouteChildren)
 
 interface ToolkitRouteChildren {
   ToolkitFoiaRoute: typeof ToolkitFoiaRoute
@@ -588,6 +677,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
   ActRoute: ActRoute,
+  BlogRoute: BlogRouteWithChildren,
   CasesRoute: CasesRoute,
   CitationsRoute: CitationsRoute,
   CoordinationRoute: CoordinationRoute,

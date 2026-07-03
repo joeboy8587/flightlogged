@@ -4,10 +4,10 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
 import { BlogBanner } from "@/components/blog/BlogBanner";
 import { BlogSidebar } from "@/components/blog/BlogSidebar";
-import { getPost, CATEGORY_LABEL } from "@/lib/blog";
+import { getPost, CATEGORY_LABEL, type BlogPost } from "@/lib/blog";
 
 export const Route = createFileRoute("/blog/$slug")({
-  loader: ({ params }) => {
+  loader: ({ params }): { post: BlogPost } => {
     const post = getPost(params.slug);
     if (!post) throw notFound();
     return { post };
