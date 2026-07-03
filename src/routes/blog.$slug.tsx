@@ -27,8 +27,8 @@ export const Route = createFileRoute("/blog/$slug")({
 });
 
 function PostPage() {
-  const { post } = Route.useLoaderData();
-  const { meta, Content } = post;
+  const loaderData = Route.useLoaderData() as { post: BlogPost };
+  const { meta, Content } = loaderData.post;
 
   return (
     <div className="min-h-screen bg-paper text-ink">
