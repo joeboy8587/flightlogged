@@ -6,6 +6,8 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
 import { breadcrumbScript } from "@/lib/breadcrumbs";
 import { getSnapshot, getRecentLowAltitude, getRepeatOffenders, getIdentifiedOperators, getLocalAgencyAircraft, getKernAlerts } from "@/lib/watchtower.functions";
+import { getFunnelStats } from "@/lib/scans.functions";
+import { MlFunnel } from "@/components/ml-funnel";
 import { ShareRow } from "@/components/share-row";
 import { fmtPct, DISPLAY_TZ } from "@/lib/format";
 import { StoryCard } from "@/components/story-card";
@@ -16,6 +18,7 @@ const repeatQO = queryOptions({ queryKey: ["repeat"], queryFn: () => getRepeatOf
 const idQO = queryOptions({ queryKey: ["identified"], queryFn: () => getIdentifiedOperators() });
 const localQO = queryOptions({ queryKey: ["local-agencies"], queryFn: () => getLocalAgencyAircraft() });
 const kernQO = queryOptions({ queryKey: ["kern-alerts"], queryFn: () => getKernAlerts(), refetchInterval: 60000 });
+const funnelQO = queryOptions({ queryKey: ["funnel-stats"], queryFn: () => getFunnelStats(), refetchInterval: 60_000 });
 
 const crumbs = [{ label: "Home", href: "/" }, { label: "Live Feed" }];
 
@@ -38,6 +41,7 @@ export const Route = createFileRoute("/live")({
     context.queryClient.ensureQueryData(idQO),
     context.queryClient.ensureQueryData(localQO),
     context.queryClient.ensureQueryData(kernQO),
+    context.queryClient.ensureQueryData(funnelQO),
   ]),
   component: Live,
   errorComponent: ({ reset }) => (
@@ -66,6 +70,7 @@ function Live() {
   const { data: identified } = useSuspenseQuery(idQO);
   const { data: local } = useSuspenseQuery(localQO);
   const { data: kern } = useSuspenseQuery(kernQO);
+  const { data: funnel } = useSuspenseQuery(funnelQO);
 
   const anomalyPct = s.totalDetections > 0 ? Math.round((s.anomalyEvents / s.totalDetections) * 1000) / 10 : 0;
 
@@ -104,6 +109,17 @@ function Live() {
     <div className="min-h-screen bg-paper text-ink">
       <SiteHeader />
       <SiteBreadcrumbs items={crumbs} />
+
+      {/* ML FUNNEL — most scans flag zero. Show the pipeline, not just the outputs. */}
+      <section className="border-b-4 border-ink bg-paper">
+        <div className="max-w-[1400px] mx-auto px-4 py-6">
+          <MlFunnel stats={funnel} />
+          <div className="mt-2 text-[11px] font-mono opacity-70 flex flex-wrap gap-x-4">
+            <a href="/methodology" className="underline hover:text-alert">How the funnel works →</a>
+            <a href="/attestation" className="underline hover:text-alert">Chain of custody →</a>
+          </div>
+        </div>
+      </section>
 
       {/* KERN COUNTY ALERTS — surfaced above LA-volume noise */}
       {showKernAlerts && kern.length > 0 && (

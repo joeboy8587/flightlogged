@@ -5,8 +5,14 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
 import { breadcrumbScript } from "@/lib/breadcrumbs";
 import { getSnapshot } from "@/lib/watchtower.functions";
+import { getFunnelStats, getObjectivityStats, getReviewDismissalCount } from "@/lib/scans.functions";
+import { MlFunnel } from "@/components/ml-funnel";
+import { ObjectivityStat } from "@/components/objectivity-stat";
 
 const snapshotQO = queryOptions({ queryKey: ["snapshot"], queryFn: () => getSnapshot() });
+const funnelQO = queryOptions({ queryKey: ["funnel-stats"], queryFn: () => getFunnelStats(), refetchInterval: 60_000 });
+const objectivityQO = queryOptions({ queryKey: ["objectivity"], queryFn: () => getObjectivityStats(), refetchInterval: 300_000 });
+const dismissalsQO = queryOptions({ queryKey: ["dismissals"], queryFn: () => getReviewDismissalCount() });
 
 const crumbs = [{ label: "Home", href: "/" }, { label: "Methodology" }];
 
@@ -22,12 +28,20 @@ export const Route = createFileRoute("/methodology")({
     links: [{ rel: "canonical", href: "https://flightlogged.lovable.app/methodology" }],
     scripts: [breadcrumbScript(crumbs)],
   }),
-  loader: ({ context }) => context.queryClient.ensureQueryData(snapshotQO),
+  loader: ({ context }) => Promise.all([
+    context.queryClient.ensureQueryData(snapshotQO),
+    context.queryClient.ensureQueryData(funnelQO),
+    context.queryClient.ensureQueryData(objectivityQO),
+    context.queryClient.ensureQueryData(dismissalsQO),
+  ]),
   component: Methodology,
 });
 
 function Methodology() {
   const { data: s } = useSuspenseQuery(snapshotQO);
+  const { data: funnel } = useSuspenseQuery(funnelQO);
+  const { data: obj } = useSuspenseQuery(objectivityQO);
+  const { data: dismissals } = useSuspenseQuery(dismissalsQO);
   const det = s.totalDetections.toLocaleString();
   const ac = s.uniqueAircraft.toLocaleString();
   return (
@@ -43,6 +57,20 @@ function Methodology() {
             <em> "you only track the aircraft you're already suspicious of."</em>
             We don't. The machine watches every aircraft, all the time, and the math decides what stands out.
           </p>
+
+          <div className="mt-8 grid lg:grid-cols-2 gap-4">
+            <ObjectivityStat stats={obj} />
+            <MlFunnel stats={funnel} />
+          </div>
+
+          <div className="mt-4 brutal-border p-4 bg-paper flex flex-wrap items-center gap-x-6 gap-y-2">
+            <div className="label-stamp bg-alert text-paper px-2 py-0.5">Human review overrides</div>
+            <div className="font-mono text-sm">
+              <strong className="text-2xl">{dismissals.month}</strong> anomalies dismissed after review in the last 30 days
+              {dismissals.total > 0 && <span className="opacity-70"> · {dismissals.total} total dismissals published</span>}.
+            </div>
+            <div className="text-xs opacity-70 font-mono">We publish our misses.</div>
+          </div>
         </div>
       </section>
 
@@ -320,6 +348,32 @@ record003  →  hash(003)  ─┬────►  hash( merkle_002 + hash(003) )
                 <div className="text-xs font-mono leading-snug">{r.d}</div>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* 9. Publishing the machine's own logs */}
+      <section className="border-b-4 border-ink bg-ink text-paper">
+        <div className="max-w-[1400px] mx-auto px-4 py-12">
+          <div className="label-stamp bg-warning text-ink inline-block px-2 py-1 mb-3">Auditor endpoints</div>
+          <h2 className="text-3xl sm:text-4xl mb-4">Publishing the machine's own logs</h2>
+          <p className="text-sm max-w-3xl mb-5 opacity-80">
+            Anyone can read the raw scan output. The ML system posts one hashed artifact per scan; every artifact
+            is public and every root is reproducible.
+          </p>
+          <div className="grid md:grid-cols-3 gap-3">
+            <a href="/attestation" className="brutal-border-thick border-paper p-4 bg-paper text-ink hover:bg-warning transition-colors">
+              <div className="label-stamp mb-1">/attestation</div>
+              <div className="font-mono text-sm">Live Merkle root + last 24 scan artifacts.</div>
+            </a>
+            <a href="/api/public/scans/latest" className="brutal-border-thick border-paper p-4 bg-paper text-ink hover:bg-warning transition-colors">
+              <div className="label-stamp mb-1">/api/public/scans/latest</div>
+              <div className="font-mono text-sm">Latest scan artifact as JSON. Auditor-friendly.</div>
+            </a>
+            <div className="brutal-border-thick border-paper p-4 bg-paper text-ink">
+              <div className="label-stamp mb-1">Review dismissals</div>
+              <div className="font-mono text-sm">{dismissals.month} dismissed in 30d · {dismissals.total} total published.</div>
+            </div>
           </div>
         </div>
       </section>

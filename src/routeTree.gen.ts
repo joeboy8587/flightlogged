@@ -31,6 +31,7 @@ import { Route as CoordinationRouteImport } from './routes/coordination'
 import { Route as CitationsRouteImport } from './routes/citations'
 import { Route as CasesRouteImport } from './routes/cases'
 import { Route as BlogRouteImport } from './routes/blog'
+import { Route as AttestationRouteImport } from './routes/attestation'
 import { Route as ActRouteImport } from './routes/act'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
@@ -40,6 +41,8 @@ import { Route as ToolkitFoiaRouteImport } from './routes/toolkit.foia'
 import { Route as BlogWeeklyRouteImport } from './routes/blog.weekly'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as ApiPublicTtsRouteImport } from './routes/api/public/tts'
+import { Route as ApiPublicScansLatestRouteImport } from './routes/api/public/scans/latest'
+import { Route as ApiPublicScansIngestRouteImport } from './routes/api/public/scans/ingest'
 
 const ViolationsRoute = ViolationsRouteImport.update({
   id: '/violations',
@@ -151,6 +154,11 @@ const BlogRoute = BlogRouteImport.update({
   path: '/blog',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AttestationRoute = AttestationRouteImport.update({
+  id: '/attestation',
+  path: '/attestation',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ActRoute = ActRouteImport.update({
   id: '/act',
   path: '/act',
@@ -196,11 +204,22 @@ const ApiPublicTtsRoute = ApiPublicTtsRouteImport.update({
   path: '/api/public/tts',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicScansLatestRoute = ApiPublicScansLatestRouteImport.update({
+  id: '/api/public/scans/latest',
+  path: '/api/public/scans/latest',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicScansIngestRoute = ApiPublicScansIngestRouteImport.update({
+  id: '/api/public/scans/ingest',
+  path: '/api/public/scans/ingest',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/act': typeof ActRoute
+  '/attestation': typeof AttestationRoute
   '/blog': typeof BlogRouteWithChildren
   '/cases': typeof CasesRoute
   '/citations': typeof CitationsRoute
@@ -229,11 +248,14 @@ export interface FileRoutesByFullPath {
   '/blog/': typeof BlogIndexRoute
   '/toolkit/': typeof ToolkitIndexRoute
   '/api/public/tts': typeof ApiPublicTtsRoute
+  '/api/public/scans/ingest': typeof ApiPublicScansIngestRoute
+  '/api/public/scans/latest': typeof ApiPublicScansLatestRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/act': typeof ActRoute
+  '/attestation': typeof AttestationRoute
   '/cases': typeof CasesRoute
   '/citations': typeof CitationsRoute
   '/coordination': typeof CoordinationRoute
@@ -260,12 +282,15 @@ export interface FileRoutesByTo {
   '/blog': typeof BlogIndexRoute
   '/toolkit': typeof ToolkitIndexRoute
   '/api/public/tts': typeof ApiPublicTtsRoute
+  '/api/public/scans/ingest': typeof ApiPublicScansIngestRoute
+  '/api/public/scans/latest': typeof ApiPublicScansLatestRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/act': typeof ActRoute
+  '/attestation': typeof AttestationRoute
   '/blog': typeof BlogRouteWithChildren
   '/cases': typeof CasesRoute
   '/citations': typeof CitationsRoute
@@ -294,6 +319,8 @@ export interface FileRoutesById {
   '/blog/': typeof BlogIndexRoute
   '/toolkit/': typeof ToolkitIndexRoute
   '/api/public/tts': typeof ApiPublicTtsRoute
+  '/api/public/scans/ingest': typeof ApiPublicScansIngestRoute
+  '/api/public/scans/latest': typeof ApiPublicScansLatestRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -301,6 +328,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/act'
+    | '/attestation'
     | '/blog'
     | '/cases'
     | '/citations'
@@ -329,11 +357,14 @@ export interface FileRouteTypes {
     | '/blog/'
     | '/toolkit/'
     | '/api/public/tts'
+    | '/api/public/scans/ingest'
+    | '/api/public/scans/latest'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/about'
     | '/act'
+    | '/attestation'
     | '/cases'
     | '/citations'
     | '/coordination'
@@ -360,11 +391,14 @@ export interface FileRouteTypes {
     | '/blog'
     | '/toolkit'
     | '/api/public/tts'
+    | '/api/public/scans/ingest'
+    | '/api/public/scans/latest'
   id:
     | '__root__'
     | '/'
     | '/about'
     | '/act'
+    | '/attestation'
     | '/blog'
     | '/cases'
     | '/citations'
@@ -393,12 +427,15 @@ export interface FileRouteTypes {
     | '/blog/'
     | '/toolkit/'
     | '/api/public/tts'
+    | '/api/public/scans/ingest'
+    | '/api/public/scans/latest'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
   ActRoute: typeof ActRoute
+  AttestationRoute: typeof AttestationRoute
   BlogRoute: typeof BlogRouteWithChildren
   CasesRoute: typeof CasesRoute
   CitationsRoute: typeof CitationsRoute
@@ -422,6 +459,8 @@ export interface RootRouteChildren {
   ToolkitRoute: typeof ToolkitRouteWithChildren
   ViolationsRoute: typeof ViolationsRoute
   ApiPublicTtsRoute: typeof ApiPublicTtsRoute
+  ApiPublicScansIngestRoute: typeof ApiPublicScansIngestRoute
+  ApiPublicScansLatestRoute: typeof ApiPublicScansLatestRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -580,6 +619,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BlogRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/attestation': {
+      id: '/attestation'
+      path: '/attestation'
+      fullPath: '/attestation'
+      preLoaderRoute: typeof AttestationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/act': {
       id: '/act'
       path: '/act'
@@ -643,6 +689,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicTtsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/scans/latest': {
+      id: '/api/public/scans/latest'
+      path: '/api/public/scans/latest'
+      fullPath: '/api/public/scans/latest'
+      preLoaderRoute: typeof ApiPublicScansLatestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/scans/ingest': {
+      id: '/api/public/scans/ingest'
+      path: '/api/public/scans/ingest'
+      fullPath: '/api/public/scans/ingest'
+      preLoaderRoute: typeof ApiPublicScansIngestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -677,6 +737,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
   ActRoute: ActRoute,
+  AttestationRoute: AttestationRoute,
   BlogRoute: BlogRouteWithChildren,
   CasesRoute: CasesRoute,
   CitationsRoute: CitationsRoute,
@@ -700,17 +761,9 @@ const rootRouteChildren: RootRouteChildren = {
   ToolkitRoute: ToolkitRouteWithChildren,
   ViolationsRoute: ViolationsRoute,
   ApiPublicTtsRoute: ApiPublicTtsRoute,
+  ApiPublicScansIngestRoute: ApiPublicScansIngestRoute,
+  ApiPublicScansLatestRoute: ApiPublicScansLatestRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
