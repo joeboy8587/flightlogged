@@ -1,78 +1,79 @@
-# The Watchtower Blog + UI Fixes (in tandem)
+# Plan — Fix hydration + ship ML-transparency upgrades
 
-Two tracks shipped together. The blog is the "mouth" that translates the ML's raw findings; the UI fixes clear runtime errors and re-verify quiet-math consistency along the way.
+## Part 1 — Fix the runtime hydration error on `/live` (and site-wide)
 
-## Track A — UI fixes (done in tandem)
+**Symptom:** React reports server/client HTML mismatch. The diff shows identical DOM except `data-tsd-source="/src/components/site-header.tsx:52:11"` (client) vs `:52:13` (server) on every nav link. That's a source-map/dev-instrumentation artifact — the header's `NavLink` component is rendering on two different code paths between SSR and client.
 
-1. **Runtime scan** — read console/network on `/`, `/live`, `/mosaic`, `/operators`, `/podcasts`, `/violations`. Fix anything red (unresolved imports, SSR crashes, 500s from server functions).
-2. **Number consistency re-audit** — snapshot totals should match across Home, Operators, About, Methodology, Findings. If any page still sums per-aircraft counters instead of `getSnapshot()` canonical totals, repoint it.
-3. **PDT formatter sweep** — grep for any remaining raw `toLocaleString`/UTC output in newly touched files and route through `src/lib/format.ts`.
+**Root cause:** `SiteHeader` likely uses `NavLink`/`Link` inside a `.map()` where the JSX line position drifts between build passes, or the header has a `typeof window !== "undefined"` branch (mobile menu, mascot mount) that changes output before hydration.
 
-## Track B — `/blog` advocacy section (Hybrid: MDX + AI drafts)
+**Fix:**
+1. Open `src/components/site-header.tsx`, find any `typeof window`, `useState(false)` gated by client-only, `Date.now()`, or locale-formatted output. Gate any such branch behind a `useHydrated()` hook so SSR + first client render match, then flip after mount.
+2. If the mascot added in the previous pass mounts inside the header with a client-only animation, wrap it in `<ClientOnly>` (render `null` on server + first paint).
+3. Verify by loading `/live` and confirming console shows no hydration warning.
 
-### Architecture: firewalled translation layer
+## Part 2 — ML transparency upgrades on the public site
 
-```text
- ┌─────────────────────────┐        ┌──────────────────────────────┐
- │ ML CORE (unchanged)     │        │ TRANSLATION LAYER (/blog)    │
- │ Live · Findings · Mosaic│  ───►  │ Human MDX + AI-drafted       │
- │ Threat · Coordination   │ cites  │ Weekly Briefing              │
- │ Non-biased. Math-chosen.│        │ Every claim links back to ML │
- └─────────────────────────┘        └──────────────────────────────┘
-```
+All changes are **frontend + one new public read endpoint**. Nothing touches the ML box; it just needs to POST scan artifacts to the new endpoint (docs section added).
 
-Every post carries a permanent banner: **"ADVOCACY & ANALYSIS — HUMAN-AUTHORED"** with firewall language, and every claim uses the standardized citation format (tail + hex + detection UUID + rule cite).
+### 2a. Reframe the "objectivity" stat on `/methodology`
+Current line implies 86.1% flagged = loose threshold. Replace with a live counter component:
 
-### Storage — Hybrid
+> **26,406** aircraft observed over **N months**. **22,744 (86.1%)** have crossed the 99th-percentile threshold *at least once*. **3,662 (13.9%)** never triggered.
+> This is what a fixed statistical threshold looks like against a large population — not a curated watchlist.
 
-- **MDX posts** in `src/content/blog/*.mdx` with frontmatter (`title`, `slug`, `date`, `category`, `excerpt`, `author`, `citations[]`, `related` — links to `/operators?tail=…`, `/live`, `/coordination`, etc.).
-- **AI-drafted Weekly Briefing** at `/blog/weekly` — server function pulls live snapshot + top violations + top operators from quiet-math, Lovable AI writes a 1,200-word briefing on demand, rendered with the same banner + citation format. Not persisted (draft-on-view).
-
-### Routes
+### 2b. Candidate → Flagged funnel on `/methodology` and `/live`
+Add a horizontal funnel bar:
 
 ```text
-src/routes/
-  blog.tsx              → layout: sidebar (firewall, verify, report-error) + <Outlet/>
-  blog.index.tsx        → /blog: featured Weekly Briefing card + post grid by category
-  blog.$slug.tsx        → /blog/:slug: MDX post + citation footer + share row + related-evidence links
-  blog.weekly.tsx       → /blog/weekly: live AI-drafted Weekly Briefing
-  blog.category.$cat.tsx → filter view (weekly-briefing | deep-dive | legal | commentary | community)
+Detections this scan  →  Candidates  →  Kinematic hits  →  Handoffs  →  Flagged
+       9                     33              0              0            0
 ```
 
-### Files created
+Reads from the same snapshot function; shows that most scans flag *nothing*.
 
-- `src/lib/blog.ts` — MDX loader (`import.meta.glob`), category/slug helpers, frontmatter type.
-- `src/lib/blog.functions.ts` — `getWeeklyBriefingContext()` (quiet-math snapshot + top violations + top operators + coordination events) and `draftWeeklyBriefing()` (Lovable AI via `google/gemini-2.5-flash`, structured output).
-- `src/components/blog/BlogBanner.tsx` — permanent firewall banner.
-- `src/components/blog/BlogSidebar.tsx` — verify / firewall / report-error links.
-- `src/components/blog/CitationRef.tsx` — inline `<Cite tail hex uuid rule/>` renderer that links back to the ML page.
-- `src/components/blog/PostCard.tsx`, `PostGrid.tsx`, `CategoryChip.tsx`.
-- `src/content/blog/weekly-briefing-2026-07-03.mdx` — seed AI-drafted post (human-reviewed placeholder text pulled from current snapshot).
-- `src/content/blog/legal-marsh-v-alabama.mdx` — legal explainer on shell-company surveillance and the Marsh doctrine.
-- `src/content/blog/how-to-verify-a-watchtower-claim.mdx` — community doc mapping every UI element to its raw source.
+### 2c. Public scan artifact endpoint
+New server route: `src/routes/api/public/scans/latest.ts` (GET, no auth) — returns the latest scan JSON from the `quiet-math` DB.
 
-### Nav
+New table `public.scan_artifacts` (via migration) with columns:
+`scan_id uuid PK, ts timestamptz, method_version text, candidates int, flagged int, kinematic_hits int, handoffs int, subject_absent bool, merkle_root text, payload jsonb`
 
-Add **Blog** to `src/components/site-header.tsx` between `Podcasts` and `Citations`. Add a small "Latest from the Blog" strip on `/` (home) linking the three seed posts.
+Plus a POST endpoint at `/api/public/scans/ingest` that requires an HMAC signature (`SCAN_INGEST_SECRET` stored via Lovable Cloud secrets) so the ML box can push artifacts in.
 
-### Defensibility guarantees baked in
+### 2d. Merkle root page + hourly attestation
+New route `/attestation`:
+- Latest Merkle root (short + long form, copy button)
+- Last 24 hourly roots in a table with SHA-256 links
+- Instructions: "How to independently recompute this root from the public scan artifacts"
 
-- Blog routes never write to quiet-math; read-only server functions.
-- Weekly Briefing prompt is constrained to a whitelist of numbers pulled from the DB (no free-form invention); if the model output references a number not in the whitelist, it's replaced with the deterministic sentence (same guard already used in podcasts).
-- MDX posts render through a controlled component set (no raw HTML, no `dangerouslySetInnerHTML`).
-- Every post's footer auto-lists every citation in a "Verify this article" block linking to `/methodology`, `/live`, `/operators`, and the relevant detection page.
+### 2e. False-positive review counter
+New table `public.review_dismissals` (`id, anomaly_id, reviewer_note, dismissed_at, published bool`). Small strip on `/methodology`:
 
-### Dependencies
+> **Human review overrides this month: 7 anomalies dismissed after review.**
+> We publish our misses.
 
-- `@mdx-js/rollup` + `@mdx-js/react` + `remark-frontmatter` + `remark-mdx-frontmatter` (added via `bun add`).
-- Vite plugin wired in `vite.config.ts` before the TanStack router plugin.
+### 2f. Docs section on `/methodology`
+Add "Publishing the machine's own logs" subsection linking to `/api/public/scans/latest.json`, `/attestation`, and the FP counter — closes the audit loop.
 
-### Out of scope this pass
+## Files touched
 
-- Comments/moderation (Phase 4).
-- Social auto-cross-post.
-- Admin authoring UI (MDX-in-repo covers it for now).
+**Fixed:** `src/components/site-header.tsx` (hydration), `src/components/mascot.tsx` (client-only guard)
 
----
+**New:**
+- `src/hooks/use-hydrated.ts`
+- `src/components/client-only.tsx`
+- `src/components/ml-funnel.tsx`
+- `src/components/objectivity-stat.tsx`
+- `src/routes/api/public/scans/latest.ts`
+- `src/routes/api/public/scans/ingest.ts`
+- `src/routes/attestation.tsx`
+- `src/lib/scans.functions.ts`
+- migration: `scan_artifacts` + `review_dismissals` tables with grants + RLS (public SELECT on both; INSERT only via HMAC-verified ingest route using service role)
 
-**Deliverable at end of build:** `/blog` live with three seed posts + live AI-drafted `/blog/weekly`, nav updated, home strip added, and any red console/network errors on the current pages fixed.
+**Edited:** `src/routes/methodology.tsx` (funnel, reframed stat, FP counter, docs section), `src/routes/live.tsx` (funnel strip at top), `src/routes/__root.tsx` (nothing to change unless mascot lives there)
+
+## Out of scope
+- Changes to the ML system itself (that stays on your Ubuntu box)
+- The Postgres `ON CONFLICT` / `IMPOSSIBLE_PHYSICS` fixes on the fortress box — those are your ML-side infra, not this app. I'll note in the docs that ingest expects deduped rows.
+
+## Deliverable
+Hydration error gone from console on `/live` and every other route. `/methodology` shows the reframed 86.1% stat + live funnel + FP counter + attestation link. `/attestation` publishes the Merkle root. `/api/public/scans/latest.json` returns the newest artifact for third-party auditors. ML box can start POSTing to `/api/public/scans/ingest` with the shared HMAC secret.

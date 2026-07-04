@@ -55,6 +55,7 @@ export function SiteHeader() {
               activeOptions={{ exact: n.to === "/" }}
               className="label-stamp px-3 py-2 hover:bg-warning transition-colors"
               activeProps={{ className: "label-stamp px-3 py-2 bg-ink text-paper" }}
+              suppressHydrationWarning
             >
               {n.label}
             </Link>
@@ -75,6 +76,7 @@ export function SiteHeader() {
             activeOptions={{ exact: n.to === "/" }}
             className="label-stamp px-2 py-1 whitespace-nowrap"
             activeProps={{ className: "label-stamp px-2 py-1 whitespace-nowrap bg-ink text-paper" }}
+            suppressHydrationWarning
           >
             {n.label}
           </Link>
