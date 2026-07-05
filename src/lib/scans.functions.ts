@@ -118,7 +118,29 @@ export const getFunnelStats = createServerFn({ method: "GET" }).handler(async ()
       scanTs: latest.ts,
     };
   }
-  return { detections: 0, candidates: 0, kinematicHits: 0, handoffs: 0, flagged: 0, scanTs: null };
+  // Fallback: derive a live funnel from the public detections / anomaly_events
+  // tables so the strip is never blank before the ML box starts POSTing artifacts.
+  try {
+    const w = watchtower();
+    const [det, cand, anom, last] = await Promise.all([
+      w`SELECT COUNT(*)::int AS c FROM detections WHERE captured_at >= now() - interval '24 hours'`,
+      w`SELECT COUNT(DISTINCT icao_hex)::int AS c FROM detections WHERE captured_at >= now() - interval '24 hours'`,
+      w`SELECT COUNT(*)::int AS c FROM anomaly_events WHERE detected_at >= now() - interval '24 hours'`,
+      w`SELECT MAX(captured_at) AS t FROM detections`,
+    ]);
+    const flagged = Number(anom[0]?.c ?? 0);
+    return {
+      detections: Number(det[0]?.c ?? 0),
+      candidates: Number(cand[0]?.c ?? 0),
+      kinematicHits: flagged,
+      handoffs: flagged,
+      flagged,
+      scanTs: last[0]?.t ? new Date(last[0].t).toISOString() : null,
+    };
+  } catch (err) {
+    console.error("getFunnelStats fallback failed:", err);
+    return { detections: 0, candidates: 0, kinematicHits: 0, handoffs: 0, flagged: 0, scanTs: null };
+  }
 });
 
 export type ObjectivityStats = {

@@ -34,8 +34,9 @@ export function MlFunnel({ stats, compact = false }: { stats: FunnelStats; compa
       </div>
       {!hasData && (
         <p className="mt-2 text-xs font-mono opacity-70">
-          No scan artifacts ingested yet. When the ML box POSTs to <code>/api/public/scans/ingest</code>,
-          the funnel populates automatically.
+          No detections in the last 24 hours. The funnel will populate once the
+          public <code>detections</code> feed has activity, or when the ML box POSTs
+          a signed scan artifact to <code>/api/public/scans/ingest</code>.
         </p>
       )}
       {!compact && hasData && stats.flagged === 0 && (
