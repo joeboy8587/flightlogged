@@ -406,11 +406,18 @@ function Live() {
                 </tr>
               </thead>
               <tbody className="font-mono">
-                {lowFiltered.length === 0 && <tr><td colSpan={8} className="p-6 text-center">No low-altitude activity in this county for the current window.</td></tr>}
-                {lowFiltered.map((r) => {
-                  const key = r.icao + r.capturedAt;
-                  const isOpen = expanded === key;
-                  return (
+                {grouped.length === 0 && <tr><td colSpan={8} className="p-6 text-center">No low-altitude activity in this county for the current window.</td></tr>}
+                {grouped.flatMap((g) => {
+                  const collapsed = g.rows.length > 1;
+                  const groupOpen = openGroup === g.key;
+                  // If collapsed and not opened, render just the representative (first/most-recent) row
+                  // plus a "+ N more passes" chip. Otherwise render every row in the group.
+                  const visibleRows = collapsed && !groupOpen ? [g.rows[0]] : g.rows;
+                  return visibleRows.map((r, idx) => {
+                    const key = r.icao + r.capturedAt;
+                    const isOpen = expanded === key;
+                    const showRepeatChip = collapsed && !groupOpen && idx === 0;
+                    return (
                   <Fragment key={key}>
                   <tr className="border-t border-ink/20 hover:bg-warning/30 cursor-pointer" onClick={() => setExpanded(isOpen ? null : key)}>
                     <td className="p-3 whitespace-nowrap">{fmtTime(r.capturedAt)}</td>
@@ -418,6 +425,24 @@ function Live() {
                       <span className="font-bold">{r.registration || r.icao}</span>
                       {r.model && <div className="text-xs opacity-60">{r.model}</div>}
                       <div className="text-[10px] font-mono opacity-60 mt-0.5">{isOpen ? "▼ hide translation" : "▶ show translation"}</div>
+                      {showRepeatChip && (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setOpenGroup(g.key); }}
+                          className="mt-1 label-stamp bg-ink text-warning px-1.5 py-0.5 text-[10px] hover:bg-alert hover:text-paper"
+                        >
+                          + {g.rows.length - 1} more consecutive pass{g.rows.length - 1 === 1 ? "" : "es"} — expand
+                        </button>
+                      )}
+                      {collapsed && groupOpen && idx === 0 && (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setOpenGroup(null); }}
+                          className="mt-1 label-stamp bg-warning text-ink px-1.5 py-0.5 text-[10px] hover:bg-ink hover:text-warning"
+                        >
+                          ▲ collapse {g.rows.length} passes
+                        </button>
+                      )}
                     </td>
                     <td className="p-3 text-xs">
                       {r.identifiedName ? (
@@ -502,7 +527,8 @@ function Live() {
                     </tr>
                   )}
                   </Fragment>
-                  );
+                    );
+                  });
                 })}
               </tbody>
             </table>
