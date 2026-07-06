@@ -74,9 +74,24 @@ function Live() {
 
   const anomalyPct = s.totalDetections > 0 ? Math.round((s.anomalyEvents / s.totalDetections) * 1000) / 10 : 0;
 
-  // County filter — multi-county, non-biased default ("all").
-  const [county, setCounty] = useState<string>("all");
+  // County filter — default to your AO (San Joaquin Valley) so LA-volume
+  // traffic doesn't drown out Kern/Tulare/Kings/Fresno. "all" and "LA"
+  // are opt-in comparison views.
+  const [county, setCounty] = useState<string>("SJV");
   const [expanded, setExpanded] = useState<string | null>(null);
+
+  // Central-Southern San Joaquin Valley AO — the counties this project
+  // was built to watch. LA appears in the feed because our receivers
+  // reach that far south, but it is NOT the primary AO.
+  const SJV = ["KERN", "KINGS", "TULARE", "FRESNO"];
+  const sjvCount = useMemo(
+    () => low.filter((r) => SJV.includes((r.county || "OTHER").toUpperCase())).length,
+    [low],
+  );
+  const laCount = useMemo(
+    () => low.filter((r) => (r.county || "").toUpperCase() === "LOS ANGELES").length,
+    [low],
+  );
 
   const countyOptions = useMemo(() => {
     const seen = new Map<string, number>();
@@ -96,14 +111,46 @@ function Live() {
 
   const matchesCounty = (c: string | null | undefined) => {
     if (county === "all") return true;
+    if (county === "SJV") return SJV.includes((c || "OTHER").toUpperCase());
     return (c || "OTHER").toUpperCase() === county;
   };
 
   const lowFiltered = useMemo(() => low.filter((r) => matchesCounty(r.county)), [low, county]);
-  // Top 5 plain-English stories — most recent low-altitude detections in the selected county.
-  const stories = lowFiltered.slice(0, 5);
-  const showKernAlerts = county === "all" || county === "KERN";
-  const showLocalAgencies = county === "all" || county === "KERN";
+  // Top 5 plain-English stories — dedupe by operator/tail so a single
+  // repeat offender (LAPD N223LA) can't fill every card.
+  const stories = useMemo(() => {
+    const out: typeof lowFiltered = [];
+    const seenKeys = new Set<string>();
+    for (const r of lowFiltered) {
+      const key = (r.identifiedName || r.owner || r.registration || r.icao || "").toUpperCase();
+      if (seenKeys.has(key)) continue;
+      seenKeys.add(key);
+      out.push(r);
+      if (out.length >= 5) break;
+    }
+    return out;
+  }, [lowFiltered]);
+  const showKernAlerts = county === "all" || county === "SJV" || county === "KERN";
+  const showLocalAgencies = county === "all" || county === "SJV" || county === "KERN";
+
+  // Collapse consecutive same-tail rows into a single expandable group so
+  // 30 back-to-back LAPD N223LA passes read as one repeat-offender block
+  // instead of burying the rest of the feed.
+  type Group = { key: string; rows: typeof lowFiltered };
+  const grouped = useMemo<Group[]>(() => {
+    const out: Group[] = [];
+    for (const r of lowFiltered) {
+      const tailKey = (r.registration || r.icao || "unknown").toUpperCase();
+      const last = out[out.length - 1];
+      if (last && last.key === tailKey) {
+        last.rows.push(r);
+      } else {
+        out.push({ key: tailKey, rows: [r] });
+      }
+    }
+    return out;
+  }, [lowFiltered]);
+  const [openGroup, setOpenGroup] = useState<string | null>(null);
 
   return (
     <div className="min-h-screen bg-paper text-ink">
@@ -276,7 +323,10 @@ function Live() {
                 onChange={(e) => setCounty(e.target.value)}
                 className="brutal-border bg-paper px-3 py-2 font-mono text-sm cursor-pointer hover:bg-warning"
               >
+                <option value="SJV">★ San Joaquin Valley — Kern+Kings+Tulare+Fresno ({sjvCount})</option>
                 <option value="all">All counties ({low.length})</option>
+                {laCount > 0 && <option value="LOS ANGELES">＋ Los Angeles (comparison view) ({laCount})</option>}
+                <option disabled>──────────</option>
                 {countyOptions.map((c) => (
                   <option key={c.key} value={c.key}>
                     {c.label} ({c.count})
@@ -287,8 +337,10 @@ function Live() {
             </div>
           </div>
           <p className="mb-4 text-xs font-mono opacity-70">
-            Multi-county coverage. Filter is applied to the low-altitude table and the plain-English story strip above.
-            Kern-only sections (alerts, local agencies) hide automatically when another county is selected.
+            Default view is your AO — the Central-Southern San Joaquin Valley (Kern, Kings, Tulare, Fresno).
+            Los Angeles is included as an opt-in comparison view because our receivers reach that far south,
+            but LAPD/LA County volume was drowning out the Valley signal. Consecutive passes by the same
+            tail are collapsed into one row — click to expand.
           </p>
 
           {/* Constitutional banner */}
