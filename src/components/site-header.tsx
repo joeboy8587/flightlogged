@@ -4,6 +4,7 @@ import { Mascot } from "@/components/mascot";
 const NAV = [
   { to: "/", label: "Home" },
   { to: "/how-to-read", label: "How to Read" },
+  { to: "/surveillance-grid", label: "Surveillance Grid" },
   { to: "/live", label: "Live Feed" },
   { to: "/mosaic", label: "Mosaic" },
   { to: "/findings", label: "Findings" },
