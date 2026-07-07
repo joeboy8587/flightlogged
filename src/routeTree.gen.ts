@@ -13,6 +13,7 @@ import { Route as ViolationsRouteImport } from './routes/violations'
 import { Route as ToolkitRouteImport } from './routes/toolkit'
 import { Route as ThreatIndexRouteImport } from './routes/threat-index'
 import { Route as TailSearchRouteImport } from './routes/tail-search'
+import { Route as SurveillanceGridRouteImport } from './routes/surveillance-grid'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as RulesRouteImport } from './routes/rules'
 import { Route as ReportsRouteImport } from './routes/reports'
@@ -62,6 +63,11 @@ const ThreatIndexRoute = ThreatIndexRouteImport.update({
 const TailSearchRoute = TailSearchRouteImport.update({
   id: '/tail-search',
   path: '/tail-search',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SurveillanceGridRoute = SurveillanceGridRouteImport.update({
+  id: '/surveillance-grid',
+  path: '/surveillance-grid',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
@@ -238,6 +244,7 @@ export interface FileRoutesByFullPath {
   '/reports': typeof ReportsRoute
   '/rules': typeof RulesRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/surveillance-grid': typeof SurveillanceGridRoute
   '/tail-search': typeof TailSearchRoute
   '/threat-index': typeof ThreatIndexRoute
   '/toolkit': typeof ToolkitRouteWithChildren
@@ -273,6 +280,7 @@ export interface FileRoutesByTo {
   '/reports': typeof ReportsRoute
   '/rules': typeof RulesRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/surveillance-grid': typeof SurveillanceGridRoute
   '/tail-search': typeof TailSearchRoute
   '/threat-index': typeof ThreatIndexRoute
   '/violations': typeof ViolationsRoute
@@ -309,6 +317,7 @@ export interface FileRoutesById {
   '/reports': typeof ReportsRoute
   '/rules': typeof RulesRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/surveillance-grid': typeof SurveillanceGridRoute
   '/tail-search': typeof TailSearchRoute
   '/threat-index': typeof ThreatIndexRoute
   '/toolkit': typeof ToolkitRouteWithChildren
@@ -347,6 +356,7 @@ export interface FileRouteTypes {
     | '/reports'
     | '/rules'
     | '/sitemap.xml'
+    | '/surveillance-grid'
     | '/tail-search'
     | '/threat-index'
     | '/toolkit'
@@ -382,6 +392,7 @@ export interface FileRouteTypes {
     | '/reports'
     | '/rules'
     | '/sitemap.xml'
+    | '/surveillance-grid'
     | '/tail-search'
     | '/threat-index'
     | '/violations'
@@ -417,6 +428,7 @@ export interface FileRouteTypes {
     | '/reports'
     | '/rules'
     | '/sitemap.xml'
+    | '/surveillance-grid'
     | '/tail-search'
     | '/threat-index'
     | '/toolkit'
@@ -454,6 +466,7 @@ export interface RootRouteChildren {
   ReportsRoute: typeof ReportsRoute
   RulesRoute: typeof RulesRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  SurveillanceGridRoute: typeof SurveillanceGridRoute
   TailSearchRoute: typeof TailSearchRoute
   ThreatIndexRoute: typeof ThreatIndexRoute
   ToolkitRoute: typeof ToolkitRouteWithChildren
@@ -491,6 +504,13 @@ declare module '@tanstack/react-router' {
       path: '/tail-search'
       fullPath: '/tail-search'
       preLoaderRoute: typeof TailSearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/surveillance-grid': {
+      id: '/surveillance-grid'
+      path: '/surveillance-grid'
+      fullPath: '/surveillance-grid'
+      preLoaderRoute: typeof SurveillanceGridRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sitemap.xml': {
@@ -756,6 +776,7 @@ const rootRouteChildren: RootRouteChildren = {
   ReportsRoute: ReportsRoute,
   RulesRoute: RulesRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  SurveillanceGridRoute: SurveillanceGridRoute,
   TailSearchRoute: TailSearchRoute,
   ThreatIndexRoute: ThreatIndexRoute,
   ToolkitRoute: ToolkitRouteWithChildren,
@@ -767,13 +788,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
