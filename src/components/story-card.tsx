@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import type { LowAltDescent } from "@/lib/watchtower.functions";
 import { fmtClock } from "@/lib/format";
+import { verdictFor, questionFor } from "@/lib/translate";
 
 /**
  * StoryCard — turns a raw low-altitude detection row into a human-readable
@@ -36,6 +37,8 @@ function autoHeadline(r: LowAltDescent): string {
 export function StoryCard({ row, headline }: StoryCardProps) {
   const tail = row.registration ?? row.icao;
   const where = row.county ?? "the observation zone";
+  const verdict = verdictFor(row);
+  const question = questionFor(row);
   return (
     <article className="brutal-border-thick bg-paper text-ink p-5">
       <div className="flex items-center gap-2 flex-wrap mb-2">
@@ -46,10 +49,16 @@ export function StoryCard({ row, headline }: StoryCardProps) {
           </span>
         )}
       </div>
-      <h3 className="font-display text-xl sm:text-2xl leading-snug mb-3">
-        {headline ?? autoHeadline(row)}
-      </h3>
-      <p className="text-sm font-medium mb-3">{altStory(row.altitude)}</p>
+      <p className="font-display text-xl sm:text-2xl leading-snug mb-3">
+        {headline ?? verdict}
+      </p>
+      <div className="brutal-border bg-warning/40 p-3 mb-3">
+        <div className="label-stamp text-[10px] mb-1 opacity-70">The question this raises</div>
+        <p className="text-sm font-bold">{question}</p>
+      </div>
+      <p className="text-xs opacity-70 mb-3 italic">
+        Machine logged: {autoHeadline(row)} — {altStory(row.altitude)}
+      </p>
       <dl className="grid grid-cols-2 sm:grid-cols-4 gap-x-3 gap-y-2 text-xs font-mono mb-4">
         <div>
           <dt className="label-stamp opacity-60">TAIL</dt>
