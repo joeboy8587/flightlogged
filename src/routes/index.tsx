@@ -56,6 +56,17 @@ function Home() {
     <div className="min-h-screen bg-paper text-ink">
       <SiteHeader />
 
+      {/* MANIFESTO — the witness speaks */}
+      <section className="bg-ink text-paper border-b-4 border-warning">
+        <div className="max-w-[1400px] mx-auto px-4 py-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+          <span className="label-stamp bg-warning text-ink px-2 py-1">This site translates. It does not editorialize.</span>
+          <span className="opacity-90">
+            Every claim links to a hash, a public record, and the raw ADS-B broadcast.
+            The machine is the evidence — this page is the testimony, in plain English.
+          </span>
+        </div>
+      </section>
+
       {/* HERO */}
       <section className="border-b-4 border-ink">
         <div className="max-w-[1400px] mx-auto px-4 py-16 sm:py-24 grid lg:grid-cols-12 gap-10 items-end">
@@ -154,7 +165,12 @@ function Home() {
             <div className="flex items-end justify-between gap-4 flex-wrap mb-6">
               <div>
                 <div className="label-stamp bg-alert text-paper inline-block px-2 py-1 mb-2">Recent events · in plain English</div>
-                <h2 className="text-3xl sm:text-5xl">Three things the machine saw this week.</h2>
+                <h2 className="text-3xl sm:text-5xl">Three things the machine caught while you slept.</h2>
+                <p className="mt-2 text-sm opacity-70 max-w-2xl">
+                  Below: a plain-English sentence built from each detection's own fields, the question that
+                  data raises, and a link to the hashed record. We describe what the machine logged.
+                  You draw the conclusion.
+                </p>
               </div>
               <Link to="/live" className="label-stamp brutal-border bg-ink text-paper px-4 py-2 hover:bg-warning hover:text-ink">
                 See the full live feed →
