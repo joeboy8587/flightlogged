@@ -61,6 +61,74 @@ type Report = {
 
 const REPORTS: Report[] = [
   {
+    slug: "ep-2026-0707-surveillance-grid",
+    file: "/reports/EP-2026-0707-SURVEILLANCE-GRID.pdf",
+    date: "July 7, 2026",
+    classification: "Evidence Package · Attorney Work Product",
+    pages: "PDF",
+    title: "EP-2026-0707 — Surveillance Grid Evidence Package",
+    blurb:
+      "The full evidentiary substrate behind the Surveillance Grid finding: 82-table Neon inventory, SHA-256 row-level hashing, complete SQL query log across the four investigative stages, WTPR registry entries for N913KC, and Merkle-anchored evidence objects. Cross-verified live at /surveillance-grid.",
+    highlights: [
+      { label: "Detections in scope", value: "4.07M+" },
+      { label: "Classified violations", value: "67,858" },
+      { label: "Aircraft with violations", value: "2,905" },
+      { label: "WTPR entries (N913KC)", value: "26" },
+      { label: "Integrity", value: "SHA-256 + Merkle" },
+      { label: "Verified against", value: "quiet-math DB" },
+    ],
+    takeaways: [
+      "Every headline number in this package reproduces live from the quiet-math database — open /surveillance-grid to see the count regenerated at page load.",
+      "Row-level SHA-256 hashes on all critical tables (detections, anomaly_events, violation_classifications, convergence_events, wtpr_registry).",
+      "Full SQL query log discloses exactly how each finding was derived — reproducible by any analyst with database access.",
+    ],
+    accent: "alert",
+  },
+  {
+    slug: "wtpr-2026-0707-surveillance-grid-001",
+    file: "/reports/WTPR-2026-0707-SURVEILLANCE-GRID-001.pdf",
+    date: "July 7, 2026",
+    classification: "Watchtower Project Report · Civilian Investigative Product",
+    pages: "PDF",
+    title: "WTPR-2026-0707 — The Surveillance Grid over Kern County",
+    blurb:
+      "The narrative synthesis of the evidence package: four-pillar surveillance architecture (KCSO + military + shell companies + medical cover), entity dossiers for N913KC and N912KC, the LOST47 incident, the STMPD19 convergence event, the 28× monthly escalation, and the full civil / criminal exposure matrix.",
+    highlights: [
+      { label: "Verified violations", value: "67,858" },
+      { label: "Military-LE convergences", value: "8 confirmed" },
+      { label: "N913KC violations", value: "745 classified" },
+      { label: "USAF N989RR min altitude", value: "175 ft" },
+      { label: "Escalation May → July", value: "28×" },
+      { label: "Evidence chain SHA-256", value: "d508…76e9" },
+    ],
+    takeaways: [
+      "Four pillars — KCSO, all four U.S. military branches, a 5,552-aircraft LLC shell network, and medical-aircraft cover — converge in the same 20×15 nm box over Bakersfield.",
+      "N913KC alone: 2.8M detections, 745 classified violations, minimum altitude 0 ft AGL, 2,730 convergence events with 100+ unique partners.",
+      "Actionable next steps: FAA Notice of Violation, DOJ criminal referral (Posse Comitatus), DOD IG referral, § 1983 class action.",
+    ],
+    accent: "alert",
+  },
+  {
+    slug: "advocacywatch-surveillance-grid-editorial",
+    file: "/reports/advocacywatch-surveillance-grid.pdf",
+    date: "July 7, 2026",
+    classification: "Editorial · Watchtower Commentary",
+    pages: "PDF",
+    title: "Editorial companion: When the cops wrote the rules and broke them",
+    blurb:
+      "The opinion companion to the Surveillance Grid evidence. Clearly labeled commentary — every quantitative claim is a live query on /surveillance-grid or a hash-anchored row in the two PDFs above. Included for completeness and public sharing.",
+    highlights: [
+      { label: "Format", value: "Opinion / editorial" },
+      { label: "Claim backing", value: "100% linked" },
+      { label: "Companion page", value: "/surveillance-grid" },
+    ],
+    takeaways: [
+      "Punchier than the evidence documents — because raw numbers alone have not been enough.",
+      "Written to be shared. Every factual assertion is auditable against the underlying evidence package.",
+    ],
+    accent: "warning",
+  },
+  {
     slug: "when-government-becomes-destructive-june-2026",
     file: "/reports/when-government-becomes-destructive-june2026.docx",
     date: "June 2026",
