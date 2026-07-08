@@ -155,6 +155,15 @@ function SurveillanceGrid() {
             <Stat big={fmt(v.totals.detections)} label="ADS-B detections logged" sub={`from ${fmt(v.totals.uniqueAircraft)} unique aircraft`} />
             <Stat big={fmt(v.shellLlcAircraft)} label="LLC-registered aircraft" sub="observed in the airspace" />
           </div>
+          <div className="mt-6 brutal-border bg-paper p-4 text-xs font-mono leading-relaxed">
+            <div className="label-stamp text-[10px] opacity-70 mb-2">Methodology — what these numbers mean</div>
+            <ul className="space-y-1 list-disc pl-4">
+              <li><b>Detection</b> = one ADS-B position report ingested by our receivers. Raw, not deduplicated across receivers. One physical ping received by 4 antennas = 4 detections.</li>
+              <li><b>Classified violation</b> = one detection row flagged by the non-biased rule engine against an active regulatory baseline (FAA Part 91, KCSO policy, etc.). Read from <code>violation_classifications</code>.</li>
+              <li><b>Convergence event</b> = 2+ aircraft detected in the same county, within ±30 minutes and ±1,000 ft altitude of each other. Read from <code>convergence_events</code>.</li>
+              <li><b>Total detections (per aircraft)</b> = <code>aircraft_profiles.total_detections</code>, aggregated by ICAO hex across the full dataset. The Tail Search page reads the same column — if a number here disagrees with the Tail Search page, the DB has updated between requests. Both are live.</li>
+            </ul>
+          </div>
         </div>
       </section>
 
