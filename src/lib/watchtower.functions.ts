@@ -1866,8 +1866,10 @@ export const searchByTail = createServerFn({ method: "GET" })
     const tail = data.tail;
     const nless = tail.startsWith("N") ? tail.slice(1) : tail;
     const nform = tail.startsWith("N") ? tail : `N${tail}`;
-    const [profile, detStats, dets] = await Promise.all([
-      w`SELECT p.icao_hex, p.observed_registration, p.registered_owner, p.aircraft_model,
+    // Resolve the aircraft's canonical ICAO hex first — the `detections` table is
+    // keyed by icao_hex and its `registration` column is sparsely populated, so
+    // counting by registration alone under-counts by orders of magnitude.
+    const profile = await w`SELECT p.icao_hex, p.observed_registration, p.registered_owner, p.aircraft_model,
                p.total_detections, p.min_altitude, p.avg_altitude, p.max_altitude,
                p.night_pct, p.first_seen, p.last_seen,
                m.name AS reg_name, m.city AS reg_city, m.state AS reg_state
@@ -1877,7 +1879,10 @@ export const searchByTail = createServerFn({ method: "GET" })
            OR UPPER(p.icao_hex) = ${tail}
            OR UPPER(m.n_number) = ${nless}
            OR UPPER(m.mode_s_code_hex) = ${tail}
-        LIMIT 1`,
+        LIMIT 1`;
+    const pArr0 = profile as any[];
+    const canonIcao: string | null = pArr0[0]?.icao_hex ? String(pArr0[0].icao_hex).toUpperCase() : null;
+    const [detStats, dets] = await Promise.all([
       w`SELECT COUNT(*)::bigint AS total,
                MIN(altitude_ft)::int AS min_alt,
                AVG(altitude_ft)::float AS avg_alt,
@@ -1887,14 +1892,18 @@ export const searchByTail = createServerFn({ method: "GET" })
                MIN(captured_at) AS first_seen,
                MAX(captured_at) AS last_seen
         FROM detections
-        WHERE UPPER(registration) IN (${tail}, ${nform}, ${nless}) OR UPPER(icao_hex) = ${tail}`,
+        WHERE UPPER(registration) IN (${tail}, ${nform}, ${nless})
+           OR UPPER(icao_hex) = ${tail}
+           OR UPPER(icao_hex) = ${canonIcao ?? ""}`,
       w`SELECT captured_at, altitude_ft, speed_kts, county, latitude, longitude, on_ground
         FROM detections
-        WHERE UPPER(registration) IN (${tail}, ${nform}, ${nless}) OR UPPER(icao_hex) = ${tail}
+        WHERE UPPER(registration) IN (${tail}, ${nform}, ${nless})
+           OR UPPER(icao_hex) = ${tail}
+           OR UPPER(icao_hex) = ${canonIcao ?? ""}
         ORDER BY captured_at DESC
         LIMIT 1000`,
     ]);
-    const pArr = profile as any[];
+    const pArr = pArr0;
     const dArr = dets as any[];
     const live = (detStats as any[])[0] ?? {};
     if (pArr.length === 0 && dArr.length === 0) return null;
@@ -1905,7 +1914,9 @@ export const searchByTail = createServerFn({ method: "GET" })
       icao: p.icao_hex ?? null,
       owner: p.registered_owner ?? null,
       model: p.aircraft_model ?? null,
-      total: Number(live.total ?? dArr.length),
+      // Prefer the ML-maintained profile total (canonical); fall back to the
+      // live COUNT only if the profile has no entry for this aircraft.
+      total: p.total_detections != null ? Number(p.total_detections) : Number(live.total ?? dArr.length),
       minAlt: rawMin != null && rawMin < -100 ? null : rawMin,
       avgAlt: live.avg_alt != null ? Number(live.avg_alt) : null,
       maxAlt: live.max_alt != null ? Number(live.max_alt) : null,
