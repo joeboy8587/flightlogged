@@ -66,21 +66,21 @@ function SurveillanceGrid() {
       roman: "I",
       name: "Law Enforcement",
       lead: "KCSO — N913KC · N912KC · N407KC",
-      body: "Core surveillance command. The primary asset, N913KC, generated over 2.8 million detections and 745 classified rule violations. Its partner, N912KC, generated only 19 violations — every single one CRITICAL severity.",
+      body: "Core surveillance command. The primary asset, N913KC, generated over 2.8 million detections and 745 classified rule violations. Its partner, N912KC, generated only 19 violations — every one CRITICAL severity.",
       strength: "IRREFUTABLE",
     },
     {
       roman: "II",
       name: "Military",
       lead: "USAF · USMC · USN · U.S. Army",
-      body: "Federal force augmentation across all four branches. USAF aircraft N989RR was logged at a minimum altitude of 175 ft AGL. A U.S. Navy C-2A (STMPD19) appears in a shared convergence event with KCSO N913KC. Coordinated flight in civilian airspace over a civilian population center.",
+      body: "Federal force augmentation across all four branches. USAF aircraft N989RR was logged at a minimum altitude of 175 ft AGL. A U.S. Navy C-2A (STMPD19) appears in a shared convergence event with KCSO helicopters.",
       strength: "CONFIRMED",
     },
     {
       roman: "III",
       name: "Shell Companies",
       lead: "AERO EQUITIES LLC · 9K AIR LLC · KCSI AERIAL PATROL · WINGSLEASING LLC",
-      body: "Private surveillance cover. AERO EQUITIES LLC alone accounts for millions of detections. KCSI AERIAL PATROL — a name that deliberately mimics 'Kern County Sheriff's Investigation' — has confirmed coordination partners inside the KCSO fleet.",
+      body: "Private surveillance cover. AERO EQUITIES LLC alone accounts for millions of detections. KCSI AERIAL PATROL — a name that deliberately mimics 'Kern County Sheriff's Investigation' — operates aircraft in convergence clusters with KCSO helicopters.",
       strength: "STRONG",
     },
     {
@@ -118,28 +118,24 @@ function SurveillanceGrid() {
             Verified: {generated} · Source: watchtower Neon (shiny-silence-88612707)
           </p>
           <div className="flex flex-wrap gap-3 mt-6">
-            <a
-              href="/reports/EP-2026-0707-SURVEILLANCE-GRID.pdf"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="label-stamp bg-warning text-ink brutal-border px-4 py-3 hover:bg-paper"
-            >
-              Evidence package (PDF) →
-            </a>
-            <a
-              href="/reports/WTPR-2026-0707-SURVEILLANCE-GRID-001.pdf"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="label-stamp bg-paper text-ink brutal-border px-4 py-3 hover:bg-warning"
-            >
-              Watchtower Project Report (PDF) →
-            </a>
             <Link
               to="/blog/$slug"
               params={{ slug: "surveillance-grid-op-ed-2026-07-07" }}
+              className="label-stamp bg-warning text-ink brutal-border px-4 py-3 hover:bg-paper"
+            >
+              Read the analysis →
+            </Link>
+            <Link
+              to="/cases"
+              className="label-stamp bg-paper text-ink brutal-border px-4 py-3 hover:bg-warning"
+            >
+              Open cases →
+            </Link>
+            <Link
+              to="/coordination"
               className="label-stamp brutal-border border-paper px-4 py-3 hover:bg-paper hover:text-ink"
             >
-              Read the editorial →
+              Coordination events →
             </Link>
           </div>
         </div>
@@ -159,9 +155,9 @@ function SurveillanceGrid() {
             <div className="label-stamp text-[10px] opacity-70 mb-2">Methodology — what these numbers mean</div>
             <ul className="space-y-1 list-disc pl-4">
               <li><b>Detection</b> = one ADS-B position report ingested by our receivers. Raw, not deduplicated across receivers. One physical ping received by 4 antennas = 4 detections.</li>
-              <li><b>Classified violation</b> = one detection row flagged by the non-biased rule engine against an active regulatory baseline (FAA Part 91, KCSO policy, etc.). Read from <code>violation_classifications</code>.</li>
-              <li><b>Convergence event</b> = 2+ aircraft detected in the same county, within ±30 minutes and ±1,000 ft altitude of each other. Read from <code>convergence_events</code>.</li>
-              <li><b>Total detections (per aircraft)</b> = <code>aircraft_profiles.total_detections</code>, aggregated by ICAO hex across the full dataset. The Tail Search page reads the same column — if a number here disagrees with the Tail Search page, the DB has updated between requests. Both are live.</li>
+              <li><b>Classified violation</b> = one detection row flagged by the non-biased rule engine against an active regulatory baseline (FAA Part 91, KCSO policy, etc.). Read from violation_classifications.</li>
+              <li><b>Convergence event</b> = 2+ aircraft detected in the same county, within ±30 minutes and ±1,000 ft altitude of each other. Read from convergence_events.</li>
+              <li><b>Total detections (per aircraft)</b> = aircraft_profiles.total_detections, aggregated by ICAO hex across the full dataset. The Tail Search page reads the same column.</li>
             </ul>
           </div>
         </div>
@@ -197,7 +193,7 @@ function SurveillanceGrid() {
           <div className="space-y-4">
             <Gun
               headline="KCSO N913KC — the primary surveillance asset"
-              plain="Kern County Sheriff's H125 helicopter. The most-observed law-enforcement aircraft in the entire watchtower dataset. Its minimum altitude on record is 0 ft AGL — ground level."
+              plain="Kern County Sheriff's H125 helicopter. The most-observed law-enforcement aircraft in the entire watchtower dataset. Its minimum altitude on record is 0 ft AGL — ground level. Over homes."
               rows={[
                 { k: "Total detections", v: fmt(v.n913kc.totalDetections) },
                 { k: "Classified violations", v: fmt(v.n913kc.classifiedViolations) },
@@ -237,7 +233,7 @@ function SurveillanceGrid() {
             {v.stmpd19Convergence && (
               <Gun
                 headline="U.S. Navy C-2A Greyhound flew with KCSO"
-                plain={`The database records a shared convergence event on ${new Date(v.stmpd19Convergence.detectedAt).toLocaleString()} over ${v.stmpd19Convergence.county ?? "Kern County"} — a U.S. Navy C-2A cargo aircraft (STMPD19) and KCSO N913KC in the same low-altitude cluster of ${v.stmpd19Convergence.aircraftCount} aircraft.`}
+                plain={`The database records a shared convergence event on ${new Date(v.stmpd19Convergence.detectedAt).toLocaleString()} over ${v.stmpd19Convergence.county ?? "Kern County"} — a Navy cargo aircraft and a county sheriff's helicopter in the same airspace at the same time.`}
                 rows={[
                   { k: "Convergence timestamp", v: new Date(v.stmpd19Convergence.detectedAt).toLocaleString() },
                   { k: "County", v: v.stmpd19Convergence.county ?? "—" },
@@ -251,7 +247,7 @@ function SurveillanceGrid() {
             {v.aeroEquities && (
               <Gun
                 headline="AERO EQUITIES LLC — the central shell node"
-                plain={`A single Ventura, California LLC operates ${v.aeroEquities.aircraftCount} aircraft that together account for ${fmt(v.aeroEquities.detections)} detections in this dataset. The report identifies it as the shell entity operating a military-flagged airframe in coordinated formation with KCSO.`}
+                plain={`A single Ventura, California LLC operates ${v.aeroEquities.aircraftCount} aircraft that together account for ${fmt(v.aeroEquities.detections)} detections in this dataset.`}
                 rows={[
                   { k: "Aircraft under this LLC", v: fmt(v.aeroEquities.aircraftCount) },
                   { k: "Combined detections", v: fmt(v.aeroEquities.detections) },
@@ -303,8 +299,8 @@ function SurveillanceGrid() {
             <Link to="/toolkit" className="label-stamp brutal-border border-paper px-4 py-3 hover:bg-paper hover:text-ink">
               Journalist / attorney toolkit →
             </Link>
-            <Link to="/reports" className="label-stamp brutal-border border-paper px-4 py-3 hover:bg-paper hover:text-ink">
-              Full report archive →
+            <Link to="/cases" className="label-stamp brutal-border border-paper px-4 py-3 hover:bg-paper hover:text-ink">
+              Active cases →
             </Link>
           </div>
         </div>
