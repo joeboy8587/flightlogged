@@ -282,6 +282,11 @@ function Home() {
             </div>
             <aside className="lg:col-span-4 brutal-border-thick border-paper bg-ink p-6">
               <div className="label-stamp text-warning mb-3">What we are demanding</div>
+              <p className="text-xs opacity-90 mb-3 leading-snug">
+                The following demands are the advocacy position of <strong>Watchtower Project LLC</strong>,
+                a civilian-led airspace accountability organization. The supporting data is drawn from
+                public ADS-B broadcasts and the public FAA Aircraft Registry.
+              </p>
               <ol className="space-y-3 text-sm font-medium list-decimal pl-5">
                 <li>Open an enforcement docket on the repeat-offender aircraft surfaced in <Link to="/live" className="underline">/live</Link>.</li>
                 <li>Audit 14 CFR § 91.227 (ADS-B Out) integrity for tails with suppressed or anomalous altitude.</li>
