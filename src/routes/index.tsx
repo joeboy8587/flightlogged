@@ -67,54 +67,89 @@ function Home() {
         </div>
       </section>
 
-      {/* HERO */}
-      <section className="border-b-4 border-ink">
-        <div className="max-w-[1400px] mx-auto px-4 py-16 sm:py-24 grid lg:grid-cols-12 gap-10 items-end">
-          <div className="lg:col-span-8">
-            <div className="label-stamp inline-flex items-center gap-2 bg-warning px-2 py-1 mb-6">
+      {/* WATCHTOWER ALERT — persistent hero */}
+      <section className="border-b-4 border-ink bg-paper">
+        <div className="max-w-[1400px] mx-auto px-4 py-12 sm:py-16 grid lg:grid-cols-12 gap-8 lg:gap-10">
+          <div className="lg:col-span-8 min-w-0">
+            <div className="label-stamp inline-flex items-center gap-2 bg-alert text-paper px-2 py-1 mb-5">
+              <span className="w-2 h-2 bg-warning blink" /> Watchtower Alert · Standing notice · Updated live
+            </div>
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl mb-5 leading-[1.05] break-words">
+              FAA Project <span className="font-mono bg-ink text-paper px-2">T-WP17-FY26-0397</span>: agency
+              acknowledged Oildale violations —{" "}
+              <span className="bg-warning text-ink px-2">now silent while the conduct continues.</span>
+            </h1>
+            <p className="text-lg sm:text-xl mb-4 font-medium max-w-3xl">
+              We reported systematic low-altitude flights over residential Oildale to the Federal Aviation
+              Administration. The agency assigned a project number and named an investigator. For six months
+              there has been no public movement — while our sensor network logged{" "}
+              <strong>{fmt(s.totalDetections)}</strong> new detections across{" "}
+              <strong>{fmt(s.uniqueAircraft)}</strong> aircraft and{" "}
+              <strong>{fmt(s.anomalyEvents)}</strong> classified violations of the 14 CFR § 91.119 floor.
+            </p>
+            <p className="text-base sm:text-lg mb-8 max-w-3xl opacity-90">
+              This page is the public notice. Every claim below links to a SHA-256 hashed, Merkle-chained
+              record independently verifiable from public ADS-B broadcasts and the public FAA registry.
+              Silence after this point is a choice — and it is on the record.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <Link to="/surveillance-grid" className="label-stamp bg-ink text-paper px-5 py-3 brutal-shadow-warning hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all">
+                Read the full case →
+              </Link>
+              <Link to="/reports" className="label-stamp brutal-border bg-warning px-5 py-3 hover:bg-alert hover:text-paper transition-colors">
+                Download evidence packet
+              </Link>
+              <Link to="/act" className="label-stamp brutal-border bg-alert text-paper px-5 py-3 hover:bg-ink transition-colors">
+                Join the alert list
+              </Link>
+            </div>
+          </div>
+          <aside className="lg:col-span-4 min-w-0 brutal-border-thick bg-ink text-paper p-6">
+            <div className="label-stamp text-warning mb-3">Accountability timeline</div>
+            <ol className="space-y-3 text-sm font-medium">
+              <li className="flex gap-3"><span className="font-mono text-warning shrink-0">01</span><span>Complaint filed with FAA citing 14 CFR § 91.119 &amp; § 91.13 violations over Oildale.</span></li>
+              <li className="flex gap-3"><span className="font-mono text-warning shrink-0">02</span><span>FAA acknowledged. Project <span className="font-mono">T-WP17-FY26-0397</span> assigned; investigator named.</span></li>
+              <li className="flex gap-3"><span className="font-mono text-warning shrink-0">03</span><span>Six months of silence. No status update. No disposition. No enforcement announced.</span></li>
+              <li className="flex gap-3"><span className="font-mono text-warning shrink-0">04</span><span>Post-acknowledgment incidents continue — logged, hashed, published on this site.</span></li>
+              <li className="flex gap-3"><span className="font-mono text-warning shrink-0">05</span><span>10-business-day status request re-issued to Inspector Maddox &amp; Fresno FSDO.</span></li>
+            </ol>
+            <div className="mt-5 pt-4 border-t border-paper/20">
+              <div className="label-stamp text-warning mb-2 text-[10px]">Live count · 5-min cache</div>
+              <div className="grid grid-cols-2 gap-3">
+                {stats.map((st) => (
+                  <div key={st.label} className="min-w-0">
+                    <div className="label-stamp opacity-60 text-[9px] truncate">{st.label}</div>
+                    <div className={`font-mono text-lg font-bold tabular-nums truncate ${st.accent ? "text-warning" : ""}`}>{st.value}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      {/* Architecture of Never — moved below the fold */}
+      <section className="border-b-4 border-ink bg-paper">
+        <div className="max-w-[1400px] mx-auto px-4 py-12 sm:py-16 grid lg:grid-cols-12 gap-8 items-start">
+          <div className="lg:col-span-8 min-w-0">
+            <div className="label-stamp inline-flex items-center gap-2 bg-warning px-2 py-1 mb-4">
               <span className="w-2 h-2 bg-ink blink" /> System online · Baseline learning · {s.windowHours}h observed
             </div>
             <div className="flex items-start gap-4 mb-4">
               <Mascot size="lg" className="hidden sm:block shrink-0 -mt-2" />
-              <p className="font-display text-2xl sm:text-3xl italic opacity-80">
+              <p className="font-display text-xl sm:text-2xl italic opacity-80">
                 They don&apos;t cause fear anymore. They build evidence.
               </p>
             </div>
-            <h1 className="text-5xl sm:text-7xl lg:text-8xl mb-6">
-              The sky over Kern County<br />
-              <span className="bg-ink text-paper px-2">is not normal.</span>
-            </h1>
-            <p className="text-lg sm:text-xl max-w-2xl mb-8 font-medium">
-              We watched the sky for <strong>{s.windowHours} hours</strong>. We logged{" "}
-              <strong>{fmt(s.totalDetections)}</strong> detections across{" "}
-              <strong>{fmt(s.uniqueAircraft)}</strong> aircraft.{" "}
-              <strong>{fmt(s.anomalyEvents)}</strong> of those detections triggered anomaly flags —
-              persistent low-altitude loitering, masked identities, night operations that don&apos;t match normal traffic.
-              Every record is SHA-256 hashed, Merkle-chained, and independently verifiable.{" "}
+            <h2 className="text-3xl sm:text-5xl mb-4 break-words">
+              The sky over Kern County <span className="bg-ink text-paper px-2">is not normal.</span>
+            </h2>
+            <p className="text-base sm:text-lg max-w-2xl font-medium">
+              We watched the sky for <strong>{s.windowHours} hours</strong>. Persistent low-altitude
+              loitering, masked identities, night operations that don&apos;t match normal traffic. Every record
+              SHA-256 hashed, Merkle-chained, independently verifiable.{" "}
               <strong>The machine watches. The math chooses. The record stands.</strong>
             </p>
-            <div className="flex flex-wrap gap-3">
-              <Link to="/live" className="label-stamp bg-ink text-paper px-5 py-3 brutal-shadow-warning hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all">
-                See it watching →
-              </Link>
-              <Link to="/methodology" className="label-stamp brutal-border px-5 py-3 hover:bg-warning transition-colors">
-                Read the methodology
-              </Link>
-              <Link to="/act" className="label-stamp brutal-border bg-alert text-paper px-5 py-3 hover:bg-ink transition-colors">
-                Deploy your own sensor
-              </Link>
-            </div>
-          </div>
-          <div className="lg:col-span-4 brutal-border-thick bg-ink text-paper p-6">
-            <div className="label-stamp text-warning mb-3">Live count · 5-min cache</div>
-            <div className="space-y-4">
-              {stats.map((st) => (
-                <div key={st.label} className="flex flex-wrap items-baseline justify-between gap-x-3 border-b border-paper/20 pb-3 last:border-0">
-                  <span className="label-stamp opacity-70">{st.label}</span>
-                  <span className={`font-mono text-2xl font-bold tabular-nums break-words text-right ${st.accent ? "text-warning" : ""}`}>{st.value}</span>
-                </div>
-              ))}
-            </div>
           </div>
         </div>
       </section>
