@@ -59,10 +59,11 @@ function Home() {
       {/* MANIFESTO — the witness speaks */}
       <section className="bg-ink text-paper border-b-4 border-warning">
         <div className="max-w-[1400px] mx-auto px-4 py-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
-          <span className="label-stamp bg-warning text-ink px-2 py-1">This site translates. It does not editorialize.</span>
+          <span className="label-stamp bg-warning text-ink px-2 py-1">Public data. Machine-chosen. Human-advocated. Verify everything.</span>
           <span className="opacity-90">
-            Every claim links to a hash, a public record, and the raw ADS-B broadcast.
-            The machine is the evidence — this page is the testimony, in plain English.
+            Machine-generated evidence from public ADS-B broadcasts is presented alongside
+            editorial analysis by <strong>Watchtower Project LLC</strong>. The data is
+            independently verifiable. The analysis is our organization&apos;s protected advocacy position.
           </span>
         </div>
       </section>
@@ -281,6 +282,11 @@ function Home() {
             </div>
             <aside className="lg:col-span-4 brutal-border-thick border-paper bg-ink p-6">
               <div className="label-stamp text-warning mb-3">What we are demanding</div>
+              <p className="text-xs opacity-90 mb-3 leading-snug">
+                The following demands are the advocacy position of <strong>Watchtower Project LLC</strong>,
+                a civilian-led airspace accountability organization. The supporting data is drawn from
+                public ADS-B broadcasts and the public FAA Aircraft Registry.
+              </p>
               <ol className="space-y-3 text-sm font-medium list-decimal pl-5">
                 <li>Open an enforcement docket on the repeat-offender aircraft surfaced in <Link to="/live" className="underline">/live</Link>.</li>
                 <li>Audit 14 CFR § 91.227 (ADS-B Out) integrity for tails with suppressed or anomalous altitude.</li>
@@ -320,7 +326,8 @@ function Home() {
       <section className="border-b-4 border-ink bg-ink text-paper">
         <div className="max-w-[1400px] mx-auto px-4 py-20">
           <h2 className="text-4xl sm:text-6xl mb-4">Why this is different.</h2>
-          <p className="text-lg opacity-80 max-w-2xl mb-10">Existing orgs react. We document continuously, autonomously, and at population scale. No editorial choices. No "trust us." Just the receipts.</p>
+          <p className="text-lg opacity-80 max-w-2xl mb-4">Existing orgs react. We document continuously, autonomously, and at population scale. Machine-chosen findings, human-advocated conclusions, receipts on every claim.</p>
+          <p className="label-stamp bg-warning text-ink inline-block px-2 py-1 mb-10">Why Watchtower Project LLC believes this approach is necessary:</p>
           <div className="overflow-x-auto brutal-border-thick border-paper">
             <table className="w-full text-sm">
               <thead className="bg-paper text-ink">
