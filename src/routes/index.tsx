@@ -326,7 +326,8 @@ function Home() {
       <section className="border-b-4 border-ink bg-ink text-paper">
         <div className="max-w-[1400px] mx-auto px-4 py-20">
           <h2 className="text-4xl sm:text-6xl mb-4">Why this is different.</h2>
-          <p className="text-lg opacity-80 max-w-2xl mb-10">Existing orgs react. We document continuously, autonomously, and at population scale. No editorial choices. No "trust us." Just the receipts.</p>
+          <p className="text-lg opacity-80 max-w-2xl mb-4">Existing orgs react. We document continuously, autonomously, and at population scale. Machine-chosen findings, human-advocated conclusions, receipts on every claim.</p>
+          <p className="label-stamp bg-warning text-ink inline-block px-2 py-1 mb-10">Why Watchtower Project LLC believes this approach is necessary:</p>
           <div className="overflow-x-auto brutal-border-thick border-paper">
             <table className="w-full text-sm">
               <thead className="bg-paper text-ink">
