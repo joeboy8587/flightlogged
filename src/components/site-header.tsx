@@ -32,6 +32,18 @@ const NAV = [
   { to: "/about", label: "About" },
 ] as const;
 
+// Primary nav shown on desktop; full list stays in the mobile/hamburger sheet.
+const PRIMARY_NAV = [
+  { to: "/", label: "Home" },
+  { to: "/surveillance-grid", label: "Surveillance Grid" },
+  { to: "/live", label: "Live Feed" },
+  { to: "/findings", label: "Findings" },
+  { to: "/reports", label: "Reports" },
+  { to: "/blog", label: "Blog" },
+  { to: "/methodology", label: "Methodology" },
+  { to: "/about", label: "About" },
+] as const;
+
 export function SiteHeader() {
   const [open, setOpen] = useState(false);
   return (
@@ -52,14 +64,14 @@ export function SiteHeader() {
             of Never
           </span>
         </Link>
-        <nav className="hidden xl:flex items-center gap-1 flex-wrap">
-          {NAV.map((n) => (
+        <nav className="hidden lg:flex items-center gap-1 flex-nowrap min-w-0">
+          {PRIMARY_NAV.map((n) => (
             <Link
               key={n.to}
               to={n.to}
               activeOptions={{ exact: n.to === "/" }}
-              className="label-stamp px-2 py-2 text-[11px] hover:bg-warning transition-colors"
-              activeProps={{ className: "label-stamp px-2 py-2 text-[11px] bg-ink text-paper" }}
+              className="label-stamp px-2 py-2 text-[11px] hover:bg-warning transition-colors whitespace-nowrap"
+              activeProps={{ className: "label-stamp px-2 py-2 text-[11px] bg-ink text-paper whitespace-nowrap" }}
               suppressHydrationWarning
             >
               {n.label}
@@ -76,7 +88,7 @@ export function SiteHeader() {
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger
               aria-label="Open menu"
-              className="xl:hidden brutal-border bg-paper p-2 hover:bg-warning transition-colors"
+              className="brutal-border bg-paper p-2 hover:bg-warning transition-colors"
             >
               <Menu className="w-5 h-5" />
             </SheetTrigger>
