@@ -139,6 +139,17 @@ export function Content() {
         shell company for a registered owner.</strong>
       </p>
 
+      <div className="my-8 border border-red-900 bg-black p-6 not-prose">
+        <img 
+          src="/exhibits/dual-identity-exhibit.png" 
+          alt="WATCHTOWER PROJECT — DUAL IDENTITY EXHIBIT. N916NT / ACAE33: The Same Aircraft, Two Masks. Shows speed comparison (surveillance mode 0.0 knots vs civilian mode 71.5 knots), altitude comparison, detection volume comparison (2.7 million in surveillance mode vs 69,696 in civilian mode), and detailed metrics table." 
+          className="w-full"
+        />
+        <p className="text-xs text-gray-500 mt-2 italic">
+          WATCHTOWER PROJECT — DUAL IDENTITY EXHIBIT | Evidence Chain: SHA-256 Verified | Source: Flightlogged Database | One aircraft. Two transponder identities. 39.6× more detections in surveillance mode.
+        </p>
+      </div>
+
       <h3>2. The carrier-based AWACS over Bakersfield (E-2 Hawkeye)</h3>
       <p>
         The Northrop Grumman E-2 Hawkeye is designed to defend naval fleets from missile attack over the 
