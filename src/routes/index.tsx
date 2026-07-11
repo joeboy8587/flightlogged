@@ -59,10 +59,11 @@ function Home() {
       {/* MANIFESTO — the witness speaks */}
       <section className="bg-ink text-paper border-b-4 border-warning">
         <div className="max-w-[1400px] mx-auto px-4 py-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
-          <span className="label-stamp bg-warning text-ink px-2 py-1">This site translates. It does not editorialize.</span>
+          <span className="label-stamp bg-warning text-ink px-2 py-1">Public data. Machine-chosen. Human-advocated. Verify everything.</span>
           <span className="opacity-90">
-            Every claim links to a hash, a public record, and the raw ADS-B broadcast.
-            The machine is the evidence — this page is the testimony, in plain English.
+            Machine-generated evidence from public ADS-B broadcasts is presented alongside
+            editorial analysis by <strong>Watchtower Project LLC</strong>. The data is
+            independently verifiable. The analysis is our organization&apos;s protected advocacy position.
           </span>
         </div>
       </section>
