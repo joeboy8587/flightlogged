@@ -5,6 +5,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
 import { breadcrumbScript } from "@/lib/breadcrumbs";
 import { getSurveillanceGridVerification } from "@/lib/surveillance-grid.functions";
+import n916ntExhibit from "@/assets/n916nt-dual-identity.png.asset.json";
 
 const crumbs = [{ label: "Home", href: "/" }, { label: "Surveillance Grid" }];
 
@@ -282,6 +283,86 @@ function SurveillanceGrid() {
           </div>
         </section>
       )}
+
+      {/* DUAL IDENTITY EXHIBIT */}
+      <section className="border-b-4 border-ink bg-paper">
+        <div className="max-w-[1400px] mx-auto px-4 py-16">
+          <div className="label-stamp bg-alert text-paper inline-block px-2 py-1 mb-3">
+            Exhibit · WTPR-2026-0626 · Dual Identity
+          </div>
+          <h2 className="text-4xl sm:text-5xl mb-4">
+            N916NT / ACAE33 — the same aircraft, two masks.
+          </h2>
+          <p className="text-lg max-w-4xl mb-6">
+            A single Cessna 172S Skyhawk SP, registered to <b>9K AIR LLC (Delaware)</b>, appears in the
+            quiet-math database under two different transponder identities over the same airspace. In
+            {" "}<b>surveillance mode</b> (<span className="font-mono">hex: acae33</span>) it logs 2.76M
+            detections at 600 ft MSL and 0.0 knots — hovering. In <b>civilian mode</b>
+            {" "}(<span className="font-mono">hex: ACAE33</span>) it logs 69,696 detections at 2,016 ft
+            MSL and 71.5 knots — normal flight. Same aircraft. Same owner. Same city.
+          </p>
+          <figure className="brutal-border-thick bg-ink p-2 mb-4">
+            <img
+              src={n916ntExhibit.url}
+              alt="Watchtower Project Dual Identity Exhibit: N916NT / ACAE33 comparison of surveillance-mode vs civilian-mode telemetry"
+              className="w-full h-auto block"
+              loading="lazy"
+            />
+            <figcaption className="label-stamp text-paper text-[10px] p-2 opacity-80">
+              Evidence Chain: SHA-256 verified · Classification WTPR-2026-0626 · Source: quiet-math ML
+            </figcaption>
+          </figure>
+          <p className="text-sm font-mono opacity-70">
+            "A Cessna 172 doesn't hover at 0.1 knots over a city for 2.7 million detections by accident."
+          </p>
+        </div>
+      </section>
+
+      {/* SCOPE + PUBLIC AIRCRAFT CAVEAT */}
+      <section className="border-b-4 border-ink bg-warning/20">
+        <div className="max-w-[1400px] mx-auto px-4 py-16">
+          <div className="label-stamp bg-ink text-paper inline-block px-2 py-1 mb-3">
+            Scope & Legal Caveat — read before citing
+          </div>
+          <h2 className="text-4xl sm:text-5xl mb-6">
+            What KCSO's own manual says — and what our classifier does not yet know.
+          </h2>
+          <div className="grid md:grid-cols-2 gap-4">
+            <article className="brutal-border-thick bg-paper p-6">
+              <div className="label-stamp mb-2 opacity-70">Scope of KCSO-specific claims</div>
+              <h3 className="text-2xl mb-2">KCSO policies apply only to KCSO aircraft.</h3>
+              <p className="text-sm mb-3">
+                Any claim on this site that cites the Kern County Sheriff's Office <i>Air Support
+                Policies</i> manual applies exclusively to KCSO-operated tail numbers — currently
+                {" "}<b>N912KC, N913KC, N911KC, and N597E</b>. Policy citations against those
+                aircraft are the Sheriff's own published rules, not our interpretation.
+              </p>
+              <p className="text-sm">
+                <b>Stricter internal floor:</b> KCSO's manual sets a fixed-wing en-route floor of
+                {" "}<b>1,000 ft AGL (day) / 2,000 ft AGL (night)</b> — tighter than FAR 91.119. A
+                KCSO fixed-wing aircraft logged below those altitudes en route (not landing or
+                training) violates the Sheriff's own published policy.
+              </p>
+            </article>
+            <article className="brutal-border-thick bg-paper p-6">
+              <div className="label-stamp mb-2 opacity-70">Public-aircraft caveat (49 U.S.C. §40125)</div>
+              <h3 className="text-2xl mb-2">Not every low pass is a FAR 91.119 violation.</h3>
+              <p className="text-sm mb-3">
+                KCSO's manual explicitly classifies its aircraft as <b>public aircraft</b> when
+                conducting a governmental function (law enforcement, patrol, search). Public-aircraft
+                operations are not automatically bound by Part 91 minimums the way civil flights are.
+              </p>
+              <p className="text-sm">
+                Our rule engine currently cannot distinguish "KCSO flight = civil operation
+                (91.119 applies)" from "KCSO flight = public-aircraft operation (91.119 may not
+                apply)." Determining mission type requires FOIA. Until that record is on file, we
+                publish the altitude, the aircraft, and KCSO's own internal floor — and we mark any
+                91.119 label against a government aircraft as <b>pending mission-type confirmation</b>.
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
 
       {/* CTA */}
       <section className="border-b-4 border-ink bg-ink text-paper">
