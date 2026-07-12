@@ -65,6 +65,64 @@ function altClass(alt: number | null) {
   return "";
 }
 
+type KernRow = {
+  icao: string;
+  registration: string | null;
+  owner: string | null;
+  model: string | null;
+  capturedAt: string;
+  altitude: number | null;
+  kernZ: number | null;
+  county: string | null;
+};
+
+function isCritical(r: KernRow): boolean {
+  // Critical = extreme low altitude OR extreme Kern-baseline anomaly
+  if (r.altitude != null && r.altitude < 500) return true;
+  if (r.kernZ != null && r.kernZ >= 3) return true;
+  return false;
+}
+
+function KernCriticalBanner({ rows }: { rows: KernRow[] }) {
+  const criticals = rows.filter(isCritical).slice(0, 5);
+  if (criticals.length === 0) return null;
+  const worst = criticals[0];
+  return (
+    <section
+      role="alert"
+      aria-live="assertive"
+      className="border-b-4 border-ink bg-alert text-paper"
+    >
+      <div className="max-w-[1400px] mx-auto px-4 py-4">
+        <div className="flex items-start gap-4 flex-wrap">
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="w-3 h-3 bg-paper blink" aria-hidden />
+            <span className="label-stamp bg-paper text-alert px-2 py-1">CRITICAL · KERN COUNTY</span>
+          </div>
+          <div className="flex-1 min-w-[260px]">
+            <div className="font-display uppercase text-xl sm:text-2xl leading-tight">
+              {criticals.length} critical low-altitude alert{criticals.length === 1 ? "" : "s"} over Kern County right now.
+            </div>
+            <div className="font-mono text-xs mt-1 opacity-90">
+              Worst: <strong>{worst.registration || worst.icao}</strong>
+              {worst.owner && <> · {worst.owner}</>}
+              {worst.altitude != null && <> · {worst.altitude.toLocaleString()} ft</>}
+              {worst.kernZ != null && <> · Kern z {worst.kernZ.toFixed(1)}</>}
+              {" · "}{fmtTime(worst.capturedAt)}
+            </div>
+          </div>
+          <a
+            href="#kern-alerts"
+            className="label-stamp brutal-border border-paper bg-paper text-alert px-3 py-2 hover:bg-warning hover:text-ink whitespace-nowrap"
+          >
+            See all {criticals.length} →
+          </a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function Live() {
   const { data: s } = useSuspenseQuery(snapQO);
   const { data: low } = useSuspenseQuery(lowAltQO);
