@@ -234,7 +234,7 @@ function Live() {
 
       {/* KERN COUNTY ALERTS — surfaced above LA-volume noise */}
       {showKernAlerts && kern.length > 0 && (
-        <section className="border-b-4 border-ink bg-alert text-paper">
+        <section id="kern-alerts" className="border-b-4 border-ink bg-alert text-paper">
           <div className="max-w-[1400px] mx-auto px-4 py-8">
             <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
               <div>
