@@ -41,10 +41,25 @@ function fmt(n: number) { return n.toLocaleString(); }
 function Home() {
   const { data: s } = useSuspenseQuery(snapshotQO);
   const { data: low } = useSuspenseQuery(lowAltQO);
-  // Top 3 stories — pick the lowest-altitude airborne detections first.
+  // Top 3 stories — lowest-altitude airborne detections, de-duplicated by aircraft.
+  // Filter out likely ground/parked artifacts (altitude 0 with no forward speed)
+  // so we don't publish a landed helicopter as a "sub-500 ft pass over homes".
+  const seenIcao = new Set<string>();
   const stories = [...low]
     .filter((r) => r.altitude != null)
+    .filter((r) => {
+      const alt = r.altitude ?? 0;
+      const spd = (r as { speed?: number | null }).speed ?? null;
+      // Suppress obvious ground positions: 0 ft AND (no speed reported OR < 10 kt).
+      if (alt <= 5 && (spd == null || spd < 10)) return false;
+      return true;
+    })
     .sort((a, b) => (a.altitude ?? 99999) - (b.altitude ?? 99999))
+    .filter((r) => {
+      if (seenIcao.has(r.icao)) return false;
+      seenIcao.add(r.icao);
+      return true;
+    })
     .slice(0, 3);
   const stats = [
     { label: "Detections logged", value: fmt(s.totalDetections), accent: false },
@@ -325,21 +340,26 @@ function Home() {
       {/* DIFFERENCE TABLE */}
       <section className="border-b-4 border-ink bg-ink text-paper">
         <div className="max-w-[1400px] mx-auto px-4 py-20">
-          <h2 className="text-4xl sm:text-6xl mb-4">Why this is different.</h2>
-          <p className="text-lg opacity-80 max-w-2xl mb-4">Existing orgs react. We document continuously, autonomously, and at population scale. Machine-chosen findings, human-advocated conclusions, receipts on every claim.</p>
-          <p className="label-stamp bg-warning text-ink inline-block px-2 py-1 mb-10">Why Watchtower Project LLC believes this approach is necessary:</p>
+          <h2 className="text-4xl sm:text-6xl mb-4">How we complement existing accountability work.</h2>
+          <p className="text-lg opacity-80 max-w-3xl mb-4">
+            Civil liberties orgs, investigative newsrooms, and flight-tracking communities
+            already do essential work. Watchtower Project LLC adds a specific missing layer:
+            continuous, autonomous, population-scale sensor evidence with chain of custody —
+            designed to hand off cleanly to those existing efforts.
+          </p>
+          <p className="label-stamp bg-warning text-ink inline-block px-2 py-1 mb-10">Where our approach fits alongside existing work:</p>
           <div className="overflow-x-auto brutal-border-thick border-paper">
             <table className="w-full text-sm">
               <thead className="bg-paper text-ink">
-                <tr><th className="text-left p-4 label-stamp">Existing</th><th className="text-left p-4 label-stamp bg-warning">The Architecture of Never</th></tr>
+                <tr><th className="text-left p-4 label-stamp">Existing accountability work</th><th className="text-left p-4 label-stamp bg-warning">What Watchtower adds on top</th></tr>
               </thead>
               <tbody className="font-medium">
                 {[
-                  ["ACLU: reacts to violations after they happen", "Predicts and documents in real-time"],
-                  ["EFF: focuses on digital surveillance", "Physical airspace surveillance documented"],
-                  ["Flight tracking hobbyists: no legal framework", "Bradford Hill, chain of custody, court-ready"],
-                  ["ProPublica: investigates after the fact", "Autonomous sensor network, continuous findings"],
-                  ["Individual claims: dismissed as anecdotal", "Population-scale statistical analysis"],
+                  ["Civil liberties litigation (ACLU): responds to documented harms", "Continuous machine-logged evidence, ready to hand to counsel"],
+                  ["Digital-surveillance advocacy (EFF): focus on data and devices", "Physical airspace surveillance, sensor-verified"],
+                  ["Flight-tracking hobbyist communities: excellent raw data, no legal framework", "Bradford Hill causation framework + Merkle chain of custody"],
+                  ["Investigative journalism (ProPublica, etc.): deep post-hoc investigations", "Real-time findings, sourced and hashed for reporters to verify"],
+                  ["Individual complaints: often dismissed as anecdotal", "Population-scale statistical baselines the individual case can be measured against"],
                 ].map(([a, b]) => (
                   <tr key={a} className="border-t border-paper/20"><td className="p-4 opacity-70">{a}</td><td className="p-4 text-warning">{b}</td></tr>
                 ))}
