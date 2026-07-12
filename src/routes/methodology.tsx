@@ -4,7 +4,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
 import { breadcrumbScript } from "@/lib/breadcrumbs";
-import { getSnapshot } from "@/lib/watchtower.functions";
+import { getSnapshot, getRuleMappingVersion } from "@/lib/watchtower.functions";
 import { getFunnelStats, getObjectivityStats, getReviewDismissalCount } from "@/lib/scans.functions";
 import { MlFunnel } from "@/components/ml-funnel";
 import { ObjectivityStat } from "@/components/objectivity-stat";
@@ -13,6 +13,7 @@ const snapshotQO = queryOptions({ queryKey: ["snapshot"], queryFn: () => getSnap
 const funnelQO = queryOptions({ queryKey: ["funnel-stats"], queryFn: () => getFunnelStats(), refetchInterval: 60_000 });
 const objectivityQO = queryOptions({ queryKey: ["objectivity"], queryFn: () => getObjectivityStats(), refetchInterval: 300_000 });
 const dismissalsQO = queryOptions({ queryKey: ["dismissals"], queryFn: () => getReviewDismissalCount() });
+const ruleVerQO = queryOptions({ queryKey: ["rule-mapping-version"], queryFn: () => getRuleMappingVersion() });
 
 const crumbs = [{ label: "Home", href: "/" }, { label: "Methodology" }];
 
@@ -33,6 +34,7 @@ export const Route = createFileRoute("/methodology")({
     context.queryClient.ensureQueryData(funnelQO),
     context.queryClient.ensureQueryData(objectivityQO),
     context.queryClient.ensureQueryData(dismissalsQO),
+    context.queryClient.ensureQueryData(ruleVerQO),
   ]),
   component: Methodology,
 });
@@ -42,6 +44,7 @@ function Methodology() {
   const { data: funnel } = useSuspenseQuery(funnelQO);
   const { data: obj } = useSuspenseQuery(objectivityQO);
   const { data: dismissals } = useSuspenseQuery(dismissalsQO);
+  const { data: ruleVer } = useSuspenseQuery(ruleVerQO);
   const det = s.totalDetections.toLocaleString();
   const ac = s.uniqueAircraft.toLocaleString();
   return (
