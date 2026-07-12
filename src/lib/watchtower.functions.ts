@@ -21,6 +21,60 @@ function isKcsoPolicyCitation(...values: Array<string | null | undefined>): bool
   });
 }
 
+// -----------------------------------------------------------------------------
+// RULE MAPPING VERSION — public audit trail
+// Bump this string whenever we change what regulations the classifier applies.
+// -----------------------------------------------------------------------------
+export const RULE_MAPPING_VERSION = "v2.1 (2026-07-12)";
+export const RULE_MAPPING_CHANGELOG = [
+  {
+    version: "v2.1 (2026-07-12)",
+    change:
+      "Removed 14 CFR §137.53 as a low-altitude 'violation' citation. §137.53 is the pilot/equipment qualification rule for agricultural aircraft over congested areas — it authorizes lower flight during dispensing work, it does not set a floor. Cited only for reference on ag operators; never displayed as a violation.",
+  },
+  {
+    version: "v2.1 (2026-07-12)",
+    change:
+      "Suppressed FAA Part 91 minimum-altitude citations against likely-agricultural operators (registered-owner name pattern) pending Part 137 operating-certificate confirmation. Prevents citing crop-dusting runs as unlawful low flight.",
+  },
+  {
+    version: "v2.0 (2026-07-05)",
+    change:
+      "KCSO_* policy rules restricted to KCSO-operated tails only (N912KC, N913KC, N911KC, N597E).",
+  },
+] as const;
+
+// Public-record heuristic for agricultural (crop-dusting / aerial application)
+// operators. Registered-owner name patterns pulled from the FAA public
+// registry. Not a certification test — a defensive filter to prevent citing
+// routine ag work as a Part 91 minimum-altitude violation until an actual
+// Part 137 operating certificate is confirmed.
+const AG_OPERATOR_NAME_PATTERNS = [
+  /\bAG\b/,
+  /\bAG\s+(SERVICE|AVIATION|AIR)/,
+  /\bAGRICULT/,
+  /CROP\s*DUST/,
+  /AERIAL\s+APPLIC/,
+  /\bDUSTER/,
+  /SPRAY/,
+  /BREAKING\s+WIND/,
+  /\bAERO\s+EQUITIES\b/, // registered ag-adjacent operator — held out until certificate confirmed
+];
+function isLikelyAgOperator(name: string | null | undefined): boolean {
+  if (!name) return false;
+  const s = String(name).toUpperCase();
+  return AG_OPERATOR_NAME_PATTERNS.some((rx) => rx.test(s));
+}
+function is13753(rule: string | null | undefined, source: string | null | undefined): boolean {
+  const t = `${rule ?? ""} ${source ?? ""}`.toUpperCase();
+  return /137\.53|PART\s*137/.test(t);
+}
+
+export const getRuleMappingVersion = createServerFn({ method: "GET" }).handler(async () => ({
+  version: RULE_MAPPING_VERSION,
+  changelog: RULE_MAPPING_CHANGELOG,
+}));
+
 // ---- FAA identity enrichment ----
 export type FaaIdentity = {
   name: string | null;
@@ -154,6 +208,7 @@ export type LowAltDescent = {
   violationRule: string | null;
   violationSource: string | null;
   violationScore: number | null;
+  violationSuppressed: string | null;
   // Translation-layer context (public-record only; ML output untouched)
   totalDetections: number | null;
   tacticalRole: string | null;
@@ -216,6 +271,8 @@ export const getRecentLowAltitude = createServerFn({ method: "GET" }).handler(as
     let best: any = null;
     for (const b of baselines) {
       if (isKcsoPolicyCitation(b.rule_name, b.rule_source) && !isKcsoTail(registration)) continue;
+      // §137.53 is an authorization for ag operators, NOT a floor. Never cite as a violation.
+      if (is13753(b.rule_name, b.rule_source)) continue;
       if (alt < b.min_altitude_violation_ft) {
         if (!best || Number(b.violation_score) > Number(best.violation_score)) best = b;
       }
@@ -260,10 +317,26 @@ export const getRecentLowAltitude = createServerFn({ method: "GET" }).handler(as
       isShellLikely,
       shellReason,
       ...(function () {
-        const v = matchViolation(r.altitude_ft, r.registration);
+        // Suppress Part 91 minimum-altitude citations against likely-ag operators
+        // until Part 137 operating-certificate status is confirmed. Prevents
+        // citing routine crop-dusting or aerial-application runs as violations.
+        const agLikely = isLikelyAgOperator(ownerName);
+        const v = agLikely ? null : matchViolation(r.altitude_ft, r.registration);
         return v
-          ? { violationRule: v.rule_name as string, violationSource: v.rule_source as string, violationScore: Number(v.violation_score) }
-          : { violationRule: null, violationSource: null, violationScore: null };
+          ? {
+              violationRule: v.rule_name as string,
+              violationSource: v.rule_source as string,
+              violationScore: Number(v.violation_score),
+              violationSuppressed: null as string | null,
+            }
+          : {
+              violationRule: null,
+              violationSource: null,
+              violationScore: null,
+              violationSuppressed: agLikely
+                ? "Likely agricultural operator — Part 91 minimum-altitude citation withheld pending Part 137 operating-certificate confirmation."
+                : null,
+            };
       })(),
     });
   });
