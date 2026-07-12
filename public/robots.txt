@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://flightlogged.lovable.app/sitemap.xml
+Sitemap: https://advocacywatch.live/sitemap.xml

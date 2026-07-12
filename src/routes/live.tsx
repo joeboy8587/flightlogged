@@ -29,9 +29,9 @@ export const Route = createFileRoute("/live")({
     { name: "description", content: "Watchtower 2.0 live airspace feed. Every detection, every aircraft, every hour." },
     { property: "og:title", content: "Live Watchtower Feed" },
     { property: "og:description", content: "Real-time civilian airspace surveillance, math-chosen, court-ready." },
-    { property: "og:url", content: "https://flightlogged.lovable.app/live" },
+    { property: "og:url", content: "https://advocacywatch.live/live" },
     ],
-    links: [{ rel: "canonical", href: "https://flightlogged.lovable.app/live" }],
+    links: [{ rel: "canonical", href: "https://advocacywatch.live/live" }],
     scripts: [breadcrumbScript(crumbs)],
   }),
   loader: ({ context }) => Promise.all([

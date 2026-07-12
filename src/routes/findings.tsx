@@ -27,9 +27,9 @@ export const Route = createFileRoute("/findings")({
       { name: "description", content: "Documented airspace anomaly events. Each finding is SHA-256 hashed, timestamped, and Merkle-chained." },
       { property: "og:title", content: "Findings — Architecture of Never" },
       { property: "og:description", content: "Math-chosen anomaly events with chain of custody." },
-      { property: "og:url", content: "https://flightlogged.lovable.app/findings" },
+      { property: "og:url", content: "https://advocacywatch.live/findings" },
     ],
-    links: [{ rel: "canonical", href: "https://flightlogged.lovable.app/findings" }],
+    links: [{ rel: "canonical", href: "https://advocacywatch.live/findings" }],
     scripts: [
       breadcrumbScript(crumbs),
       {
@@ -39,8 +39,8 @@ export const Route = createFileRoute("/findings")({
         "@type": "CollectionPage",
         name: "Findings Archive — The Architecture of Never",
         description: "Documented airspace anomaly events. Each finding is statistically flagged after a 48-hour baseline, SHA-256 hashed, timestamped, and Merkle-chained.",
-        url: "https://flightlogged.lovable.app/findings",
-        isPartOf: { "@type": "WebSite", name: "The Architecture of Never", url: "https://flightlogged.lovable.app" },
+        url: "https://advocacywatch.live/findings",
+        isPartOf: { "@type": "WebSite", name: "The Architecture of Never", url: "https://advocacywatch.live" },
         about: { "@type": "Thing", name: "Civilian airspace accountability findings" },
       }),
       },

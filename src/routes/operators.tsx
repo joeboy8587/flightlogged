@@ -39,9 +39,9 @@ export const Route = createFileRoute("/operators")({
       { name: "description", content: "Resolved aircraft operators observed in the airspace. Shell-company links, agency flags, and total detections — derived from public FAA registry data." },
       { property: "og:title", content: "Operators Directory" },
       { property: "og:description", content: "Resolved aircraft operators with shell-company linkage and detection counts." },
-      { property: "og:url", content: "https://flightlogged.lovable.app/operators" },
+      { property: "og:url", content: "https://advocacywatch.live/operators" },
     ],
-    links: [{ rel: "canonical", href: "https://flightlogged.lovable.app/operators" }],
+    links: [{ rel: "canonical", href: "https://advocacywatch.live/operators" }],
     scripts: [
       breadcrumbScript(crumbs),
       {
@@ -51,7 +51,7 @@ export const Route = createFileRoute("/operators")({
           "@type": "Dataset",
           name: "Canonical Operators Directory",
           description: "Resolved aircraft operators with shell-company links and agency flags.",
-          url: "https://flightlogged.lovable.app/operators",
+          url: "https://advocacywatch.live/operators",
           creator: { "@type": "Organization", name: "The Architecture of Never" },
           isAccessibleForFree: true,
         }),

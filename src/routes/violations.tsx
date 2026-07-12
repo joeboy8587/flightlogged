@@ -24,9 +24,9 @@ export const Route = createFileRoute("/violations")({
       { name: "description", content: "Time-stamped airspace violations with severity, location, and SHA-256 evidence hashes. Public log derived from ADS-B and FAA baselines." },
       { property: "og:title", content: "Violations Log" },
       { property: "og:description", content: "Hashed, geolocated airspace violations against published FAA baselines." },
-      { property: "og:url", content: "https://flightlogged.lovable.app/violations" },
+      { property: "og:url", content: "https://advocacywatch.live/violations" },
     ],
-    links: [{ rel: "canonical", href: "https://flightlogged.lovable.app/violations" }],
+    links: [{ rel: "canonical", href: "https://advocacywatch.live/violations" }],
     scripts: [
       breadcrumbScript(crumbs),
       {
@@ -36,7 +36,7 @@ export const Route = createFileRoute("/violations")({
           "@type": "Dataset",
           name: "Sentinel Violations Log",
           description: "Time-stamped, hashed airspace violations against published FAA regulatory baselines.",
-          url: "https://flightlogged.lovable.app/violations",
+          url: "https://advocacywatch.live/violations",
           creator: { "@type": "Organization", name: "The Architecture of Never" },
           isAccessibleForFree: true,
         }),

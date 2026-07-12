@@ -17,9 +17,9 @@ export const Route = createFileRoute("/reports")({
       },
       { property: "og:title", content: "Reports — Architecture of Never" },
       { property: "og:description", content: "Five years. $57.8M paid. Zero admissions. Read the receipts." },
-      { property: "og:url", content: "https://flightlogged.lovable.app/reports" },
+      { property: "og:url", content: "https://advocacywatch.live/reports" },
     ],
-    links: [{ rel: "canonical", href: "https://flightlogged.lovable.app/reports" }],
+    links: [{ rel: "canonical", href: "https://advocacywatch.live/reports" }],
     scripts: [
       breadcrumbScript(crumbs),
       {
@@ -31,12 +31,12 @@ export const Route = createFileRoute("/reports")({
             headline: r.title,
             description: r.blurb,
             datePublished: r.date,
-            url: `https://flightlogged.lovable.app/reports#${r.slug}`,
+            url: `https://advocacywatch.live/reports#${r.slug}`,
             author: { "@type": "Organization", name: "The Architecture of Never" },
             publisher: {
               "@type": "Organization",
               name: "The Architecture of Never",
-              url: "https://flightlogged.lovable.app",
+              url: "https://advocacywatch.live",
             },
           })),
         }),

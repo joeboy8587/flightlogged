@@ -23,7 +23,7 @@ export const Route = createFileRoute("/")({
       { name: "description", content: "The first civilian-led, AI-assisted airspace accountability organization. Population-scale. Anti-bias. Court-ready." },
       { property: "og:title", content: "The Architecture of Never — Civilian Airspace Watchdog" },
       { property: "og:description", content: "The machine watches. The math chooses. The record stands." },
-      { property: "og:url", content: "https://flightlogged.lovable.app/" },
+      { property: "og:url", content: "https://advocacywatch.live/" },
     ],
   }),
   loader: ({ context }) => Promise.all([

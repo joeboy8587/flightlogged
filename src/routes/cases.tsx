@@ -29,9 +29,9 @@ export const Route = createFileRoute("/cases")({
       { name: "description", content: "Every published civilian airspace case opened by the machine: WTI tier, Bradford-Hill factors, subject aircraft, and public summary. Drawn from quiet-math Neon." },
       { property: "og:title", content: "Case Dossiers" },
       { property: "og:description", content: "Published civilian airspace cases with WTI tier and Bradford-Hill evidence factors." },
-      { property: "og:url", content: "https://flightlogged.lovable.app/cases" },
+      { property: "og:url", content: "https://advocacywatch.live/cases" },
     ],
-    links: [{ rel: "canonical", href: "https://flightlogged.lovable.app/cases" }],
+    links: [{ rel: "canonical", href: "https://advocacywatch.live/cases" }],
     scripts: [
       breadcrumbScript(crumbs),
       {
@@ -41,7 +41,7 @@ export const Route = createFileRoute("/cases")({
           "@type": "Dataset",
           name: "Published Case Dossiers",
           description: "Civilian airspace case dossiers opened and scored by the machine.",
-          url: "https://flightlogged.lovable.app/cases",
+          url: "https://advocacywatch.live/cases",
           creator: { "@type": "Organization", name: "The Architecture of Never" },
           isAccessibleForFree: true,
         }),

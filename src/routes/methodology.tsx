@@ -23,9 +23,9 @@ export const Route = createFileRoute("/methodology")({
     { name: "description", content: "How Watchtower 2.0 learns baselines, scores anomalies, and produces court-ready evidence with zero cherry-picking." },
     { property: "og:title", content: "Methodology — Architecture of Never" },
     { property: "og:description", content: "Baseline learning, statistical anomaly detection, Bradford Hill scoring, SHA-256 chain of custody." },
-    { property: "og:url", content: "https://flightlogged.lovable.app/methodology" },
+    { property: "og:url", content: "https://advocacywatch.live/methodology" },
     ],
-    links: [{ rel: "canonical", href: "https://flightlogged.lovable.app/methodology" }],
+    links: [{ rel: "canonical", href: "https://advocacywatch.live/methodology" }],
     scripts: [breadcrumbScript(crumbs)],
   }),
   loader: ({ context }) => Promise.all([
