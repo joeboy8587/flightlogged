@@ -5,6 +5,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
 import { breadcrumbScript } from "@/lib/breadcrumbs";
 import { getSurveillanceGridVerification } from "@/lib/surveillance-grid.functions";
+import n916ntExhibit from "@/assets/n916nt-dual-identity.png.asset.json";
 
 const crumbs = [{ label: "Home", href: "/" }, { label: "Surveillance Grid" }];
 
