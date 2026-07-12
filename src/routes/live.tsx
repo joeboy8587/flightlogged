@@ -5,7 +5,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
 import { breadcrumbScript } from "@/lib/breadcrumbs";
-import { getSnapshot, getRecentLowAltitude, getRepeatOffenders, getIdentifiedOperators, getLocalAgencyAircraft, getKernAlerts } from "@/lib/watchtower.functions";
+import { getSnapshot, getRecentLowAltitude, getRepeatOffenders, getIdentifiedOperators, getLocalAgencyAircraft, getKernAlerts, getRuleMappingVersion } from "@/lib/watchtower.functions";
 import { getFunnelStats } from "@/lib/scans.functions";
 import { MlFunnel } from "@/components/ml-funnel";
 import { ShareRow } from "@/components/share-row";
@@ -19,6 +19,7 @@ const idQO = queryOptions({ queryKey: ["identified"], queryFn: () => getIdentifi
 const localQO = queryOptions({ queryKey: ["local-agencies"], queryFn: () => getLocalAgencyAircraft() });
 const kernQO = queryOptions({ queryKey: ["kern-alerts"], queryFn: () => getKernAlerts(), refetchInterval: 60000 });
 const funnelQO = queryOptions({ queryKey: ["funnel-stats"], queryFn: () => getFunnelStats(), refetchInterval: 60_000 });
+const ruleVerQO = queryOptions({ queryKey: ["rule-mapping-version"], queryFn: () => getRuleMappingVersion() });
 
 const crumbs = [{ label: "Home", href: "/" }, { label: "Live Feed" }];
 
@@ -42,6 +43,7 @@ export const Route = createFileRoute("/live")({
     context.queryClient.ensureQueryData(localQO),
     context.queryClient.ensureQueryData(kernQO),
     context.queryClient.ensureQueryData(funnelQO),
+    context.queryClient.ensureQueryData(ruleVerQO),
   ]),
   component: Live,
   errorComponent: ({ reset }) => (
@@ -71,6 +73,7 @@ function Live() {
   const { data: local } = useSuspenseQuery(localQO);
   const { data: kern } = useSuspenseQuery(kernQO);
   const { data: funnel } = useSuspenseQuery(funnelQO);
+  const { data: ruleVer } = useSuspenseQuery(ruleVerQO);
 
   const anomalyPct = s.totalDetections > 0 ? Math.round((s.anomalyEvents / s.totalDetections) * 1000) / 10 : 0;
 
