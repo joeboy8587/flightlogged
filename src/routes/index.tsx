@@ -112,7 +112,7 @@ function Home() {
               <li className="flex gap-3"><span className="font-mono text-warning shrink-0">02</span><span>FAA acknowledged. Project <span className="font-mono">T-WP17-FY26-0397</span> assigned; investigator named.</span></li>
               <li className="flex gap-3"><span className="font-mono text-warning shrink-0">03</span><span>Six months of silence. No status update. No disposition. No enforcement announced.</span></li>
               <li className="flex gap-3"><span className="font-mono text-warning shrink-0">04</span><span>Post-acknowledgment incidents continue — logged, hashed, published on this site.</span></li>
-              <li className="flex gap-3"><span className="font-mono text-warning shrink-0">05</span><span>10-business-day status request re-issued to Inspector Maddox &amp; Fresno FSDO.</span></li>
+              <li className="flex gap-3"><span className="font-mono text-warning shrink-0">05</span><span>10-business-day status request re-issued to the assigned FAA inspector and the Fresno FSDO.</span></li>
             </ol>
             <div className="mt-5 pt-4 border-t border-paper/20">
               <div className="label-stamp text-warning mb-2 text-[10px]">Live count · 5-min cache</div>
