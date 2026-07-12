@@ -396,6 +396,22 @@ function Live() {
 
           <div className="overflow-x-auto brutal-border-thick">
             <table className="w-full text-sm">
+              <caption className="caption-bottom p-0 text-left">
+                <div className="bg-ink text-paper p-3 border-b-4 border-warning grid md:grid-cols-3 gap-3 text-[11px]">
+                  <div>
+                    <span className="label-stamp bg-warning text-ink px-1.5 py-0.5 mr-1">MACHINE</span>
+                    Altitude, aircraft, county, timestamp, rule citation. Directly from ADS-B or the FAA registry. No judgment applied.
+                  </div>
+                  <div>
+                    <span className="label-stamp bg-alert text-paper px-1.5 py-0.5 mr-1">EDITORIAL</span>
+                    <b>SHELL-LIKELY</b>, "operating like government", and the interpretive questions are Watchtower Project LLC's advocacy inference from the machine record — not a machine finding.
+                  </div>
+                  <div>
+                    <span className="label-stamp bg-paper text-ink px-1.5 py-0.5 mr-1">Rule map {ruleVer.version}</span>
+                    Public audit trail. Change history on <Link to="/methodology" className="underline text-warning">methodology</Link>.
+                  </div>
+                </div>
+              </caption>
               <thead className="bg-ink text-paper">
                 <tr>
                   <th className="text-left p-3 label-stamp">When</th>
@@ -454,16 +470,29 @@ function Live() {
                           {(r.registrantCity || r.registrantState) && (
                             <div className="opacity-60">{[r.registrantCity, r.registrantState].filter(Boolean).join(", ")}</div>
                           )}
-                          {r.isShellLikely && <div className="mt-1"><span className="label-stamp bg-alert text-paper px-1.5 py-0.5">SHELL-LIKELY</span></div>}
+                          {r.isShellLikely && (
+                            <div className="mt-1 flex items-center gap-1 flex-wrap">
+                              <span className="label-stamp bg-alert text-paper px-1.5 py-0.5">SHELL-LIKELY</span>
+                              <span className="label-stamp bg-paper text-ink brutal-border px-1 py-0.5 text-[9px]">EDITORIAL</span>
+                            </div>
+                          )}
                         </>
                       ) : r.owner ? <span className="opacity-70">{r.owner}</span> : "—"}
                     </td>
                     <td className={`p-3 text-right font-bold ${altClass(r.altitude)}`}>{fmt(r.altitude)} ft</td>
                     <td className="p-3 text-xs">
                       {r.violationSource ? (
-                        <Link to="/rules" onClick={(e) => e.stopPropagation()} className="inline-block bg-alert text-paper px-2 py-1 label-stamp hover:bg-ink">
-                          {r.violationSource}
-                        </Link>
+                        <div className="flex flex-col gap-1">
+                          <Link to="/rules" onClick={(e) => e.stopPropagation()} className="inline-block bg-alert text-paper px-2 py-1 label-stamp hover:bg-ink w-fit">
+                            {r.violationSource}
+                          </Link>
+                          <span className="label-stamp bg-warning text-ink px-1 py-0.5 text-[9px] w-fit">MACHINE</span>
+                        </div>
+                      ) : r.violationSuppressed ? (
+                        <div className="text-[10px] opacity-70 leading-tight max-w-[220px]">
+                          <span className="label-stamp bg-paper text-ink brutal-border px-1 py-0.5 text-[9px] mr-1">SUPPRESSED</span>
+                          {r.violationSuppressed}
+                        </div>
                       ) : <span className="opacity-40">—</span>}
                     </td>
                     <td className="p-3 text-right">{r.speed ? Math.round(r.speed) + " kts" : "—"}</td>
