@@ -160,6 +160,9 @@ function Live() {
       <SiteHeader />
       <SiteBreadcrumbs items={crumbs} />
 
+      {/* CRITICAL KERN COUNTY ALERT BANNER — top-of-page, only when criticals present */}
+      <KernCriticalBanner rows={kern} />
+
       {/* ML FUNNEL — most scans flag zero. Show the pipeline, not just the outputs. */}
       <section className="border-b-4 border-ink bg-paper">
         <div className="max-w-[1400px] mx-auto px-4 py-6">
