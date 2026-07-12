@@ -23,9 +23,9 @@ export const Route = createFileRoute("/methodology")({
     { name: "description", content: "How Watchtower 2.0 learns baselines, scores anomalies, and produces court-ready evidence with zero cherry-picking." },
     { property: "og:title", content: "Methodology — Architecture of Never" },
     { property: "og:description", content: "Baseline learning, statistical anomaly detection, Bradford Hill scoring, SHA-256 chain of custody." },
-    { property: "og:url", content: "https://flightlogged.lovable.app/methodology" },
+    { property: "og:url", content: "https://advocacywatch.live/methodology" },
     ],
-    links: [{ rel: "canonical", href: "https://flightlogged.lovable.app/methodology" }],
+    links: [{ rel: "canonical", href: "https://advocacywatch.live/methodology" }],
     scripts: [breadcrumbScript(crumbs)],
   }),
   loader: ({ context }) => Promise.all([
@@ -259,7 +259,13 @@ function Methodology() {
           <div className="label-stamp bg-ink text-paper inline-block px-2 py-1 mb-3">Statistical rigor</div>
           <h2 className="text-3xl sm:text-4xl mb-4">How anomaly detection works</h2>
           <p className="text-sm max-w-3xl mb-4">
-            Anomalies are detections above the 99th percentile of deviation from the baseline distribution for altitude, timing, or pattern.
+            Anomalies are detections whose deviation from the baseline distribution
+            exceeds the fixed <strong>99th-percentile threshold</strong>. Baselines
+            are computed <strong>per county</strong> (see step 2 above); the
+            99th-percentile cutoff is applied to each county's own distribution, and
+            when an aircraft crosses multiple counties the displayed score is the
+            MAX of its per-county scores. One rule, one cutoff, county-partitioned
+            inputs — that is the whole thresholding scheme.
           </p>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {[

@@ -45,9 +45,9 @@ export const Route = createFileRoute("/threat-index")({
       { name: "description", content: "The Watchtower Threat Index (WTI): tier breakdown and highest-scoring detections, computed from public airspace data." },
       { property: "og:title", content: "Threat Index" },
       { property: "og:description", content: "Watchtower Threat Index tier distribution and top scoring events." },
-      { property: "og:url", content: "https://flightlogged.lovable.app/threat-index" },
+      { property: "og:url", content: "https://advocacywatch.live/threat-index" },
     ],
-    links: [{ rel: "canonical", href: "https://flightlogged.lovable.app/threat-index" }],
+    links: [{ rel: "canonical", href: "https://advocacywatch.live/threat-index" }],
     scripts: [
       breadcrumbScript(crumbs),
       {
@@ -57,7 +57,7 @@ export const Route = createFileRoute("/threat-index")({
           "@type": "Dataset",
           name: "Watchtower Threat Index (WTI)",
           description: "Per-detection threat scores and tier classifications across all observed airspace events.",
-          url: "https://flightlogged.lovable.app/threat-index",
+          url: "https://advocacywatch.live/threat-index",
           creator: { "@type": "Organization", name: "The Architecture of Never" },
           isAccessibleForFree: true,
         }),

@@ -21,9 +21,9 @@ export const Route = createFileRoute("/ml-detections")({
       { name: "description", content: "Machine-learning flagged airspace anomalies with model name, version, confidence and validation status." },
       { property: "og:title", content: "ML Anomaly Detections" },
       { property: "og:description", content: "Transparent ML-flagged anomalies — model name and version disclosed for every detection." },
-      { property: "og:url", content: "https://flightlogged.lovable.app/ml-detections" },
+      { property: "og:url", content: "https://advocacywatch.live/ml-detections" },
     ],
-    links: [{ rel: "canonical", href: "https://flightlogged.lovable.app/ml-detections" }],
+    links: [{ rel: "canonical", href: "https://advocacywatch.live/ml-detections" }],
     scripts: [
       breadcrumbScript(crumbs),
       {
@@ -33,7 +33,7 @@ export const Route = createFileRoute("/ml-detections")({
           "@type": "Dataset",
           name: "ML Anomaly Detections",
           description: "ML-classified airspace anomalies with disclosed model name, version, and confidence.",
-          url: "https://flightlogged.lovable.app/ml-detections",
+          url: "https://advocacywatch.live/ml-detections",
           creator: { "@type": "Organization", name: "The Architecture of Never" },
           isAccessibleForFree: true,
         }),

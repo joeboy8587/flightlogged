@@ -80,9 +80,9 @@ export const Route = createFileRoute("/coordination")({
         content:
           "The sky doesn't read the FAA registry. It records where the metal goes. Operational-role analysis with § 1983 and RICO theory mapping.",
       },
-      { property: "og:url", content: "https://flightlogged.lovable.app/coordination" },
+      { property: "og:url", content: "https://advocacywatch.live/coordination" },
     ],
-    links: [{ rel: "canonical", href: "https://flightlogged.lovable.app/coordination" }],
+    links: [{ rel: "canonical", href: "https://advocacywatch.live/coordination" }],
     scripts: [
       breadcrumbScript(crumbs),
       {
@@ -93,7 +93,7 @@ export const Route = createFileRoute("/coordination")({
           name: "Behavioral Coordination Index",
           description:
             "Aircraft classified by operational role based on observed telemetry coordination with the government state-actor baseline.",
-          url: "https://flightlogged.lovable.app/coordination",
+          url: "https://advocacywatch.live/coordination",
           creator: { "@type": "Organization", name: "The Architecture of Never" },
           isAccessibleForFree: true,
         }),

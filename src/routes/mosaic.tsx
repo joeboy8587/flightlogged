@@ -36,7 +36,7 @@ export const Route = createFileRoute("/mosaic")({
       { property: "og:title", content: "Surveillance Mosaic — Architecture of Never" },
       { property: "og:description", content: "Six independent surveillance layers stacked on one map." },
     ],
-    links: [{ rel: "canonical", href: "https://flightlogged.lovable.app/mosaic" }],
+    links: [{ rel: "canonical", href: "https://advocacywatch.live/mosaic" }],
   }),
   loader: ({ context }) => Promise.all([
     context.queryClient.ensureQueryData(densityQO()),

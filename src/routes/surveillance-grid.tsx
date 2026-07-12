@@ -29,11 +29,11 @@ export const Route = createFileRoute("/surveillance-grid")({
         content:
           "KCSO, three branches of the U.S. military, shell companies, and medical cover. 67,858 violations. 187,942 convergences. Verified.",
       },
-      { property: "og:url", content: "https://flightlogged.lovable.app/surveillance-grid" },
+      { property: "og:url", content: "https://advocacywatch.live/surveillance-grid" },
       { property: "og:type", content: "article" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
-    links: [{ rel: "canonical", href: "https://flightlogged.lovable.app/surveillance-grid" }],
+    links: [{ rel: "canonical", href: "https://advocacywatch.live/surveillance-grid" }],
     scripts: [breadcrumbScript(crumbs)],
   }),
   loader: ({ context }) => context.queryClient.ensureQueryData(verifyQO),

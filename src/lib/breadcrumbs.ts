@@ -1,4 +1,4 @@
-const BASE = "https://flightlogged.lovable.app";
+const BASE = "https://advocacywatch.live";
 
 export type Crumb = { label: string; href?: string };
 

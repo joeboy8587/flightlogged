@@ -23,7 +23,7 @@ export const Route = createFileRoute("/podcasts")({
       { property: "og:title", content: "AI Podcasts — Architecture of Never" },
       { property: "og:description", content: "Daily AI-narrated airspace briefings. Hash-fingerprinted, court-ready." },
     ],
-    links: [{ rel: "canonical", href: "https://flightlogged.lovable.app/podcasts" }],
+    links: [{ rel: "canonical", href: "https://advocacywatch.live/podcasts" }],
   }),
   loader: ({ context }) => context.queryClient.ensureQueryData(listQO),
   component: PodcastsPage,
