@@ -49,7 +49,7 @@ function Home() {
     .filter((r) => r.altitude != null)
     .filter((r) => {
       const alt = r.altitude ?? 0;
-      const spd = (r as { speed?: number | null }).speed ?? null;
+      const spd = r.speed ?? null;
       // Suppress obvious ground positions: 0 ft AND (no speed reported OR < 10 kt).
       if (alt <= 5 && (spd == null || spd < 10)) return false;
       return true;
