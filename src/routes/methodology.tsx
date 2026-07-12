@@ -4,7 +4,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
 import { breadcrumbScript } from "@/lib/breadcrumbs";
-import { getSnapshot } from "@/lib/watchtower.functions";
+import { getSnapshot, getRuleMappingVersion } from "@/lib/watchtower.functions";
 import { getFunnelStats, getObjectivityStats, getReviewDismissalCount } from "@/lib/scans.functions";
 import { MlFunnel } from "@/components/ml-funnel";
 import { ObjectivityStat } from "@/components/objectivity-stat";
@@ -13,6 +13,7 @@ const snapshotQO = queryOptions({ queryKey: ["snapshot"], queryFn: () => getSnap
 const funnelQO = queryOptions({ queryKey: ["funnel-stats"], queryFn: () => getFunnelStats(), refetchInterval: 60_000 });
 const objectivityQO = queryOptions({ queryKey: ["objectivity"], queryFn: () => getObjectivityStats(), refetchInterval: 300_000 });
 const dismissalsQO = queryOptions({ queryKey: ["dismissals"], queryFn: () => getReviewDismissalCount() });
+const ruleVerQO = queryOptions({ queryKey: ["rule-mapping-version"], queryFn: () => getRuleMappingVersion() });
 
 const crumbs = [{ label: "Home", href: "/" }, { label: "Methodology" }];
 
@@ -33,6 +34,7 @@ export const Route = createFileRoute("/methodology")({
     context.queryClient.ensureQueryData(funnelQO),
     context.queryClient.ensureQueryData(objectivityQO),
     context.queryClient.ensureQueryData(dismissalsQO),
+    context.queryClient.ensureQueryData(ruleVerQO),
   ]),
   component: Methodology,
 });
@@ -42,6 +44,7 @@ function Methodology() {
   const { data: funnel } = useSuspenseQuery(funnelQO);
   const { data: obj } = useSuspenseQuery(objectivityQO);
   const { data: dismissals } = useSuspenseQuery(dismissalsQO);
+  const { data: ruleVer } = useSuspenseQuery(ruleVerQO);
   const det = s.totalDetections.toLocaleString();
   const ac = s.uniqueAircraft.toLocaleString();
   return (
@@ -379,6 +382,62 @@ record003  →  hash(003)  ─┬────►  hash( merkle_002 + hash(003) )
             <div className="brutal-border-thick border-paper p-4 bg-paper text-ink">
               <div className="label-stamp mb-1">Review dismissals</div>
               <div className="font-mono text-sm">{dismissals.month} dismissed in 30d · {dismissals.total} total published.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 10. Rule mapping version + public corrections log */}
+      <section className="border-b-4 border-ink bg-warning">
+        <div className="max-w-[1400px] mx-auto px-4 py-12">
+          <div className="label-stamp bg-ink text-paper inline-block px-2 py-1 mb-3">Rule mapping · public audit trail</div>
+          <div className="flex flex-wrap items-baseline gap-4 mb-4">
+            <h2 className="text-3xl sm:text-4xl">Corrections log</h2>
+            <span className="label-stamp bg-ink text-paper px-2 py-1 font-mono">Current: {ruleVer.version}</span>
+          </div>
+          <p className="text-sm max-w-3xl mb-6">
+            Every change to what regulations the classifier applies is versioned and
+            posted here — the way we already version the Watchtower Threat Index (WTI).
+            When we catch a misclassification, the correction goes on the record instead
+            of being silently edited. That is itself a transparency asset.
+          </p>
+          <div className="brutal-border-thick bg-paper text-ink">
+            <table className="w-full text-sm">
+              <thead className="bg-ink text-paper">
+                <tr>
+                  <th className="text-left p-3 label-stamp w-40">Version</th>
+                  <th className="text-left p-3 label-stamp">Change</th>
+                </tr>
+              </thead>
+              <tbody className="font-mono">
+                {ruleVer.changelog.map((c, i) => (
+                  <tr key={i} className="border-t border-ink/20 align-top">
+                    <td className="p-3 font-bold">{c.version}</td>
+                    <td className="p-3 text-xs leading-relaxed">{c.change}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="mt-6 grid md:grid-cols-2 gap-4">
+            <div className="brutal-border-thick bg-paper text-ink p-4">
+              <div className="label-stamp bg-alert text-paper inline-block px-2 py-1 mb-2">Machine vs Editorial — how to read</div>
+              <ul className="text-sm space-y-2">
+                <li><span className="label-stamp bg-warning text-ink px-1.5 py-0.5 mr-1">MACHINE</span> Altitude, tail, county, timestamp, rule citation, hash. Directly from ADS-B or the FAA registry.</li>
+                <li><span className="label-stamp bg-alert text-paper px-1.5 py-0.5 mr-1">EDITORIAL</span> "SHELL-LIKELY", "operating like government", and the interpretive questions. Watchtower Project LLC's advocacy inference — not a machine finding.</li>
+                <li><span className="label-stamp bg-paper text-ink brutal-border px-1.5 py-0.5 mr-1">SUPPRESSED</span> A rule the classifier would otherwise cite, withheld pending confirmation (e.g. Part 137 operating-certificate status for ag operators). Shown transparently, not deleted.</li>
+              </ul>
+            </div>
+            <div className="brutal-border-thick bg-paper text-ink p-4">
+              <div className="label-stamp bg-ink text-paper inline-block px-2 py-1 mb-2">Inference-bucket precision &amp; recall — pending</div>
+              <p className="text-sm">
+                The "operating like local government" bucket is <strong>pattern-matched inference</strong>,
+                not a raw threshold detection. It deserves its own precision/recall
+                disclosure alongside the baseline 99th-percentile stats. We are
+                assembling the labeled evaluation set now; the confusion matrix will
+                publish here, and the inference-bucket rows will carry a{" "}
+                <code className="font-mono">classification_confidence</code> score when it does.
+              </p>
             </div>
           </div>
         </div>
