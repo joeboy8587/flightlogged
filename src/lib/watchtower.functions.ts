@@ -147,6 +147,12 @@ export type WatchSnapshot = {
   biometricEvents: number;
   correlatedEvents: number;
   unifiedEvents: number;
+  // AOI-scoped counts (primary AO: Kern, Tulare, Kings, Fresno, San Bernardino).
+  // Presented alongside global counts so the headline reflects the airspace
+  // this project actually monitors, not the total sensor reach.
+  aoiTotalDetections: number;
+  aoiUniqueAircraft: number;
+  aoiAnomalyEvents: number;
 };
 
 export const getSnapshot = createServerFn({ method: "GET" }).handler(async (): Promise<WatchSnapshot> => {
@@ -154,16 +160,29 @@ export const getSnapshot = createServerFn({ method: "GET" }).handler(async (): P
     totalDetections: 0, uniqueAircraft: 0, anomalyEvents: 0, convergenceEvents: 0,
     lastDetectionAt: null, windowHours: 0,
     flightDetections: 0, biometricEvents: 0, correlatedEvents: 0, unifiedEvents: 0,
+    aoiTotalDetections: 0, aoiUniqueAircraft: 0, aoiAnomalyEvents: 0,
   };
   try {
     const w = watchtower();
-    const [d, a, an, cv, vc, mb] = await Promise.all([
+    const [d, a, an, cv, vc, mb, aoiD, aoiA, aoiAn] = await Promise.all([
       w`SELECT COUNT(*)::int AS c, MAX(captured_at) AS last, MIN(captured_at) AS first FROM detections`,
       w`SELECT COUNT(DISTINCT icao_hex)::int AS c FROM detections`,
       w`SELECT COUNT(*)::int AS c FROM anomaly_events`,
       w`SELECT COUNT(*)::int AS c FROM convergence_events`,
       w`SELECT COUNT(*)::int AS c FROM violation_classifications`,
       w`SELECT COUNT(*)::int AS c FROM ml_brain_reports`,
+      w`SELECT COUNT(*)::int AS c FROM detections
+        WHERE county ILIKE '%kern%' OR county ILIKE '%tulare%' OR county ILIKE '%kings%'
+           OR county ILIKE '%fresno%' OR county ILIKE '%san bernardino%'
+           OR county ILIKE '%san_bernardino%' OR county ILIKE '%sanbernardino%'`,
+      w`SELECT COUNT(DISTINCT icao_hex)::int AS c FROM detections
+        WHERE county ILIKE '%kern%' OR county ILIKE '%tulare%' OR county ILIKE '%kings%'
+           OR county ILIKE '%fresno%' OR county ILIKE '%san bernardino%'
+           OR county ILIKE '%san_bernardino%' OR county ILIKE '%sanbernardino%'`,
+      w`SELECT COUNT(*)::int AS c FROM anomaly_events
+        WHERE county ILIKE '%kern%' OR county ILIKE '%tulare%' OR county ILIKE '%kings%'
+           OR county ILIKE '%fresno%' OR county ILIKE '%san bernardino%'
+           OR county ILIKE '%san_bernardino%' OR county ILIKE '%sanbernardino%'`,
     ]);
     const lastRaw = d[0]?.last ?? null;
     const firstRaw = d[0]?.first ?? null;
@@ -185,6 +204,9 @@ export const getSnapshot = createServerFn({ method: "GET" }).handler(async (): P
       biometricEvents: 0,                       // retired: biometric correlation removed
       correlatedEvents: mb[0]?.c ?? 0,          // ml_brain_reports (human-reviewed)
       unifiedEvents: vc[0]?.c ?? 0,             // violation_classifications
+      aoiTotalDetections: aoiD[0]?.c ?? 0,
+      aoiUniqueAircraft: aoiA[0]?.c ?? 0,
+      aoiAnomalyEvents: aoiAn[0]?.c ?? 0,
     };
   } catch (err) {
     console.error("getSnapshot failed, returning empty snapshot:", err);

@@ -340,16 +340,22 @@ function Live() {
         <div className="max-w-[1400px] mx-auto px-4 py-12">
           <div className="label-stamp text-warning mb-4 flex items-center gap-2"><span className="w-2 h-2 bg-alert blink" /> LIVE · Refresh every 30s</div>
           <h1 className="text-5xl sm:text-7xl mb-6">Watchtower 2.0 — Live.</h1>
+          <div className="label-stamp bg-warning text-ink inline-block px-2 py-0.5 mb-3">
+            AOI = Kern · Tulare · Kings · Fresno · San Bernardino
+          </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-0 brutal-border-thick border-paper">
-            {[
-              ["Detections", fmt(s.totalDetections)],
-              ["Unique aircraft", fmt(s.uniqueAircraft)],
-              ["Observation window", `${s.windowHours}h`],
-              ["Anomaly events", fmt(s.anomalyEvents), true],
-            ].map(([label, val, alert], i) => (
-              <div key={String(label)} className={`p-5 ${i < 3 ? "sm:border-r border-paper/30" : ""} ${alert ? "bg-warning text-ink" : ""}`}>
-                <div className="label-stamp opacity-70">{label}</div>
-                <div className="font-mono text-3xl font-bold mt-1">{val}</div>
+            {([
+              { label: "Detections", aoi: fmt(s.aoiTotalDetections), global: fmt(s.totalDetections) },
+              { label: "Unique aircraft", aoi: fmt(s.aoiUniqueAircraft), global: fmt(s.uniqueAircraft) },
+              { label: "Observation window", aoi: `${s.windowHours}h`, global: null as string | null },
+              { label: "Anomaly events", aoi: fmt(s.aoiAnomalyEvents), global: fmt(s.anomalyEvents), alert: true },
+            ]).map((cell, i) => (
+              <div key={cell.label} className={`p-5 ${i < 3 ? "sm:border-r border-paper/30" : ""} ${cell.alert ? "bg-warning text-ink" : ""}`}>
+                <div className="label-stamp opacity-70">{cell.label} <span className="text-alert">(AOI)</span></div>
+                <div className="font-mono text-3xl font-bold mt-1 text-alert">{cell.aoi}</div>
+                {cell.global != null && (
+                  <div className="font-mono text-xs mt-1 opacity-60">/ {cell.global} monitored total</div>
+                )}
               </div>
             ))}
           </div>
@@ -365,8 +371,12 @@ function Live() {
             ))}
           </div>
           <p className="mt-6 max-w-3xl text-sm opacity-80">
-            <strong className="text-warning">0% flagged during baseline — by design.</strong> The system observes
-            for 48 hours to learn what normal looks like before it identifies abnormal. After baseline, math chooses.
+            <strong className="text-warning">AOI headline / global context.</strong> The red numbers count
+            detections inside our Area of Interest — the counties this project was built to watch. The grey
+            "/ monitored total" is every detection our receivers picked up, including LA-basin overflow.
+            Same table, same hashes, just two lenses. <strong className="text-warning">0% flagged during
+            baseline — by design.</strong> The system observes for 48 hours to learn what normal looks like
+            before it identifies abnormal. After baseline, math chooses.
           </p>
         </div>
       </section>
