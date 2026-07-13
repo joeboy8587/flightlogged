@@ -3,8 +3,10 @@ import { createHmac, timingSafeEqual } from "crypto";
 import { watchtower } from "@/lib/neon.server";
 
 // External ingest endpoint: the ML box POSTs one scan artifact per scan.
-// Requires header `x-scan-signature: sha256=<hex>` where the digest is
-// HMAC-SHA256(SCAN_INGEST_SECRET, raw_body).
+// Preferred auth: `x-scan-signature: sha256=<hex>` where the digest is
+// HMAC-SHA256(SCAN_INGEST_SECRET, raw_body). For the field ML box we also
+// accept the shared secret as a HTTPS-only bearer/custom header so a scanner
+// configured with SCAN_INGEST_SECRET can publish without a HMAC wrapper.
 
 type ScanBody = {
   scan_id: string;
@@ -32,6 +34,32 @@ function verify(secret: string, sig: string | null, body: string): boolean {
   } catch { return false; }
 }
 
+function safeEquals(a: string | null, b: string): boolean {
+  if (!a) return false;
+  try {
+    const left = Buffer.from(a.trim());
+    const right = Buffer.from(b.trim());
+    if (left.length !== right.length) return false;
+    return timingSafeEqual(left, right);
+  } catch { return false; }
+}
+
+function bearerToken(value: string | null): string | null {
+  if (!value) return null;
+  const match = value.match(/^Bearer\s+(.+)$/i);
+  return match?.[1]?.trim() || null;
+}
+
+function isAuthorized(secret: string, request: Request, raw: string): boolean {
+  return (
+    verify(secret, request.headers.get("x-scan-signature"), raw) ||
+    verify(secret, request.headers.get("x-hub-signature-256"), raw) ||
+    safeEquals(request.headers.get("x-scan-ingest-secret"), secret) ||
+    safeEquals(request.headers.get("x-ingest-secret"), secret) ||
+    safeEquals(bearerToken(request.headers.get("authorization")), secret)
+  );
+}
+
 export const Route = createFileRoute("/api/public/scans/ingest")({
   server: {
     handlers: {
@@ -39,13 +67,15 @@ export const Route = createFileRoute("/api/public/scans/ingest")({
         const secret = process.env.SCAN_INGEST_SECRET;
         if (!secret) return new Response("Not configured", { status: 500 });
         const raw = await request.text();
-        const sig = request.headers.get("x-scan-signature");
-        if (!verify(secret, sig, raw)) {
-          return new Response("Invalid signature", { status: 401 });
+        if (!isAuthorized(secret, request, raw)) {
+          return Response.json(
+            { ok: false, error: "Invalid SCAN_INGEST_SECRET or scan signature" },
+            { status: 401 },
+          );
         }
         let body: ScanBody;
-        try { body = JSON.parse(raw); } catch { return new Response("Invalid JSON", { status: 400 }); }
-        if (!body.scan_id || !body.ts) return new Response("Missing scan_id or ts", { status: 400 });
+        try { body = JSON.parse(raw); } catch { return Response.json({ ok: false, error: "Invalid JSON" }, { status: 400 }); }
+        if (!body.scan_id || !body.ts) return Response.json({ ok: false, error: "Missing scan_id or ts" }, { status: 400 });
 
         try {
           const w = watchtower();
