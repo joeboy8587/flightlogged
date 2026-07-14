@@ -43,6 +43,7 @@ export const Route = createFileRoute("/live")({
     context.queryClient.ensureQueryData(idQO),
     context.queryClient.ensureQueryData(localQO),
     context.queryClient.ensureQueryData(kernQO),
+    context.queryClient.ensureQueryData(kcsoQO),
     context.queryClient.ensureQueryData(funnelQO),
     context.queryClient.ensureQueryData(ruleVerQO),
   ]),
