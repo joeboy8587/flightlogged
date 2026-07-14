@@ -173,6 +173,7 @@ function Live() {
   const { data: identified } = useSuspenseQuery(idQO);
   const { data: local } = useSuspenseQuery(localQO);
   const { data: kern } = useSuspenseQuery(kernQO);
+  const { data: kcsoActive } = useSuspenseQuery(kcsoQO);
   const { data: funnel } = useSuspenseQuery(funnelQO);
   const { data: ruleVer } = useSuspenseQuery(ruleVerQO);
 
@@ -263,6 +264,10 @@ function Live() {
 
       {/* CRITICAL KERN COUNTY ALERT BANNER — top-of-page, only when criticals present */}
       <KernCriticalBanner rows={kern} />
+
+      {/* KCSO ACTIVE-NOW BANNER — surfaces any KCSO tail airborne in the last 2h,
+          even when altitude is routine and no critical threshold is crossed. */}
+      <KcsoActiveBanner rows={kcsoActive} />
 
       {/* ML FUNNEL — most scans flag zero. Show the pipeline, not just the outputs. */}
       <section className="border-b-4 border-ink bg-paper">
