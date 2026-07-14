@@ -5,7 +5,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
 import { breadcrumbScript } from "@/lib/breadcrumbs";
-import { getSnapshot, getRecentLowAltitude, getRepeatOffenders, getIdentifiedOperators, getLocalAgencyAircraft, getKernAlerts, getRuleMappingVersion } from "@/lib/watchtower.functions";
+import { getSnapshot, getRecentLowAltitude, getRepeatOffenders, getIdentifiedOperators, getLocalAgencyAircraft, getKernAlerts, getRuleMappingVersion, getActiveKcsoAircraft, type KcsoActive } from "@/lib/watchtower.functions";
 import { getFunnelStats } from "@/lib/scans.functions";
 import { MlFunnel } from "@/components/ml-funnel";
 import { ShareRow } from "@/components/share-row";
@@ -18,6 +18,7 @@ const repeatQO = queryOptions({ queryKey: ["repeat"], queryFn: () => getRepeatOf
 const idQO = queryOptions({ queryKey: ["identified"], queryFn: () => getIdentifiedOperators() });
 const localQO = queryOptions({ queryKey: ["local-agencies"], queryFn: () => getLocalAgencyAircraft() });
 const kernQO = queryOptions({ queryKey: ["kern-alerts"], queryFn: () => getKernAlerts(), refetchInterval: 60000 });
+const kcsoQO = queryOptions({ queryKey: ["kcso-active"], queryFn: () => getActiveKcsoAircraft(), refetchInterval: 30000 });
 const funnelQO = queryOptions({ queryKey: ["funnel-stats"], queryFn: () => getFunnelStats(), refetchInterval: 60_000 });
 const ruleVerQO = queryOptions({ queryKey: ["rule-mapping-version"], queryFn: () => getRuleMappingVersion() });
 
@@ -42,6 +43,7 @@ export const Route = createFileRoute("/live")({
     context.queryClient.ensureQueryData(idQO),
     context.queryClient.ensureQueryData(localQO),
     context.queryClient.ensureQueryData(kernQO),
+    context.queryClient.ensureQueryData(kcsoQO),
     context.queryClient.ensureQueryData(funnelQO),
     context.queryClient.ensureQueryData(ruleVerQO),
   ]),
@@ -123,6 +125,48 @@ function KernCriticalBanner({ rows }: { rows: KernRow[] }) {
   );
 }
 
+function KcsoActiveBanner({ rows }: { rows: KcsoActive[] }) {
+  // Show any KCSO tail seen airborne in the last 2 hours, regardless of
+  // altitude / anomaly score. Answers "is KCSO up right now?" directly —
+  // routine KCSO flight at 1,000+ ft over Bakersfield is not "critical" but
+  // is still what people come to this page to see.
+  const airborne = rows.filter((r) => r.onGround !== true);
+  if (airborne.length === 0) return null;
+  return (
+    <section
+      role="status"
+      aria-live="polite"
+      className="border-b-4 border-ink bg-ink text-paper"
+    >
+      <div className="max-w-[1400px] mx-auto px-4 py-4">
+        <div className="flex items-start gap-4 flex-wrap">
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="w-3 h-3 bg-warning blink" aria-hidden />
+            <span className="label-stamp bg-warning text-ink px-2 py-1">KCSO · ACTIVE NOW</span>
+          </div>
+          <div className="flex-1 min-w-[260px] space-y-1">
+            {airborne.map((r) => (
+              <div key={r.registration + r.capturedAt} className="font-mono text-xs">
+                <strong className="text-warning">{r.registration}</strong>
+                {r.altitude != null && <> · {r.altitude.toLocaleString()} ft</>}
+                {r.speed != null && <> · {Math.round(r.speed)} kts</>}
+                {r.county && <> · {r.county}</>}
+                {" · "}last seen {r.minutesAgo === 0 ? "just now" : `${r.minutesAgo} min ago`}
+              </div>
+            ))}
+          </div>
+          <a
+            href="/tail-search?tail=N913KC"
+            className="label-stamp brutal-border border-warning bg-warning text-ink px-3 py-2 hover:bg-alert hover:text-paper whitespace-nowrap"
+          >
+            KCSO tail history →
+          </a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function Live() {
   const { data: s } = useSuspenseQuery(snapQO);
   const { data: low } = useSuspenseQuery(lowAltQO);
@@ -130,6 +174,7 @@ function Live() {
   const { data: identified } = useSuspenseQuery(idQO);
   const { data: local } = useSuspenseQuery(localQO);
   const { data: kern } = useSuspenseQuery(kernQO);
+  const { data: kcsoActive } = useSuspenseQuery(kcsoQO);
   const { data: funnel } = useSuspenseQuery(funnelQO);
   const { data: ruleVer } = useSuspenseQuery(ruleVerQO);
 
@@ -220,6 +265,10 @@ function Live() {
 
       {/* CRITICAL KERN COUNTY ALERT BANNER — top-of-page, only when criticals present */}
       <KernCriticalBanner rows={kern} />
+
+      {/* KCSO ACTIVE-NOW BANNER — surfaces any KCSO tail airborne in the last 2h,
+          even when altitude is routine and no critical threshold is crossed. */}
+      <KcsoActiveBanner rows={kcsoActive} />
 
       {/* ML FUNNEL — most scans flag zero. Show the pipeline, not just the outputs. */}
       <section className="border-b-4 border-ink bg-paper">
