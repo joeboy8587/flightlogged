@@ -5,7 +5,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
 import { breadcrumbScript } from "@/lib/breadcrumbs";
-import { getSnapshot, getRecentLowAltitude, getRepeatOffenders, getIdentifiedOperators, getLocalAgencyAircraft, getKernAlerts, getRuleMappingVersion } from "@/lib/watchtower.functions";
+import { getSnapshot, getRecentLowAltitude, getRepeatOffenders, getIdentifiedOperators, getLocalAgencyAircraft, getKernAlerts, getRuleMappingVersion, getActiveKcsoAircraft, type KcsoActive } from "@/lib/watchtower.functions";
 import { getFunnelStats } from "@/lib/scans.functions";
 import { MlFunnel } from "@/components/ml-funnel";
 import { ShareRow } from "@/components/share-row";
@@ -18,6 +18,7 @@ const repeatQO = queryOptions({ queryKey: ["repeat"], queryFn: () => getRepeatOf
 const idQO = queryOptions({ queryKey: ["identified"], queryFn: () => getIdentifiedOperators() });
 const localQO = queryOptions({ queryKey: ["local-agencies"], queryFn: () => getLocalAgencyAircraft() });
 const kernQO = queryOptions({ queryKey: ["kern-alerts"], queryFn: () => getKernAlerts(), refetchInterval: 60000 });
+const kcsoQO = queryOptions({ queryKey: ["kcso-active"], queryFn: () => getActiveKcsoAircraft(), refetchInterval: 30000 });
 const funnelQO = queryOptions({ queryKey: ["funnel-stats"], queryFn: () => getFunnelStats(), refetchInterval: 60_000 });
 const ruleVerQO = queryOptions({ queryKey: ["rule-mapping-version"], queryFn: () => getRuleMappingVersion() });
 
