@@ -995,6 +995,68 @@ export type KernAlert = {
   kernZ: number | null; // deviation from Kern's own median altitude (low = scary)
 };
 
+// Active KCSO aircraft — any KCSO-operated tail seen in the last N minutes,
+// regardless of altitude / critical thresholds. Answers the question
+// "is KCSO up right now?" directly.
+export type KcsoActive = {
+  registration: string;
+  icao: string | null;
+  capturedAt: string;
+  altitude: number | null;
+  speed: number | null;
+  county: string | null;
+  onGround: boolean | null;
+  minutesAgo: number;
+};
+
+// N913KC = aca2b4. Known KCSO Mode-S codes. Registration column is sometimes
+// blank on raw ADS-B, so we OR-match on hex too.
+const KCSO_ICAO_HEX = ["aca2b4"] as const;
+
+export const getActiveKcsoAircraft = createServerFn({ method: "GET" }).handler(
+  async (): Promise<KcsoActive[]> => {
+    try {
+      const w = watchtower();
+      const tails = KCSO_TAILS as readonly string[];
+      const hexes = KCSO_ICAO_HEX as readonly string[];
+      const rows = (await w`
+        SELECT DISTINCT ON (COALESCE(NULLIF(UPPER(d.registration), ''), UPPER(d.icao_hex)))
+               d.icao_hex, d.registration, d.captured_at, d.altitude_ft,
+               d.speed_kts, d.county, d.on_ground
+        FROM detections d
+        WHERE d.captured_at >= NOW() - INTERVAL '2 hours'
+          AND (UPPER(d.registration) = ANY(${tails})
+               OR LOWER(d.icao_hex) = ANY(${hexes}))
+        ORDER BY COALESCE(NULLIF(UPPER(d.registration), ''), UPPER(d.icao_hex)),
+                 d.captured_at DESC
+      `) as any[];
+      const now = Date.now();
+      return rows.map((r) => {
+        const capturedIso = new Date(r.captured_at).toISOString();
+        const regRaw = String(r.registration ?? "").trim().toUpperCase();
+        const hexRaw = String(r.icao_hex ?? "").trim().toLowerCase();
+        // Prefer registration; otherwise map known hex → tail.
+        const reg = regRaw
+          || (hexRaw === "aca2b4" ? "N913KC" : "")
+          || hexRaw.toUpperCase();
+        return {
+          registration: reg,
+          icao: r.icao_hex ?? null,
+          capturedAt: capturedIso,
+          altitude: r.altitude_ft != null ? Number(r.altitude_ft) : null,
+          speed: r.speed_kts != null ? Number(r.speed_kts) : null,
+          county: r.county ?? null,
+          onGround: r.on_ground ?? null,
+          minutesAgo: Math.max(0, Math.round((now - new Date(capturedIso).getTime()) / 60000)),
+        };
+      });
+    } catch (err) {
+      console.error("getActiveKcsoAircraft failed:", err);
+      return [];
+    }
+  },
+);
+
 export const getKernAlerts = createServerFn({ method: "GET" }).handler(async (): Promise<KernAlert[]> => {
   try {
     const w = watchtower();
