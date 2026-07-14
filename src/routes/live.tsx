@@ -124,6 +124,48 @@ function KernCriticalBanner({ rows }: { rows: KernRow[] }) {
   );
 }
 
+function KcsoActiveBanner({ rows }: { rows: KcsoActive[] }) {
+  // Show any KCSO tail seen airborne in the last 2 hours, regardless of
+  // altitude / anomaly score. Answers "is KCSO up right now?" directly —
+  // routine KCSO flight at 1,000+ ft over Bakersfield is not "critical" but
+  // is still what people come to this page to see.
+  const airborne = rows.filter((r) => r.onGround !== true);
+  if (airborne.length === 0) return null;
+  return (
+    <section
+      role="status"
+      aria-live="polite"
+      className="border-b-4 border-ink bg-ink text-paper"
+    >
+      <div className="max-w-[1400px] mx-auto px-4 py-4">
+        <div className="flex items-start gap-4 flex-wrap">
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="w-3 h-3 bg-warning blink" aria-hidden />
+            <span className="label-stamp bg-warning text-ink px-2 py-1">KCSO · ACTIVE NOW</span>
+          </div>
+          <div className="flex-1 min-w-[260px] space-y-1">
+            {airborne.map((r) => (
+              <div key={r.registration + r.capturedAt} className="font-mono text-xs">
+                <strong className="text-warning">{r.registration}</strong>
+                {r.altitude != null && <> · {r.altitude.toLocaleString()} ft</>}
+                {r.speed != null && <> · {Math.round(r.speed)} kts</>}
+                {r.county && <> · {r.county}</>}
+                {" · "}last seen {r.minutesAgo === 0 ? "just now" : `${r.minutesAgo} min ago`}
+              </div>
+            ))}
+          </div>
+          <a
+            href="/tail-search?tail=N913KC"
+            className="label-stamp brutal-border border-warning bg-warning text-ink px-3 py-2 hover:bg-alert hover:text-paper whitespace-nowrap"
+          >
+            KCSO tail history →
+          </a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function Live() {
   const { data: s } = useSuspenseQuery(snapQO);
   const { data: low } = useSuspenseQuery(lowAltQO);
