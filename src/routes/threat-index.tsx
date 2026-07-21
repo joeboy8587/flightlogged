@@ -388,6 +388,43 @@ WTI                       = 91.12`}</pre>
       <section>
         <div className="max-w-[1400px] mx-auto px-4 py-12">
           <h2 className="text-4xl sm:text-5xl mb-6">Top 25 by WTI score — with score breakdown</h2>
+          {(() => {
+            const rowsWithC = data.top.filter((r) => r.components);
+            if (rowsWithC.length === 0) return null;
+            const keys = ["altitude", "temporal", "convergence", "shell", "repeat"] as const;
+            const avgs = keys.map((k) => {
+              const vals = rowsWithC
+                .map((r) => {
+                  const c = r.components!;
+                  return k === "shell" ? c.shellNetwork : k === "repeat" ? c.repeatFrequency : (c as any)[k];
+                })
+                .filter((v): v is number => typeof v === "number");
+              const mean = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+              return { k, mean: Math.round(mean * 10) / 10 };
+            });
+            return (
+              <div className="brutal-border-thick bg-paper p-5 mb-6">
+                <div className="label-stamp bg-ink text-paper inline-block px-2 py-0.5 mb-3">Score composition · mean across top {rowsWithC.length}</div>
+                <p className="text-xs font-mono opacity-70 mb-3">
+                  Which components are driving the top of the index right now. Each bar is the average value (0–100)
+                  of that component across the highest-scoring events. Weights ship with every row so any third party can reproduce.
+                </p>
+                <div className="grid sm:grid-cols-5 gap-3">
+                  {avgs.map((a) => (
+                    <div key={a.k} className="brutal-border p-3">
+                      <div className="flex items-baseline justify-between mb-1">
+                        <span className="label-stamp text-[10px]">{a.k}</span>
+                        <span className="font-mono text-lg font-bold">{a.mean}</span>
+                      </div>
+                      <div className="h-2 bg-ink/10">
+                        <div className="h-full bg-alert" style={{ width: `${Math.min(100, Math.max(0, a.mean))}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
           <div className="space-y-3">
             {data.top.map((r) => {
               const c = r.components;
