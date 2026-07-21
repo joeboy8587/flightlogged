@@ -507,9 +507,11 @@ function Live() {
               <div className="label-stamp mb-1">Altitude reads "0" or negative</div>
               <p>
                 <strong>0 ft with on-ground = true</strong> means the aircraft just <em>landed</em> (taxi/ramp).
-                A reading <strong>below −100 ft while airborne</strong> is a transponder/barometric{" "}
-                <strong>anomaly or spoof</strong> — we suppress those from this feed and surface them on{" "}
-                <Link to="/ml-detections" className="underline">ML detections</Link>.
+                A reading <strong>below −100 ft while airborne</strong> is an{" "}
+                <strong>unconfirmed anomaly (no RF layer)</strong> — a transponder/barometric outlier that we
+                cannot corroborate against a raw radio-frequency capture. We suppress those from this feed and
+                surface them on <Link to="/ml-detections" className="underline">ML detections</Link>, clearly
+                labeled as unconfirmed until an RF or MLAT source verifies the signal.
               </p>
             </div>
           </div>
