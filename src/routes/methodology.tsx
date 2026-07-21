@@ -5,13 +5,14 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
 import { breadcrumbScript } from "@/lib/breadcrumbs";
 import { getSnapshot, getRuleMappingVersion } from "@/lib/watchtower.functions";
-import { getFunnelStats, getObjectivityStats, getReviewDismissalCount } from "@/lib/scans.functions";
+import { getFunnelStats, getObjectivityStats, getObjectivityStatsAoi, getReviewDismissalCount } from "@/lib/scans.functions";
 import { MlFunnel } from "@/components/ml-funnel";
 import { ObjectivityStat } from "@/components/objectivity-stat";
 
 const snapshotQO = queryOptions({ queryKey: ["snapshot"], queryFn: () => getSnapshot() });
 const funnelQO = queryOptions({ queryKey: ["funnel-stats"], queryFn: () => getFunnelStats(), refetchInterval: 60_000 });
 const objectivityQO = queryOptions({ queryKey: ["objectivity"], queryFn: () => getObjectivityStats(), refetchInterval: 300_000 });
+const objectivityAoiQO = queryOptions({ queryKey: ["objectivity-aoi"], queryFn: () => getObjectivityStatsAoi(), refetchInterval: 300_000 });
 const dismissalsQO = queryOptions({ queryKey: ["dismissals"], queryFn: () => getReviewDismissalCount() });
 const ruleVerQO = queryOptions({ queryKey: ["rule-mapping-version"], queryFn: () => getRuleMappingVersion() });
 
@@ -33,6 +34,7 @@ export const Route = createFileRoute("/methodology")({
     context.queryClient.ensureQueryData(snapshotQO),
     context.queryClient.ensureQueryData(funnelQO),
     context.queryClient.ensureQueryData(objectivityQO),
+    context.queryClient.ensureQueryData(objectivityAoiQO),
     context.queryClient.ensureQueryData(dismissalsQO),
     context.queryClient.ensureQueryData(ruleVerQO),
   ]),
@@ -43,6 +45,7 @@ function Methodology() {
   const { data: s } = useSuspenseQuery(snapshotQO);
   const { data: funnel } = useSuspenseQuery(funnelQO);
   const { data: obj } = useSuspenseQuery(objectivityQO);
+  const { data: objAoi } = useSuspenseQuery(objectivityAoiQO);
   const { data: dismissals } = useSuspenseQuery(dismissalsQO);
   const { data: ruleVer } = useSuspenseQuery(ruleVerQO);
   const det = s.totalDetections.toLocaleString();
@@ -62,9 +65,17 @@ function Methodology() {
           </p>
 
           <div className="mt-8 grid lg:grid-cols-2 gap-4">
-            <ObjectivityStat stats={obj} />
+            <ObjectivityStat stats={obj} scope="Global" />
+            <ObjectivityStat stats={objAoi} scope="AOI" />
+          </div>
+          <div className="mt-4">
             <MlFunnel stats={funnel} />
           </div>
+          <p className="mt-3 text-xs font-mono opacity-70 max-w-3xl">
+            <strong>Detection counting.</strong> One "detection" = one ADS-B / MLAT position report.
+            A single aircraft loitering for an hour can generate thousands of detections.
+            Tail pages and county tallies count detections, not sorties. Sortie / event counts appear on <a href="/threat-index" className="underline">/threat-index</a> as WTI events.
+          </p>
 
           <div className="mt-4 brutal-border p-4 bg-paper flex flex-wrap items-center gap-x-6 gap-y-2">
             <div className="label-stamp bg-alert text-paper px-2 py-0.5">Human review overrides</div>
