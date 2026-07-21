@@ -180,6 +180,40 @@ export const getObjectivityStats = createServerFn({ method: "GET" }).handler(asy
   }
 });
 
+// Same math, but scoped to the San Joaquin Valley Area of Interest
+// (Kern, Kings, Tulare, Fresno, San Bernardino). Lets us publish
+// "Global vs AOI" side-by-side on /methodology so readers see how
+// the threshold behaves inside our primary observation zone versus
+// everywhere the sensors happen to catch a target.
+const AOI_COUNTIES = ["Kern", "Kings", "Tulare", "Fresno", "San Bernardino"];
+export const getObjectivityStatsAoi = createServerFn({ method: "GET" }).handler(async (): Promise<ObjectivityStats> => {
+  try {
+    const w = watchtower();
+    const [ac, flagged, span] = await Promise.all([
+      w`SELECT COUNT(DISTINCT icao_hex)::int AS c FROM detections WHERE county = ANY(${AOI_COUNTIES})`,
+      w`SELECT COUNT(DISTINCT icao_hex)::int AS c FROM anomaly_events WHERE county = ANY(${AOI_COUNTIES})`,
+      w`SELECT MIN(captured_at) AS first, MAX(captured_at) AS last FROM detections WHERE county = ANY(${AOI_COUNTIES})`,
+    ]);
+    const unique = Number(ac[0]?.c ?? 0);
+    const flag = Number(flagged[0]?.c ?? 0);
+    const first = span[0]?.first ? new Date(span[0].first) : null;
+    const last = span[0]?.last ? new Date(span[0].last) : null;
+    const hours = first && last ? Math.round(((last.getTime() - first.getTime()) / 36e5) * 10) / 10 : 0;
+    const never = Math.max(0, unique - flag);
+    return {
+      uniqueAircraft: unique,
+      everFlagged: flag,
+      neverFlagged: never,
+      everFlaggedPct: unique > 0 ? Math.round((flag / unique) * 1000) / 10 : 0,
+      neverFlaggedPct: unique > 0 ? Math.round((never / unique) * 1000) / 10 : 0,
+      observationHours: hours,
+    };
+  } catch (err) {
+    console.error("getObjectivityStatsAoi failed:", err);
+    return { uniqueAircraft: 0, everFlagged: 0, neverFlagged: 0, everFlaggedPct: 0, neverFlaggedPct: 0, observationHours: 0 };
+  }
+});
+
 export const getReviewDismissalCount = createServerFn({ method: "GET" }).handler(async (): Promise<{ month: number; total: number }> => {
   try {
     await ensureTables();
