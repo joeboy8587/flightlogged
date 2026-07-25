@@ -155,7 +155,13 @@ export type WatchSnapshot = {
   aoiAnomalyEvents: number;
 };
 
+let __snapshotCache: { at: number; data: WatchSnapshot } | null = null;
+const SNAPSHOT_TTL_MS = 60_000;
+
 export const getSnapshot = createServerFn({ method: "GET" }).handler(async (): Promise<WatchSnapshot> => {
+  if (__snapshotCache && Date.now() - __snapshotCache.at < SNAPSHOT_TTL_MS) {
+    return __snapshotCache.data;
+  }
   const empty: WatchSnapshot = {
     totalDetections: 0, uniqueAircraft: 0, anomalyEvents: 0, convergenceEvents: 0,
     lastDetectionAt: null, windowHours: 0,
@@ -164,8 +170,13 @@ export const getSnapshot = createServerFn({ method: "GET" }).handler(async (): P
   };
   try {
     const w = watchtower();
-    const [d, a, an, cv, vc, mb, aoiD, aoiA, aoiAn] = await Promise.all([
-      w`SELECT COUNT(*)::int AS c, MAX(captured_at) AS last, MIN(captured_at) AS first FROM detections`,
+    // Use reltuples estimate for detections total (planner stat, ~instant) —
+    // full COUNT(*) on 4.7M+ rows takes seconds via the Neon HTTP driver and
+    // was the primary cause of SSR "signal lost" timeouts. All other counts
+    // are on small tables and stay accurate.
+    const [dEst, dRange, a, an, cv, vc, mb, aoiD, aoiA, aoiAn] = await Promise.all([
+      w`SELECT GREATEST(reltuples, 0)::bigint AS c FROM pg_class WHERE relname = 'detections'`,
+      w`SELECT MAX(captured_at) AS last, MIN(captured_at) AS first FROM detections`,
       w`SELECT COUNT(DISTINCT icao_hex)::int AS c FROM detections`,
       w`SELECT COUNT(*)::int AS c FROM anomaly_events`,
       w`SELECT COUNT(*)::int AS c FROM convergence_events`,
@@ -184,6 +195,7 @@ export const getSnapshot = createServerFn({ method: "GET" }).handler(async (): P
            OR county ILIKE '%fresno%' OR county ILIKE '%san bernardino%'
            OR county ILIKE '%san_bernardino%' OR county ILIKE '%sanbernardino%'`,
     ]);
+    const d = [{ c: Number(dEst[0]?.c ?? 0), last: dRange[0]?.last ?? null, first: dRange[0]?.first ?? null }];
     const lastRaw = d[0]?.last ?? null;
     const firstRaw = d[0]?.first ?? null;
     const last = lastRaw ? new Date(lastRaw).toISOString() : null;
@@ -191,7 +203,7 @@ export const getSnapshot = createServerFn({ method: "GET" }).handler(async (): P
     const windowHours = first && lastRaw
       ? Math.round(((new Date(lastRaw).getTime() - first.getTime()) / 36e5) * 10) / 10
       : 0;
-    return {
+    const snap: WatchSnapshot = {
       totalDetections: d[0]?.c ?? 0,
       uniqueAircraft: a[0]?.c ?? 0,
       anomalyEvents: an[0]?.c ?? 0,
@@ -208,6 +220,8 @@ export const getSnapshot = createServerFn({ method: "GET" }).handler(async (): P
       aoiUniqueAircraft: aoiA[0]?.c ?? 0,
       aoiAnomalyEvents: aoiAn[0]?.c ?? 0,
     };
+    __snapshotCache = { at: Date.now(), data: snap };
+    return snap;
   } catch (err) {
     console.error("getSnapshot failed, returning empty snapshot:", err);
     return empty;
