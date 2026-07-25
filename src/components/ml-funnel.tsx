@@ -1,4 +1,5 @@
 import type { FunnelStats } from "@/lib/scans.functions";
+import { fmtClock } from "@/lib/format";
 
 export function MlFunnel({ stats, compact = false }: { stats: FunnelStats; compact?: boolean }) {
   const steps = [
@@ -15,8 +16,8 @@ export function MlFunnel({ stats, compact = false }: { stats: FunnelStats; compa
         <div className="label-stamp mb-2 flex items-center justify-between gap-2">
           <span>Latest scan · funnel</span>
           {stats.scanTs && (
-            <span className="opacity-60 font-mono text-[10px]">
-              {new Date(stats.scanTs).toLocaleString()}
+            <span className="opacity-60 font-mono text-[10px]" suppressHydrationWarning>
+              {fmtClock(stats.scanTs)}
             </span>
           )}
         </div>
