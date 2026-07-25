@@ -174,9 +174,6 @@ export const getSnapshot = createServerFn({ method: "GET" }).handler(async (): P
     // full COUNT(*) on 4.7M+ rows takes seconds via the Neon HTTP driver and
     // was the primary cause of SSR "signal lost" timeouts. All other counts
     // are on small tables and stay accurate.
-    const aoiWhere = `county ILIKE '%kern%' OR county ILIKE '%tulare%' OR county ILIKE '%kings%'
-           OR county ILIKE '%fresno%' OR county ILIKE '%san bernardino%'
-           OR county ILIKE '%san_bernardino%' OR county ILIKE '%sanbernardino%'`;
     const [dEst, dRange, a, an, cv, vc, mb, aoiD, aoiA, aoiAn] = await Promise.all([
       w`SELECT GREATEST(reltuples, 0)::bigint AS c FROM pg_class WHERE relname = 'detections'`,
       w`SELECT MAX(captured_at) AS last, MIN(captured_at) AS first FROM detections`,
@@ -185,9 +182,18 @@ export const getSnapshot = createServerFn({ method: "GET" }).handler(async (): P
       w`SELECT COUNT(*)::int AS c FROM convergence_events`,
       w`SELECT COUNT(*)::int AS c FROM violation_classifications`,
       w`SELECT COUNT(*)::int AS c FROM ml_brain_reports`,
-      w.unsafe(`SELECT COUNT(*)::int AS c FROM detections WHERE ${aoiWhere}`),
-      w.unsafe(`SELECT COUNT(DISTINCT icao_hex)::int AS c FROM detections WHERE ${aoiWhere}`),
-      w.unsafe(`SELECT COUNT(*)::int AS c FROM anomaly_events WHERE ${aoiWhere}`),
+      w`SELECT COUNT(*)::int AS c FROM detections
+        WHERE county ILIKE '%kern%' OR county ILIKE '%tulare%' OR county ILIKE '%kings%'
+           OR county ILIKE '%fresno%' OR county ILIKE '%san bernardino%'
+           OR county ILIKE '%san_bernardino%' OR county ILIKE '%sanbernardino%'`,
+      w`SELECT COUNT(DISTINCT icao_hex)::int AS c FROM detections
+        WHERE county ILIKE '%kern%' OR county ILIKE '%tulare%' OR county ILIKE '%kings%'
+           OR county ILIKE '%fresno%' OR county ILIKE '%san bernardino%'
+           OR county ILIKE '%san_bernardino%' OR county ILIKE '%sanbernardino%'`,
+      w`SELECT COUNT(*)::int AS c FROM anomaly_events
+        WHERE county ILIKE '%kern%' OR county ILIKE '%tulare%' OR county ILIKE '%kings%'
+           OR county ILIKE '%fresno%' OR county ILIKE '%san bernardino%'
+           OR county ILIKE '%san_bernardino%' OR county ILIKE '%sanbernardino%'`,
     ]);
     const d = [{ c: Number(dEst[0]?.c ?? 0), last: dRange[0]?.last ?? null, first: dRange[0]?.first ?? null }];
     const lastRaw = d[0]?.last ?? null;
