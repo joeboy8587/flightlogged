@@ -132,6 +132,12 @@ function RootShell({ children }: { children: React.ReactNode }) {
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;700&family=JetBrains+Mono:wght@400;700&display=swap"
         />
+        {/* Fix for __name polyfill in case esbuild still injects it */}
+        <script>{`
+          if (typeof __name === 'undefined') {
+            window.__name = (func, name) => func;
+          }
+        `}</script>
       </head>
       <body>
         {children}
