@@ -157,6 +157,7 @@ export type WatchSnapshot = {
 
 let __snapshotCache: { at: number; data: WatchSnapshot } | null = null;
 const SNAPSHOT_TTL_MS = 60_000;
+let __lowAltCache: { at: number; data: LowAltDescent[] } | null = null;
 
 export const getSnapshot = createServerFn({ method: "GET" }).handler(async (): Promise<WatchSnapshot> => {
   if (__snapshotCache && Date.now() - __snapshotCache.at < SNAPSHOT_TTL_MS) {
