@@ -255,6 +255,9 @@ export type LowAltDescent = {
 };
 
 export const getRecentLowAltitude = createServerFn({ method: "GET" }).handler(async (): Promise<LowAltDescent[]> => {
+  if (__lowAltCache && Date.now() - __lowAltCache.at < SNAPSHOT_TTL_MS) {
+    return __lowAltCache.data;
+  }
   const w = watchtower();
   const [rows, baselines] = await Promise.all([
     w`
@@ -277,30 +280,14 @@ export const getRecentLowAltitude = createServerFn({ method: "GET" }).handler(as
       ORDER BY violation_score DESC`,
   ]);
 
-  // ── FIX: Compute coordination partners on-the-fly for aircraft in this result set (rebuild trigger) ──
-  const uniqueIcaos = Array.from(new Set((rows as any[]).map((r: any) => r.icao_hex).filter(Boolean)));
-  let coordMap = new Map<string, string[]>();
-  if (uniqueIcaos.length > 0) {
-    const coordRows = await w`
-      SELECT 
-        d1.icao_hex,
-        ARRAY_AGG(DISTINCT d2.registration) FILTER (WHERE d2.registration IS NOT NULL AND d2.registration != d1.registration) as partners
-      FROM detections d1
-      JOIN detections d2 ON (
-        d1.county = d2.county
-        AND d2.captured_at BETWEEN d1.captured_at - INTERVAL '30 minutes' AND d1.captured_at + INTERVAL '30 minutes'
-        AND d2.altitude_ft BETWEEN d1.altitude_ft - 1000 AND d1.altitude_ft + 1000
-        AND d1.icao_hex != d2.icao_hex
-      )
-      WHERE d1.icao_hex = ANY(${uniqueIcaos}::text[])
-        AND d1.captured_at >= NOW() - INTERVAL '24 hours'
-      GROUP BY d1.icao_hex
-    `;
-    for (const cr of coordRows as any[]) {
-      coordMap.set(cr.icao_hex, cr.partners ?? []);
-    }
-  }
-  // ── END FIX ──
+  // NOTE: The on-the-fly coordination self-join (detections ⋈ detections on
+  // county / ±30 min / ±1000 ft) was doing a Cartesian-scale scan against the
+  // 4.7M-row detections table on every homepage render and reliably timed out
+  // the SSR request (>90s), producing the "signal lost" screen. Coordination
+  // partners for the low-altitude feed now come strictly from precomputed
+  // aircraft_profiles.confirmed_coord_partners; live self-joins belong in a
+  // batch job, not a page render.
+  const coordMap = new Map<string, string[]>();
 
   const matchViolation = (alt: number | null, registration: string | null | undefined) => {
     if (alt == null) return null;
@@ -376,6 +363,9 @@ export const getRecentLowAltitude = createServerFn({ method: "GET" }).handler(as
       })(),
     });
   });
+  const mapped = out;
+  __lowAltCache = { at: Date.now(), data: mapped };
+  return mapped;
 });
 
 export type RegulatoryBaseline = {
