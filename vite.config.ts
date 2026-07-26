@@ -16,5 +16,12 @@ export default defineConfig({
     optimizeDeps: {
       include: ["leaflet.heat"],
     },
+    build: {
+      minify: 'esbuild', // Switch from terser to avoid __name collision
+      target: 'esnext',  // Use modern JS target
+    },
+    esbuild: {
+      keepNames: true,   // Preserve function names so __name isn't injected
+    },
   },
 });
