@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 import { Fragment, useMemo, useState } from "react";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
@@ -22,6 +22,31 @@ const kcsoQO = queryOptions({ queryKey: ["kcso-active"], queryFn: () => getActiv
 const funnelQO = queryOptions({ queryKey: ["funnel-stats"], queryFn: () => getFunnelStats(), refetchInterval: 60_000 });
 const ruleVerQO = queryOptions({ queryKey: ["rule-mapping-version"], queryFn: () => getRuleMappingVersion() });
 
+const EMPTY_SNAPSHOT = {
+  totalDetections: 0,
+  uniqueAircraft: 0,
+  anomalyEvents: 0,
+  convergenceEvents: 0,
+  lastDetectionAt: null,
+  windowHours: 0,
+  flightDetections: 0,
+  biometricEvents: 0,
+  correlatedEvents: 0,
+  unifiedEvents: 0,
+  aoiTotalDetections: 0,
+  aoiUniqueAircraft: 0,
+  aoiAnomalyEvents: 0,
+};
+
+const EMPTY_FUNNEL = {
+  detections: 0,
+  candidates: 0,
+  kinematicHits: 0,
+  handoffs: 0,
+  flagged: 0,
+  scanTs: null,
+};
+
 const crumbs = [{ label: "Home", href: "/" }, { label: "Live Feed" }];
 
 export const Route = createFileRoute("/live")({
@@ -36,17 +61,6 @@ export const Route = createFileRoute("/live")({
     links: [{ rel: "canonical", href: "https://advocacywatch.live/live" }],
     scripts: [breadcrumbScript(crumbs)],
   }),
-  loader: ({ context }) => Promise.all([
-    context.queryClient.ensureQueryData(snapQO),
-    context.queryClient.ensureQueryData(lowAltQO),
-    context.queryClient.ensureQueryData(repeatQO),
-    context.queryClient.ensureQueryData(idQO),
-    context.queryClient.ensureQueryData(localQO),
-    context.queryClient.ensureQueryData(kernQO),
-    context.queryClient.ensureQueryData(kcsoQO),
-    context.queryClient.ensureQueryData(funnelQO),
-    context.queryClient.ensureQueryData(ruleVerQO),
-  ]),
   component: Live,
   errorComponent: ({ reset }) => (
     <div className="min-h-screen bg-paper"><SiteHeader />
@@ -168,15 +182,16 @@ function KcsoActiveBanner({ rows }: { rows: KcsoActive[] }) {
 }
 
 function Live() {
-  const { data: s } = useSuspenseQuery(snapQO);
-  const { data: low } = useSuspenseQuery(lowAltQO);
-  const { data: repeat } = useSuspenseQuery(repeatQO);
-  const { data: identified } = useSuspenseQuery(idQO);
-  const { data: local } = useSuspenseQuery(localQO);
-  const { data: kern } = useSuspenseQuery(kernQO);
-  const { data: kcsoActive } = useSuspenseQuery(kcsoQO);
-  const { data: funnel } = useSuspenseQuery(funnelQO);
-  const { data: ruleVer } = useSuspenseQuery(ruleVerQO);
+  const { data: s = EMPTY_SNAPSHOT, isPending: snapPending } = useQuery(snapQO);
+  const { data: low = [], isPending: lowPending } = useQuery(lowAltQO);
+  const { data: repeat = [] } = useQuery(repeatQO);
+  const { data: identified = [] } = useQuery(idQO);
+  const { data: local = [] } = useQuery(localQO);
+  const { data: kern = [] } = useQuery(kernQO);
+  const { data: kcsoActive = [] } = useQuery(kcsoQO);
+  const { data: funnel = EMPTY_FUNNEL } = useQuery(funnelQO);
+  const { data: ruleVer = { version: "loading", changelog: [] } } = useQuery(ruleVerQO);
+  const primaryFeedPending = snapPending || lowPending;
 
   const anomalyPct = s.totalDetections > 0 ? Math.round((s.anomalyEvents / s.totalDetections) * 1000) / 10 : 0;
 
@@ -262,6 +277,14 @@ function Live() {
     <div className="min-h-screen bg-paper text-ink">
       <SiteHeader />
       <SiteBreadcrumbs items={crumbs} />
+
+      {primaryFeedPending && (
+        <div className="border-b-4 border-ink bg-warning text-ink">
+          <div className="max-w-[1400px] mx-auto px-4 py-2 label-stamp text-xs">
+            Live evidence feed reconnecting — the page will stay available while data refreshes.
+          </div>
+        </div>
+      )}
 
       {/* CRITICAL KERN COUNTY ALERT BANNER — top-of-page, only when criticals present */}
       <KernCriticalBanner rows={kern} />

@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { PullQuote } from "@/components/pull-quote";
@@ -14,7 +14,24 @@ const snapshotQO = queryOptions({
 const lowAltQO = queryOptions({
   queryKey: ["low-alt"],
   queryFn: () => getRecentLowAltitude(),
+  refetchInterval: 60_000,
 });
+
+const EMPTY_SNAPSHOT = {
+  totalDetections: 0,
+  uniqueAircraft: 0,
+  anomalyEvents: 0,
+  convergenceEvents: 0,
+  lastDetectionAt: null,
+  windowHours: 0,
+  flightDetections: 0,
+  biometricEvents: 0,
+  correlatedEvents: 0,
+  unifiedEvents: 0,
+  aoiTotalDetections: 0,
+  aoiUniqueAircraft: 0,
+  aoiAnomalyEvents: 0,
+};
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -26,10 +43,6 @@ export const Route = createFileRoute("/")({
       { property: "og:url", content: "https://advocacywatch.live/" },
     ],
   }),
-  loader: ({ context }) => Promise.all([
-    context.queryClient.ensureQueryData(snapshotQO),
-    context.queryClient.ensureQueryData(lowAltQO),
-  ]),
   component: Home,
   errorComponent: ({ reset }) => (
     <div className="p-10"><h1 className="text-4xl mb-4">Signal lost.</h1><p className="mb-4">Data temporarily unavailable. Please try again.</p><button onClick={reset} className="brutal-border px-4 py-2 label-stamp bg-warning">Retry</button></div>
@@ -39,8 +52,9 @@ export const Route = createFileRoute("/")({
 function fmt(n: number) { return n.toLocaleString(); }
 
 function Home() {
-  const { data: s } = useSuspenseQuery(snapshotQO);
-  const { data: low } = useSuspenseQuery(lowAltQO);
+  const { data: s = EMPTY_SNAPSHOT, isPending: snapshotPending } = useQuery(snapshotQO);
+  const { data: low = [], isPending: lowPending } = useQuery(lowAltQO);
+  const livePending = snapshotPending || lowPending;
   // Top 3 stories — lowest-altitude airborne detections, de-duplicated by aircraft.
   // Filter out likely ground/parked artifacts (altitude 0 with no forward speed)
   // so we don't publish a landed helicopter as a "sub-500 ft pass over homes".
@@ -70,6 +84,14 @@ function Home() {
   return (
     <div className="min-h-screen bg-paper text-ink">
       <SiteHeader />
+
+      {livePending && (
+        <div className="border-b-4 border-ink bg-warning text-ink">
+          <div className="max-w-[1400px] mx-auto px-4 py-2 label-stamp text-xs">
+            Live evidence feed reconnecting — the public site remains available.
+          </div>
+        </div>
+      )}
 
       {/* MANIFESTO — the witness speaks */}
       <section className="bg-ink text-paper border-b-4 border-warning">
