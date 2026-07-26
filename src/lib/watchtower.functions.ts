@@ -304,7 +304,7 @@ export const getRecentLowAltitude = createServerFn({ method: "GET" }).handler(as
     return best;
   };
 
-  return (rows as any[]).map((r: any) => {
+  const out: LowAltDescent[] = (rows as any[]).map((r: any) => {
     const ownerName: string = (r.reg_name || r.registered_owner || "").toString();
     const stateRaw = (r.reg_state || "").toString().toUpperCase();
     const isLLC = /\bLLC\b|\bL\.L\.C\.|\bINC\b|\bCORP\b|\bTRUST\b/.test(ownerName.toUpperCase());
@@ -364,9 +364,8 @@ export const getRecentLowAltitude = createServerFn({ method: "GET" }).handler(as
       })(),
     });
   });
-  const mapped = out;
-  __lowAltCache = { at: Date.now(), data: mapped };
-  return mapped;
+  __lowAltCache = { at: Date.now(), data: out };
+  return out;
 });
 
 export type RegulatoryBaseline = {
