@@ -180,7 +180,6 @@ function Attestation() {
       <section className="border-b-4 border-ink bg-paper">
         <div className="max-w-[1400px] mx-auto px-4 py-12">
           <div className="label-stamp bg-ink text-paper inline-block px-2 py-0.5 mb-3">How to verify</div>
-          {/* chain section rendered above this block */}
           <h2 className="text-3xl sm:text-4xl mb-4">Reproduce the chain</h2>
           <ol className="text-sm font-mono space-y-2 list-decimal pl-6 max-w-3xl">
             <li>Fetch the JSON list of scans: <code>GET /api/public/scans/latest</code>.</li>
