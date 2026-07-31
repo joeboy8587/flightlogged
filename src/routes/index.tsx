@@ -107,6 +107,7 @@ function Home() {
 
       {/* WATCHTOWER ALERT — persistent hero */}
       <section className="border-b-4 border-ink bg-paper">
+
         <div className="max-w-[1400px] mx-auto px-4 py-12 sm:py-16 grid lg:grid-cols-12 gap-8 lg:gap-10">
           <div className="lg:col-span-8 min-w-0">
             <div className="label-stamp inline-flex items-center gap-2 bg-alert text-paper px-2 py-1 mb-5">
