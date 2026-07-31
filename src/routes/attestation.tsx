@@ -1,12 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
+import { queryOptions, useSuspenseQuery, useQuery } from "@tanstack/react-query";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
 import { breadcrumbScript } from "@/lib/breadcrumbs";
 import { getRecentScans } from "@/lib/scans.functions";
+import { getChainOfCustody } from "@/lib/advocacy.functions";
+import { fmtClock } from "@/lib/format";
 
 const scansQO = queryOptions({ queryKey: ["recent-scans"], queryFn: () => getRecentScans(), refetchInterval: 60_000 });
+const chainQO = queryOptions({ queryKey: ["chain-of-custody"], queryFn: () => getChainOfCustody(), staleTime: 60_000 });
 const crumbs = [{ label: "Home", href: "/" }, { label: "Attestation" }];
 
 export const Route = createFileRoute("/attestation")({
@@ -28,6 +31,67 @@ export const Route = createFileRoute("/attestation")({
 function short(h: string | null) {
   if (!h) return "—";
   return h.length > 20 ? `${h.slice(0, 10)}…${h.slice(-8)}` : h;
+}
+
+function ChainSection() {
+  const { data, isLoading } = useQuery(chainQO);
+  return (
+    <section className="border-b-4 border-ink bg-paper">
+      <div className="max-w-[1400px] mx-auto px-4 py-12">
+        <div className="label-stamp mb-2">Evidence chain · merkle_chain</div>
+        <h2 className="text-3xl sm:text-4xl mb-2">
+          {data ? `${data.totalBlocks.toLocaleString()} sealed blocks covering ${data.totalRows.toLocaleString()} records.` : "Reading the chain…"}
+        </h2>
+        <p className="text-sm opacity-70 max-w-3xl mb-4">
+          Each block seals a batch of records with a hash, and carries the previous block's hash inside it.
+          Change one old record and every block after it stops matching — which is what makes tampering
+          visible to anyone, including people who do not trust us.
+        </p>
+        {data && (
+          <div className="brutal-border-thick p-4 mb-4 inline-block bg-warning text-ink">
+            <span className="label-stamp text-[11px]">
+              {data.linked ? "Chain intact — every block links to the one before it." : "Chain link check incomplete for the sampled blocks."}
+            </span>
+            {data.firstAt && (
+              <div className="text-xs font-mono mt-1 opacity-80">
+                {fmtClock(data.firstAt)} → {fmtClock(data.lastAt)}
+              </div>
+            )}
+          </div>
+        )}
+        <div className="overflow-x-auto brutal-border">
+          <table className="w-full text-sm font-mono">
+            <thead className="bg-ink text-paper">
+              <tr>
+                <th className="text-left p-2">Block</th>
+                <th className="text-left p-2">Sealed</th>
+                <th className="text-left p-2">Covers</th>
+                <th className="text-right p-2">Records</th>
+                <th className="text-left p-2">Block hash</th>
+                <th className="text-left p-2">Previous</th>
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading && <tr><td colSpan={6} className="p-4 text-center opacity-60">Loading…</td></tr>}
+              {!isLoading && (data?.blocks.length ?? 0) === 0 && (
+                <tr><td colSpan={6} className="p-4 text-center opacity-60">No chain blocks published yet.</td></tr>
+              )}
+              {(data?.blocks ?? []).map((b) => (
+                <tr key={b.blockNumber} className="border-t border-ink/20">
+                  <td className="p-2">#{b.blockNumber}</td>
+                  <td className="p-2 whitespace-nowrap">{fmtClock(b.at)}</td>
+                  <td className="p-2">{b.tableName ?? "—"}</td>
+                  <td className="p-2 text-right">{b.rowCount.toLocaleString()}</td>
+                  <td className="p-2 text-xs">{short(b.blockHash)}</td>
+                  <td className="p-2 text-xs opacity-70">{short(b.previousHash)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  );
 }
 
 function Attestation() {
