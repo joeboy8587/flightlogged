@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { watchtower } from "./neon.server";
+import { normalizeSeverity, type Severity } from "./counties";
 
 // ---------------------------------------------------------------------------
 // Advocacy data layer — read-only queries over quiet-math tables the public
@@ -16,24 +17,6 @@ async function cached<T>(key: string, fn: () => Promise<T>): Promise<T> {
   const value = await fn();
   cache.set(key, { at: Date.now(), value });
   return value;
-}
-
-/** Severity in sentinel_violations arrives either as a label or a 0-100 score. */
-export function normalizeSeverity(raw: string | number | null | undefined): "CRITICAL" | "HIGH" | "MODERATE" | "LOW" | "INFO" {
-  if (raw == null) return "INFO";
-  const s = String(raw).trim().toUpperCase();
-  const n = Number(s);
-  if (!Number.isNaN(n) && s !== "") {
-    if (n >= 95) return "CRITICAL";
-    if (n >= 85) return "HIGH";
-    if (n >= 70) return "MODERATE";
-    return "LOW";
-  }
-  if (s.startsWith("CATASTROPH") || s.startsWith("CRIT")) return "CRITICAL";
-  if (s.startsWith("HIGH")) return "HIGH";
-  if (s.startsWith("MOD") || s.startsWith("MED")) return "MODERATE";
-  if (s.startsWith("LOW")) return "LOW";
-  return "INFO";
 }
 
 // ============ 1. Consent-decree accountability scoreboard =================
@@ -127,7 +110,7 @@ export type LedgerRow = {
   altitude: number | null;
   county: string | null;
   violationType: string | null;
-  severity: ReturnType<typeof normalizeSeverity>;
+  severity: Severity;
   description: string | null;
   hashShort: string | null;
 };
@@ -211,18 +194,6 @@ export type CountyPulse = {
   worst: LedgerRow[];
   violationCount: number;
 };
-
-export const COUNTY_SLUGS = [
-  "kern", "tulare", "kings", "fresno", "san-bernardino", "los-angeles",
-  "ventura", "santa-barbara", "madera", "merced", "san-luis-obispo", "inyo",
-] as const;
-
-export function slugToCounty(slug: string): string {
-  return slug.replace(/-/g, " ").toUpperCase();
-}
-export function countyToSlug(county: string): string {
-  return county.trim().toLowerCase().replace(/\s+/g, "-");
-}
 
 export const getCountyPulse = createServerFn({ method: "GET" })
   .inputValidator((data: { county: string }) => ({ county: String(data.county).slice(0, 40).toUpperCase() }))
