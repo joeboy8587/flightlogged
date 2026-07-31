@@ -4,7 +4,8 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
 import { breadcrumbScript } from "@/lib/breadcrumbs";
-import { getCountyPulse, slugToCounty, COUNTY_SLUGS, type CountyPulse } from "@/lib/advocacy.functions";
+import { getCountyPulse, type CountyPulse } from "@/lib/advocacy.functions";
+import { slugToCounty, COUNTY_SLUGS } from "@/lib/counties";
 import { fmtClock, normalizeCountyName } from "@/lib/format";
 
 const pulseQO = (slug: string) =>
@@ -188,7 +189,7 @@ function County() {
         <div className="max-w-[1400px] mx-auto px-4 py-8">
           <div className="label-stamp text-[11px] mb-2">Other monitored counties</div>
           <div className="flex flex-wrap gap-2">
-            {COUNTY_SLUGS.filter((s) => s !== slug).map((s) => (
+            {COUNTY_SLUGS.filter((s: string) => s !== slug).map((s: string) => (
               <Link key={s} to="/county/$county" params={{ county: s }} className="label-stamp brutal-border bg-paper px-3 py-1.5 text-[11px] hover:bg-warning">
                 {normalizeCountyName(slugToCounty(s))}
               </Link>
