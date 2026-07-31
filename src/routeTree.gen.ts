@@ -34,11 +34,13 @@ import { Route as CasesRouteImport } from './routes/cases'
 import { Route as BlogRouteImport } from './routes/blog'
 import { Route as AttestationRouteImport } from './routes/attestation'
 import { Route as ActRouteImport } from './routes/act'
+import { Route as AccountabilityRouteImport } from './routes/accountability'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ToolkitIndexRouteImport } from './routes/toolkit.index'
 import { Route as BlogIndexRouteImport } from './routes/blog.index'
 import { Route as ToolkitFoiaRouteImport } from './routes/toolkit.foia'
+import { Route as CountyCountyRouteImport } from './routes/county.$county'
 import { Route as BlogWeeklyRouteImport } from './routes/blog.weekly'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as ApiPublicTtsRouteImport } from './routes/api/public/tts'
@@ -170,6 +172,11 @@ const ActRoute = ActRouteImport.update({
   path: '/act',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AccountabilityRoute = AccountabilityRouteImport.update({
+  id: '/accountability',
+  path: '/accountability',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AboutRoute = AboutRouteImport.update({
   id: '/about',
   path: '/about',
@@ -194,6 +201,11 @@ const ToolkitFoiaRoute = ToolkitFoiaRouteImport.update({
   id: '/foia',
   path: '/foia',
   getParentRoute: () => ToolkitRoute,
+} as any)
+const CountyCountyRoute = CountyCountyRouteImport.update({
+  id: '/county/$county',
+  path: '/county/$county',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const BlogWeeklyRoute = BlogWeeklyRouteImport.update({
   id: '/weekly',
@@ -224,6 +236,7 @@ const ApiPublicScansIngestRoute = ApiPublicScansIngestRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/accountability': typeof AccountabilityRoute
   '/act': typeof ActRoute
   '/attestation': typeof AttestationRoute
   '/blog': typeof BlogRouteWithChildren
@@ -251,6 +264,7 @@ export interface FileRoutesByFullPath {
   '/violations': typeof ViolationsRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/blog/weekly': typeof BlogWeeklyRoute
+  '/county/$county': typeof CountyCountyRoute
   '/toolkit/foia': typeof ToolkitFoiaRoute
   '/blog/': typeof BlogIndexRoute
   '/toolkit/': typeof ToolkitIndexRoute
@@ -261,6 +275,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/accountability': typeof AccountabilityRoute
   '/act': typeof ActRoute
   '/attestation': typeof AttestationRoute
   '/cases': typeof CasesRoute
@@ -286,6 +301,7 @@ export interface FileRoutesByTo {
   '/violations': typeof ViolationsRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/blog/weekly': typeof BlogWeeklyRoute
+  '/county/$county': typeof CountyCountyRoute
   '/toolkit/foia': typeof ToolkitFoiaRoute
   '/blog': typeof BlogIndexRoute
   '/toolkit': typeof ToolkitIndexRoute
@@ -297,6 +313,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/accountability': typeof AccountabilityRoute
   '/act': typeof ActRoute
   '/attestation': typeof AttestationRoute
   '/blog': typeof BlogRouteWithChildren
@@ -324,6 +341,7 @@ export interface FileRoutesById {
   '/violations': typeof ViolationsRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/blog/weekly': typeof BlogWeeklyRoute
+  '/county/$county': typeof CountyCountyRoute
   '/toolkit/foia': typeof ToolkitFoiaRoute
   '/blog/': typeof BlogIndexRoute
   '/toolkit/': typeof ToolkitIndexRoute
@@ -336,6 +354,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/about'
+    | '/accountability'
     | '/act'
     | '/attestation'
     | '/blog'
@@ -363,6 +382,7 @@ export interface FileRouteTypes {
     | '/violations'
     | '/blog/$slug'
     | '/blog/weekly'
+    | '/county/$county'
     | '/toolkit/foia'
     | '/blog/'
     | '/toolkit/'
@@ -373,6 +393,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/about'
+    | '/accountability'
     | '/act'
     | '/attestation'
     | '/cases'
@@ -398,6 +419,7 @@ export interface FileRouteTypes {
     | '/violations'
     | '/blog/$slug'
     | '/blog/weekly'
+    | '/county/$county'
     | '/toolkit/foia'
     | '/blog'
     | '/toolkit'
@@ -408,6 +430,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/about'
+    | '/accountability'
     | '/act'
     | '/attestation'
     | '/blog'
@@ -435,6 +458,7 @@ export interface FileRouteTypes {
     | '/violations'
     | '/blog/$slug'
     | '/blog/weekly'
+    | '/county/$county'
     | '/toolkit/foia'
     | '/blog/'
     | '/toolkit/'
@@ -446,6 +470,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
+  AccountabilityRoute: typeof AccountabilityRoute
   ActRoute: typeof ActRoute
   AttestationRoute: typeof AttestationRoute
   BlogRoute: typeof BlogRouteWithChildren
@@ -471,6 +496,7 @@ export interface RootRouteChildren {
   ThreatIndexRoute: typeof ThreatIndexRoute
   ToolkitRoute: typeof ToolkitRouteWithChildren
   ViolationsRoute: typeof ViolationsRoute
+  CountyCountyRoute: typeof CountyCountyRoute
   ApiPublicTtsRoute: typeof ApiPublicTtsRoute
   ApiPublicScansIngestRoute: typeof ApiPublicScansIngestRoute
   ApiPublicScansLatestRoute: typeof ApiPublicScansLatestRoute
@@ -653,6 +679,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ActRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/accountability': {
+      id: '/accountability'
+      path: '/accountability'
+      fullPath: '/accountability'
+      preLoaderRoute: typeof AccountabilityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/about': {
       id: '/about'
       path: '/about'
@@ -687,6 +720,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/toolkit/foia'
       preLoaderRoute: typeof ToolkitFoiaRouteImport
       parentRoute: typeof ToolkitRoute
+    }
+    '/county/$county': {
+      id: '/county/$county'
+      path: '/county/$county'
+      fullPath: '/county/$county'
+      preLoaderRoute: typeof CountyCountyRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/blog/weekly': {
       id: '/blog/weekly'
@@ -756,6 +796,7 @@ const ToolkitRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
+  AccountabilityRoute: AccountabilityRoute,
   ActRoute: ActRoute,
   AttestationRoute: AttestationRoute,
   BlogRoute: BlogRouteWithChildren,
@@ -781,6 +822,7 @@ const rootRouteChildren: RootRouteChildren = {
   ThreatIndexRoute: ThreatIndexRoute,
   ToolkitRoute: ToolkitRouteWithChildren,
   ViolationsRoute: ViolationsRoute,
+  CountyCountyRoute: CountyCountyRoute,
   ApiPublicTtsRoute: ApiPublicTtsRoute,
   ApiPublicScansIngestRoute: ApiPublicScansIngestRoute,
   ApiPublicScansLatestRoute: ApiPublicScansLatestRoute,
@@ -788,13 +830,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

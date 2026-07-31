@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
+import { queryOptions, useSuspenseQuery, useQuery } from "@tanstack/react-query";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
@@ -8,6 +8,7 @@ import { getSnapshot, getRuleMappingVersion } from "@/lib/watchtower.functions";
 import { getFunnelStats, getObjectivityStats, getObjectivityStatsAoi, getReviewDismissalCount } from "@/lib/scans.functions";
 import { MlFunnel } from "@/components/ml-funnel";
 import { ObjectivityStat } from "@/components/objectivity-stat";
+import { getModelHonesty } from "@/lib/advocacy.functions";
 
 const snapshotQO = queryOptions({ queryKey: ["snapshot"], queryFn: () => getSnapshot() });
 const funnelQO = queryOptions({ queryKey: ["funnel-stats"], queryFn: () => getFunnelStats(), refetchInterval: 60_000 });
@@ -15,6 +16,45 @@ const objectivityQO = queryOptions({ queryKey: ["objectivity"], queryFn: () => g
 const objectivityAoiQO = queryOptions({ queryKey: ["objectivity-aoi"], queryFn: () => getObjectivityStatsAoi(), refetchInterval: 300_000 });
 const dismissalsQO = queryOptions({ queryKey: ["dismissals"], queryFn: () => getReviewDismissalCount() });
 const ruleVerQO = queryOptions({ queryKey: ["rule-mapping-version"], queryFn: () => getRuleMappingVersion() });
+const honestyQO = queryOptions({ queryKey: ["model-honesty"], queryFn: () => getModelHonesty(), staleTime: 300_000 });
+
+function HonestyPanel() {
+  const { data } = useQuery(honestyQO);
+  if (!data) return null;
+  const agreePct = data.scored7d > 0 ? Math.round((data.highAgreement / data.scored7d) * 100) : null;
+  const disagreePct = data.scored7d > 0 ? Math.round((data.lowAgreement / data.scored7d) * 100) : null;
+  return (
+    <div className="mt-4 brutal-border-thick p-5 bg-warning text-ink">
+      <div className="label-stamp text-[11px] mb-2">Honesty panel — where our own models disagree</div>
+      <p className="text-sm max-w-3xl mb-3">
+        We run several detectors over the same flight. When they disagree, we say so instead of
+        picking the answer that suits us. Over the last 7 days the ensemble scored{" "}
+        <strong>{data.scored7d.toLocaleString()}</strong> events
+        {agreePct != null && <> — the models strongly agreed on <strong>{agreePct}%</strong> of them and
+        clearly disagreed on <strong>{disagreePct}%</strong></>}.
+      </p>
+      <dl className="grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono text-sm">
+        {[
+          ["Events scored (7d)", data.scored7d.toLocaleString()],
+          ["Human-reviewed", data.humanReviewed.toLocaleString()],
+          ["Marked false positive", data.falsePositives.toLocaleString()],
+          ["Mean disagreement", data.meanDisagreement != null ? data.meanDisagreement.toFixed(3) : "—"],
+        ].map(([k, v]) => (
+          <div key={k as string} className="brutal-border bg-paper p-3">
+            <div className="font-display text-2xl">{v as string}</div>
+            <div className="label-stamp text-[10px] opacity-70">{k as string}</div>
+          </div>
+        ))}
+      </dl>
+      {data.humanReviewed === 0 && data.scored7d > 0 && (
+        <p className="text-xs mt-3 leading-snug">
+          No human has validated any of these scores yet. That backlog is a real limitation of this
+          record, and we publish it rather than hide it.
+        </p>
+      )}
+    </div>
+  );
+}
 
 const crumbs = [{ label: "Home", href: "/" }, { label: "Methodology" }];
 
@@ -71,6 +111,7 @@ function Methodology() {
           <div className="mt-4">
             <MlFunnel stats={funnel} />
           </div>
+          <HonestyPanel />
           <p className="mt-3 text-xs font-mono opacity-70 max-w-3xl">
             <strong>Detection counting.</strong> One "detection" = one ADS-B / MLAT position report.
             A single aircraft loitering for an hour can generate thousands of detections.

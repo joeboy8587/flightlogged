@@ -7,6 +7,7 @@ import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetHeader } from "@/co
 const NAV = [
   { to: "/", label: "Home" },
   { to: "/how-to-read", label: "How to Read" },
+  { to: "/accountability", label: "Accountability" },
   { to: "/surveillance-grid", label: "Surveillance Grid" },
   { to: "/live", label: "Live Feed" },
   { to: "/mosaic", label: "Mosaic" },
@@ -37,9 +38,9 @@ const PRIMARY_NAV = [
   { to: "/", label: "Home" },
   { to: "/surveillance-grid", label: "Surveillance Grid" },
   { to: "/live", label: "Live Feed" },
+  { to: "/accountability", label: "Accountability" },
   { to: "/findings", label: "Findings" },
   { to: "/reports", label: "Reports" },
-  { to: "/blog", label: "Blog" },
   { to: "/methodology", label: "Methodology" },
   { to: "/about", label: "About" },
 ] as const;
