@@ -1,5 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { queryOptions, useSuspenseQuery, useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
@@ -8,9 +9,12 @@ import { getSentinelViolations, getNeonViolations } from "@/lib/watchtower.funct
 import { UndergroundClub } from "@/components/underground-club";
 import { DeadMansCurveTiles, dmcQO } from "@/components/dead-mans-curve";
 import { fmtClock, fmtDate } from "@/lib/format";
+import { getSentinelLedger, type LedgerRow } from "@/lib/advocacy.functions";
+import { countyToSlug } from "@/lib/counties";
 
 const vQO = queryOptions({ queryKey: ["sentinel-violations"], queryFn: () => getSentinelViolations() });
 const nQO = queryOptions({ queryKey: ["neon-violations"], queryFn: () => getNeonViolations() });
+const ledgerQO = queryOptions({ queryKey: ["sentinel-ledger"], queryFn: () => getSentinelLedger(), staleTime: 60_000 });
 
 const crumbs = [
   { label: "Home", href: "/" },
@@ -66,6 +70,126 @@ function sevClass(s: string | null) {
   return "bg-ink text-paper";
 }
 
+const SEVERITIES = ["ALL", "CRITICAL", "HIGH", "MODERATE", "LOW"] as const;
+
+function toCsv(rows: LedgerRow[]): string {
+  const head = ["id", "timestamp", "registration", "aircraft_type", "altitude_ft", "county", "violation_type", "severity", "description", "evidence_hash"];
+  const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const body = rows.map((r) =>
+    [r.id, r.at, r.registration, r.aircraftType, r.altitude, r.county, r.violationType, r.severity, r.description, r.hashShort].map(esc).join(","),
+  );
+  return [head.join(","), ...body].join("\n");
+}
+
+function LedgerSection() {
+  const { data, isLoading } = useQuery(ledgerQO);
+  const [sev, setSev] = useState<string>("ALL");
+  const [county, setCounty] = useState<string>("ALL");
+  const rows = (data?.rows ?? []).filter(
+    (r) => (sev === "ALL" || r.severity === sev) && (county === "ALL" || (r.county ?? "").toUpperCase() === county),
+  );
+
+  function download() {
+    const blob = new Blob([toCsv(rows)], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `watchtower-violations-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  return (
+    <section className="border-b-4 border-ink bg-paper">
+      <div className="max-w-[1400px] mx-auto px-4 py-12">
+        <div className="flex items-end justify-between gap-3 flex-wrap mb-4">
+          <div>
+            <div className="label-stamp mb-1">Typed ledger · sentinel_violations</div>
+            <h2 className="text-3xl sm:text-4xl">
+              {data ? `${data.total.toLocaleString()} classified violations on record.` : "Loading the ledger…"}
+            </h2>
+            <p className="text-sm opacity-70 mt-1 max-w-3xl">
+              Filter by how serious the machine rated it, or by county, then take the file with you.
+              The CSV is the same data a reporter or attorney would need to check our work.
+            </p>
+          </div>
+          <button
+            onClick={download}
+            disabled={rows.length === 0}
+            className="label-stamp brutal-border bg-warning text-ink px-4 py-2 text-[11px] disabled:opacity-40"
+          >
+            Download {rows.length.toLocaleString()} rows (CSV) →
+          </button>
+        </div>
+
+        <div className="flex flex-wrap gap-2 mb-4">
+          {SEVERITIES.map((s) => (
+            <button
+              key={s}
+              onClick={() => setSev(s)}
+              className={`label-stamp brutal-border px-3 py-1.5 text-[10px] ${sev === s ? "bg-ink text-paper" : "bg-paper hover:bg-warning"}`}
+            >
+              {s}
+            </button>
+          ))}
+          {(data?.byCounty ?? []).slice(0, 8).map((c) => (
+            <button
+              key={c.county}
+              onClick={() => setCounty(county === c.county ? "ALL" : c.county)}
+              className={`label-stamp brutal-border px-3 py-1.5 text-[10px] ${county === c.county ? "bg-ink text-paper" : "bg-paper hover:bg-warning"}`}
+            >
+              {c.county} · {c.count.toLocaleString()}
+            </button>
+          ))}
+        </div>
+
+        <div className="overflow-x-auto brutal-border">
+          <table className="w-full text-sm">
+            <thead className="bg-ink text-paper">
+              <tr>
+                <th className="text-left p-2 label-stamp text-[10px]">When</th>
+                <th className="text-left p-2 label-stamp text-[10px]">Aircraft</th>
+                <th className="text-right p-2 label-stamp text-[10px]">Altitude</th>
+                <th className="text-left p-2 label-stamp text-[10px]">County</th>
+                <th className="text-left p-2 label-stamp text-[10px]">What was flagged</th>
+                <th className="text-left p-2 label-stamp text-[10px]">Severity</th>
+                <th className="text-left p-2 label-stamp text-[10px]">Hash</th>
+              </tr>
+            </thead>
+            <tbody className="font-mono">
+              {isLoading && <tr><td colSpan={7} className="p-4 text-center opacity-60">Loading…</td></tr>}
+              {!isLoading && rows.length === 0 && (
+                <tr><td colSpan={7} className="p-4 text-center opacity-60">No rows match this filter.</td></tr>
+              )}
+              {rows.slice(0, 200).map((r) => (
+                <tr key={r.id} className="border-t border-ink/20 hover:bg-warning/30">
+                  <td className="p-2 whitespace-nowrap">{fmtClock(r.at)}</td>
+                  <td className="p-2 font-bold">{r.registration ?? "—"}</td>
+                  <td className="p-2 text-right">{r.altitude != null ? `${Math.round(r.altitude).toLocaleString()} ft` : "—"}</td>
+                  <td className="p-2">
+                    {r.county ? (
+                      <Link to="/county/$county" params={{ county: countyToSlug(r.county) }} className="underline hover:bg-warning">
+                        {r.county}
+                      </Link>
+                    ) : "—"}
+                  </td>
+                  <td className="p-2 max-w-[28ch] truncate" title={r.description ?? undefined}>{r.violationType ?? "—"}</td>
+                  <td className="p-2"><span className={`label-stamp px-2 py-0.5 text-[10px] ${sevClass(r.severity)}`}>{r.severity}</span></td>
+                  <td className="p-2 text-xs opacity-70">{r.hashShort ? `${r.hashShort}…` : "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="text-xs opacity-70 mt-3 font-mono">
+          Showing up to 200 rows in the table; the CSV contains every row currently matching your filter.
+          Severity is assigned by the model, not by us.
+        </p>
+      </div>
+    </section>
+  );
+}
+
 function Violations() {
   const { data } = useSuspenseQuery(vQO);
   const { data: neon } = useSuspenseQuery(nQO);
@@ -87,6 +211,8 @@ function Violations() {
       <UndergroundClub />
 
       <DeadMansCurveTiles />
+
+      <LedgerSection />
 
       {/* Neon-side fresh violations summary */}
       <section className="border-b-4 border-ink">
