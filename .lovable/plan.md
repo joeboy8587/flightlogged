@@ -1,107 +1,69 @@
-# Give the Witness a Voice
+# From data site to advocacy engine
 
-Right now the site speaks like a government report — z-scores, hex codes, "anomaly clusters." The machine is the evidence. The site should be the testimony. This plan keeps every ML output, hash, and score untouched, and adds a **translation layer** on top so the public reads what the math already proved.
+I ran a live audit of the quiet-math database against every page on the site. The short version: the machine is producing far more usable evidence than the website is showing, and almost none of the accountability material is being used at all. Below is what's missing, then how to turn it into advocacy.
 
-Nothing in the database, ML pipeline, or scoring logic changes. All work is frontend + copy.
+## What the audit found
 
----
+The site currently reads about 15 tables. The database now holds 100+. These are **live, updating today**, and invisible to the public:
 
-## 1. A "Plain English" verdict on every finding
+| Data the machine is producing | Rows | Last updated | On the site? |
+|---|---|---|---|
+| `sentinel_violations` — typed, severity-rated, hashed violations by county | 7,342 | today | No |
+| `aoi_alerts` — critical alerts inside your monitored counties | 40,479 | today | No |
+| `hourly_stats` — hourly detections, sub-500ft counts, altitude percentiles per county | 21,677 | today | No |
+| `county_baselines` — the learned "normal" per county, per hour | 11,466 | today | No |
+| `ensemble_anomaly_scores` — 4 independent models scoring each detection, with disagreement + human-validation fields | 1.2M | today | No |
+| `merkle_chain` — the cryptographic chain-of-custody blocks | 3,844 | today | No |
+| `compliance_items` / `reform_areas` — consent-decree reform tracking, 9 areas, 30 requirements, year-by-year status | 39 | static | No |
 
-Every card that currently leads with a score gets a one-sentence human verdict above it, generated from the row's own fields — no editorializing, no new claims.
+Also present but **stale** (pipeline stopped writing): `daily_narratives` (Jul 10), `weekly_investigator_report` (Jul 13), `visual_evidence` (Jun 20), `incursion_events` (Jun 12). These need a decision: revive on the ML box, or hide from the site so nothing public looks abandoned.
 
-Pattern:
-```text
-"A Delaware shell company with no employees spent 12 straight hours
- over homes in Bakersfield with its altitude suppressed."
- [SCORE 0.94] [SHA-256 a1b2…] [Verify →]
-```
+One data-quality flag: every one of the 40,479 `aoi_alerts` rows is labeled `CRITICAL`. If everything is critical, nothing is. That column needs tiering on the ML side before it goes public.
 
-The score, hash, and receipts stay visible right under it. The verdict is derived deterministically from: operator name, registration state, altitude, duration, county, squawk/altitude-suppression flag. If a field is missing, the sentence omits that clause — we never invent.
+## What to build — advocacy layer
 
-Applied to: `findings.tsx`, `ml-detections.tsx`, `violations.tsx`, `threat-index.tsx`, `operators.tsx`, homepage story strip.
+### 1. Accountability Scoreboard (new page, `/accountability`)
+The single most advocacy-ready dataset you have is sitting unused: 9 reform areas, 30 consent-decree requirements, each with 2023 / 2024 / 2025 status. Render it as a public report card — compliant vs partial, trend arrows per year, and where our own flight data intersects a reform area (e.g. aerial surveillance over the neighborhoods named in the stops/searches paragraphs). This is the page a journalist screenshots.
 
-## 2. Homepage rewrite — lead with testimony, not dashboards
+### 2. "Your County" page (`/county/$name`)
+Right now the public sees a statewide firehose. Advocacy needs local. One page per monitored county pulling `hourly_stats` + `county_baselines`:
+- How many aircraft flew over your county last night, and how low
+- How that compares to the learned normal for that hour
+- The worst three events, in plain English, each with its hash
+- One action button: report what you saw / join the alert list / contact your supervisor
 
-Replace the current stat-first hero with a rotating **"What the sky did last night"** panel: 3 real events from the last 24h rendered as StoryCards using the plain-English translator, each with its receipt link. Stats move below the fold.
+This turns a database into a neighbor-level argument.
 
-New homepage sections, in order:
-1. Hero: one headline event, plain English, with SHA + Verify.
-2. "Three things the machine caught while you slept" — 3 StoryCards.
-3. "How we know" — 3 tiles: *Public broadcast · Cryptographic chain · Open model card*.
-4. Existing counters and links.
+### 3. Violations ledger, upgraded
+`/violations` should read `sentinel_violations` — typed violations with severity and county, each already carrying a SHA-256. Filterable by county and severity, with a per-row "what rule this implicates and why" plain-English line, and CSV export for attorneys and reporters.
 
-## 3. Kill the jargon in labels
+### 4. Chain of Custody page (`/attestation` upgrade)
+Show the live `merkle_chain`: latest block number, block hash, previous hash, row counts, and a "verify this yourself" walkthrough. This is the page that survives cross-examination and it currently isn't public.
 
-Sitewide find/replace on user-facing strings (no data, no code logic):
-- "anomaly cluster" → "repeated pattern"
-- "data integrity event" → "altitude blackout"
-- "potential anomaly requiring further study" → "flagged — awaiting human review"
-- "persistent low-altitude orbiting" → "circled low over homes"
-- "signal degradation" → "the aircraft stopped broadcasting"
-- "unidentified registrant" → "no public owner on file"
+### 5. Honesty panel from the ensemble scores
+`ensemble_anomaly_scores` records four models per detection plus their disagreement, and has fields for human validation and false-positive reason. Publish, on `/methodology`: how often the models agree, how many flagged events humans have reviewed, and how many we marked false positive. Publishing your own error rate is the strongest credibility move available to you.
 
-Technical terms stay in tooltips and the Methodology page — they don't lead.
+### 6. Action attached to every finding
+Today a finding ends at the receipt. Each finding card gets a footer with one concrete next step: file this with the FAA, add it to the FOIA queue, send to the county board, share the receipt card. Advocacy is the data plus the ask.
 
-## 4. "Read this as a human" toggle on data tables
+### 7. Advocacy front door
+Homepage gets a third lane beside the alert and the counters: **"What we're asking for."** Three demands, each linked to the evidence that supports it, each with a single action. The technical pages then serve that ask instead of standing alone.
 
-`/ml-detections`, `/violations`, `/threat-index`, `/operators` get a top-right toggle: **[ Technical | Plain English ]**. Default = Plain English. Technical view is the current table, unchanged. Plain view renders each row as a one-line sentence with the receipt chip. State persists in URL search param so links share the chosen view.
+## What does not change
+- No ML thresholds, scores, or model logic.
+- No schema changes, no writes to the database — read-only queries only.
+- Machine output stays separated from editorial voice, with the existing MACHINE / EDITORIAL labeling.
+- Every new claim traces to a row and a hash.
 
-## 5. "The Question This Raises" block on every finding page
+## Technical notes
+- New read-only server functions in `src/lib/` for: `sentinel_violations`, `hourly_stats` + `county_baselines`, `merkle_chain`, `compliance_items` + `reform_areas`, and ensemble agreement/validation aggregates. All follow the existing cached-snapshot pattern to protect page load.
+- New routes: `/accountability`, `/county/$name`; upgrades to `/violations`, `/attestation`, `/methodology`, `/findings`, `/`.
+- Stale tables get either a visible "last updated" stamp or are omitted; no page shows silently dead data.
+- Each new query gets an index check first — several of these tables are large enough to need one.
 
-Below the receipts on each finding, a fixed block:
-
-```text
-THE MACHINE LOGGED:   [exact technical description]
-PUBLIC RECORDS SHOW:  [operator, state of registration, FAA record link]
-THE QUESTION:         [templated question — never an accusation]
-```
-
-Example question templates (chosen by finding type, not written per-row):
-- Altitude suppression → *"Why did this aircraft stop broadcasting its altitude for 12 hours over a residential zip code?"*
-- Shell-company operator → *"Who is actually paying for these flights?"*
-- Repeat low pass → *"What agency authorized 14 sub-500ft passes over the same block?"*
-
-The reader draws the conclusion. We only ask the question the data raises.
-
-## 6. Homepage banner: "We are the witness"
-
-A permanent 2-line manifesto strip under the header, small but always visible:
-
-> **This site translates. It does not editorialize.**
-> Every claim links to a hash, a public record, and the raw broadcast.
-
-## 7. Share-ready testimony cards
-
-Every StoryCard already has a Share row. Extend it so the shared image/text is the **plain-English sentence + the SHA short-hash + the Verify URL** — so a screenshot posted to social media carries the receipt on its face.
-
----
-
-## What does NOT change
-
-- No ML thresholds, model versions, or scores.
-- No database writes, no new tables, no schema changes.
-- No new claims beyond what a row's own fields support.
-- Methodology, Attestation, and Model Card pages stay technical — they are the defense layer.
-- `/live` evidence feed stays court-ready. Plain-English is additive, toggleable.
-
-## Technical notes (for the builder, not the reader)
-
-- New pure helper `src/lib/translate.ts` exporting `verdictFor(row)`, `questionFor(row)`, `humanLabel(technicalTerm)`. Pure functions, unit-testable, no side effects.
-- `StoryCard` gains an optional `verdict` prop; when absent it calls `verdictFor(row)`.
-- Table pages accept `?view=plain|technical` via existing zod search validators.
-- Copy dictionary lives in `src/lib/translate.ts` so future edits are one file.
-- No new dependencies. No route additions. No server function changes.
-
----
-
-## Rollout order
-
-1. `translate.ts` + verdict on `StoryCard` (immediate visible lift on homepage + `/live`).
-2. Jargon dictionary swap across labels.
-3. Plain/Technical toggle on the four data tables.
-4. "The Question This Raises" block on finding detail rendering.
-5. Homepage recomposition.
-6. Share-card upgrade.
-
-Each step is independently shippable and reversible.
+## Suggested order
+1. Accountability Scoreboard (highest advocacy value, small data, fast).
+2. Violations ledger on `sentinel_violations` + CSV export.
+3. County pages with baseline comparison.
+4. Chain of Custody page.
+5. Honesty panel + action footers + homepage "What we're asking for."
