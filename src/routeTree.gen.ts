@@ -34,6 +34,7 @@ import { Route as CasesRouteImport } from './routes/cases'
 import { Route as BlogRouteImport } from './routes/blog'
 import { Route as AttestationRouteImport } from './routes/attestation'
 import { Route as ActRouteImport } from './routes/act'
+import { Route as AccountabilityRouteImport } from './routes/accountability'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ToolkitIndexRouteImport } from './routes/toolkit.index'
@@ -170,6 +171,11 @@ const ActRoute = ActRouteImport.update({
   path: '/act',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AccountabilityRoute = AccountabilityRouteImport.update({
+  id: '/accountability',
+  path: '/accountability',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AboutRoute = AboutRouteImport.update({
   id: '/about',
   path: '/about',
@@ -224,6 +230,7 @@ const ApiPublicScansIngestRoute = ApiPublicScansIngestRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/accountability': typeof AccountabilityRoute
   '/act': typeof ActRoute
   '/attestation': typeof AttestationRoute
   '/blog': typeof BlogRouteWithChildren
@@ -261,6 +268,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/accountability': typeof AccountabilityRoute
   '/act': typeof ActRoute
   '/attestation': typeof AttestationRoute
   '/cases': typeof CasesRoute
@@ -297,6 +305,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/accountability': typeof AccountabilityRoute
   '/act': typeof ActRoute
   '/attestation': typeof AttestationRoute
   '/blog': typeof BlogRouteWithChildren
@@ -336,6 +345,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/about'
+    | '/accountability'
     | '/act'
     | '/attestation'
     | '/blog'
@@ -373,6 +383,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/about'
+    | '/accountability'
     | '/act'
     | '/attestation'
     | '/cases'
@@ -408,6 +419,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/about'
+    | '/accountability'
     | '/act'
     | '/attestation'
     | '/blog'
@@ -446,6 +458,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
+  AccountabilityRoute: typeof AccountabilityRoute
   ActRoute: typeof ActRoute
   AttestationRoute: typeof AttestationRoute
   BlogRoute: typeof BlogRouteWithChildren
@@ -653,6 +666,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ActRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/accountability': {
+      id: '/accountability'
+      path: '/accountability'
+      fullPath: '/accountability'
+      preLoaderRoute: typeof AccountabilityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/about': {
       id: '/about'
       path: '/about'
@@ -756,6 +776,7 @@ const ToolkitRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
+  AccountabilityRoute: AccountabilityRoute,
   ActRoute: ActRoute,
   AttestationRoute: AttestationRoute,
   BlogRoute: BlogRouteWithChildren,
