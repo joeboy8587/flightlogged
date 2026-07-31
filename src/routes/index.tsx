@@ -105,6 +105,27 @@ function Home() {
         </div>
       </section>
 
+      {/* ADVOCACY LANE — what the data is for */}
+      <section className="border-b-4 border-ink bg-warning text-ink">
+        <div className="max-w-[1400px] mx-auto px-4 py-8">
+          <div className="label-stamp text-[11px] mb-2">The data is the evidence. This is what we want done with it.</div>
+          <div className="grid gap-3 md:grid-cols-3">
+            <Link to="/accountability" className="brutal-border bg-paper p-4 hover:bg-ink hover:text-paper transition-colors">
+              <div className="font-display text-2xl uppercase leading-tight mb-1">Hold the reforms to the record</div>
+              <p className="text-sm opacity-80">Every stipulated-judgment requirement, and whether it was actually met. →</p>
+            </Link>
+            <Link to="/county/$county" params={{ county: "kern" }} className="brutal-border bg-paper p-4 hover:bg-ink hover:text-paper transition-colors">
+              <div className="font-display text-2xl uppercase leading-tight mb-1">See your own county</div>
+              <p className="text-sm opacity-80">What flew over you in the last 24 hours, against your county&apos;s learned normal. →</p>
+            </Link>
+            <Link to="/act" className="brutal-border bg-paper p-4 hover:bg-ink hover:text-paper transition-colors">
+              <div className="font-display text-2xl uppercase leading-tight mb-1">Do something with it</div>
+              <p className="text-sm opacity-80">File a records request, report what you saw, or deploy a sensor. →</p>
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* WATCHTOWER ALERT — persistent hero */}
       <section className="border-b-4 border-ink bg-paper">
         <div className="max-w-[1400px] mx-auto px-4 py-12 sm:py-16 grid lg:grid-cols-12 gap-8 lg:gap-10">
