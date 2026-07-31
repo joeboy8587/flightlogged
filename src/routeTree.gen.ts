@@ -40,6 +40,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ToolkitIndexRouteImport } from './routes/toolkit.index'
 import { Route as BlogIndexRouteImport } from './routes/blog.index'
 import { Route as ToolkitFoiaRouteImport } from './routes/toolkit.foia'
+import { Route as CountyCountyRouteImport } from './routes/county.$county'
 import { Route as BlogWeeklyRouteImport } from './routes/blog.weekly'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as ApiPublicTtsRouteImport } from './routes/api/public/tts'
@@ -201,6 +202,11 @@ const ToolkitFoiaRoute = ToolkitFoiaRouteImport.update({
   path: '/foia',
   getParentRoute: () => ToolkitRoute,
 } as any)
+const CountyCountyRoute = CountyCountyRouteImport.update({
+  id: '/county/$county',
+  path: '/county/$county',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BlogWeeklyRoute = BlogWeeklyRouteImport.update({
   id: '/weekly',
   path: '/weekly',
@@ -258,6 +264,7 @@ export interface FileRoutesByFullPath {
   '/violations': typeof ViolationsRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/blog/weekly': typeof BlogWeeklyRoute
+  '/county/$county': typeof CountyCountyRoute
   '/toolkit/foia': typeof ToolkitFoiaRoute
   '/blog/': typeof BlogIndexRoute
   '/toolkit/': typeof ToolkitIndexRoute
@@ -294,6 +301,7 @@ export interface FileRoutesByTo {
   '/violations': typeof ViolationsRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/blog/weekly': typeof BlogWeeklyRoute
+  '/county/$county': typeof CountyCountyRoute
   '/toolkit/foia': typeof ToolkitFoiaRoute
   '/blog': typeof BlogIndexRoute
   '/toolkit': typeof ToolkitIndexRoute
@@ -333,6 +341,7 @@ export interface FileRoutesById {
   '/violations': typeof ViolationsRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/blog/weekly': typeof BlogWeeklyRoute
+  '/county/$county': typeof CountyCountyRoute
   '/toolkit/foia': typeof ToolkitFoiaRoute
   '/blog/': typeof BlogIndexRoute
   '/toolkit/': typeof ToolkitIndexRoute
@@ -373,6 +382,7 @@ export interface FileRouteTypes {
     | '/violations'
     | '/blog/$slug'
     | '/blog/weekly'
+    | '/county/$county'
     | '/toolkit/foia'
     | '/blog/'
     | '/toolkit/'
@@ -409,6 +419,7 @@ export interface FileRouteTypes {
     | '/violations'
     | '/blog/$slug'
     | '/blog/weekly'
+    | '/county/$county'
     | '/toolkit/foia'
     | '/blog'
     | '/toolkit'
@@ -447,6 +458,7 @@ export interface FileRouteTypes {
     | '/violations'
     | '/blog/$slug'
     | '/blog/weekly'
+    | '/county/$county'
     | '/toolkit/foia'
     | '/blog/'
     | '/toolkit/'
@@ -484,6 +496,7 @@ export interface RootRouteChildren {
   ThreatIndexRoute: typeof ThreatIndexRoute
   ToolkitRoute: typeof ToolkitRouteWithChildren
   ViolationsRoute: typeof ViolationsRoute
+  CountyCountyRoute: typeof CountyCountyRoute
   ApiPublicTtsRoute: typeof ApiPublicTtsRoute
   ApiPublicScansIngestRoute: typeof ApiPublicScansIngestRoute
   ApiPublicScansLatestRoute: typeof ApiPublicScansLatestRoute
@@ -708,6 +721,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ToolkitFoiaRouteImport
       parentRoute: typeof ToolkitRoute
     }
+    '/county/$county': {
+      id: '/county/$county'
+      path: '/county/$county'
+      fullPath: '/county/$county'
+      preLoaderRoute: typeof CountyCountyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/blog/weekly': {
       id: '/blog/weekly'
       path: '/weekly'
@@ -802,6 +822,7 @@ const rootRouteChildren: RootRouteChildren = {
   ThreatIndexRoute: ThreatIndexRoute,
   ToolkitRoute: ToolkitRouteWithChildren,
   ViolationsRoute: ViolationsRoute,
+  CountyCountyRoute: CountyCountyRoute,
   ApiPublicTtsRoute: ApiPublicTtsRoute,
   ApiPublicScansIngestRoute: ApiPublicScansIngestRoute,
   ApiPublicScansLatestRoute: ApiPublicScansLatestRoute,
