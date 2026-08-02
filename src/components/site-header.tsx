@@ -28,6 +28,7 @@ const NAV = [
   { to: "/rules", label: "Rules" },
   { to: "/toolkit", label: "Toolkit" },
   { to: "/methodology", label: "Methodology" },
+  { to: "/verify", label: "Verify" },
   { to: "/legal", label: "Legal" },
   { to: "/act", label: "Take Action" },
   { to: "/about", label: "About" },
@@ -42,6 +43,7 @@ const PRIMARY_NAV = [
   { to: "/findings", label: "Findings" },
   { to: "/reports", label: "Reports" },
   { to: "/methodology", label: "Methodology" },
+  { to: "/verify", label: "Verify" },
   { to: "/about", label: "About" },
 ] as const;
 
