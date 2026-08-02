@@ -30,14 +30,14 @@ export function watchtower() {
   try {
     return neon(url);
   } catch (err) {
-    // Re-throw with extra context to make debugging easier.
-    throw new Error(`Failed to create Neon client for watchtower (${String(url)}): ${String(err)}`);
+    // Re-throw without leaking the connection URL (which contains the password).
+    throw new Error(`Failed to create Neon client for watchtower: ${String(err)}`);
   }
 }
 
 export function evidence() {
   // DEPRECATED. The legacy "lucky-wildflower" evidence DB has been retired.
-  // Every site page must read from the unbiased "quiet-math" watchtower DB.
+  // Every site page must read from the unbased "quiet-math" watchtower DB.
   // Any leftover caller is silently redirected so it cannot leak biased data.
   // To find leaks, grep for evidence() and migrate to watchtower().
   console.warn("evidence() is deprecated — redirecting to watchtower() (quiet-math).");
