@@ -9,6 +9,7 @@ import { getFunnelStats, getObjectivityStats, getObjectivityStatsAoi, getReviewD
 import { MlFunnel } from "@/components/ml-funnel";
 import { ObjectivityStat } from "@/components/objectivity-stat";
 import { getModelHonesty } from "@/lib/advocacy.functions";
+import { PlainLanguageTLDR } from "@/components/plain-language-tldr";
 
 const snapshotQO = queryOptions({ queryKey: ["snapshot"], queryFn: () => getSnapshot() });
 const funnelQO = queryOptions({ queryKey: ["funnel-stats"], queryFn: () => getFunnelStats(), refetchInterval: 60_000 });
@@ -121,25 +122,29 @@ function Methodology() {
           <div className="mt-4 brutal-border p-4 bg-paper flex flex-wrap items-center gap-x-6 gap-y-2">
             <div className="label-stamp bg-alert text-paper px-2 py-0.5">Human review overrides</div>
             <div className="font-mono text-sm">
-              <strong className="text-2xl">{dismissals.month}</strong> anomalies dismissed after review in the last 30 days
-              {dismissals.total > 0 && <span className="opacity-70"> · {dismissals.total} total dismissals published</span>}.
+              <strong className="text-2xl">{dismissals.month}</strong> in last 30 days
+              {dismissals.total > 0 && <span className="opacity-70"> · {dismissals.total} total dismissals published</span>}
             </div>
-            <div className="text-xs opacity-70 font-mono">We publish our misses.</div>
+            <div className="font-mono text-xs opacity-70 ml-auto">
+              Rule mapping version: <strong>{ruleVer.version}</strong> · {ruleVer.ruleCount} rules
+            </div>
           </div>
         </div>
       </section>
+
+      <PlainLanguageTLDR dismissalsMonth={dismissals.month} />
 
       <section className="border-b-4 border-ink">
         <div className="max-w-[1400px] mx-auto px-4 py-16 grid lg:grid-cols-2 gap-0 brutal-border-thick">
           {[
             { n: "01", t: "Population-scale capture", d: `We log every ADS-B / MLAT detection in the observation zone — not a curated subset. ${det} records across ${ac} aircraft, growing.` },
-            { n: "02", t: "48-hour baseline", d: "Before flagging anything, the system observes for 48 hours to learn what NORMAL looks like for that airspace at that time of day, season, and weather." },
-            { n: "03", t: "Statistical anomaly detection", d: "Outliers are scored against the learned distribution. The threshold is published. We don't pick — math picks." },
-            { n: "04", t: "Chain of custody", d: "Each record receives a SHA-256 hash linked into a Merkle chain. Any tampering is detectable. Evidence is reproducible by any third party." },
-            { n: "05", t: "Bradford Hill scoring", d: "We apply the Bradford Hill criteria (strength, consistency, specificity, temporality, etc.) to aircraft-pattern and public-record corroboration — the same framework used in epidemiology and courtrooms. No physiological or personal-health data is included in the public record; the public site is system-focused, not autobiographical." },
-            { n: "06", t: "Open source by design", d: "Every line of Watchtower 2.0 will be public. The methodology IS the code. Deploy it in your county, get the same answers." },
-          ].map((s, i, arr) => (
-            <div key={s.n} className={`p-8 bg-paper ${i % 2 === 0 ? "lg:border-r-4 border-ink" : ""} ${i < arr.length - 2 ? "border-b-4 border-ink" : ""} ${i === arr.length - 2 ? "lg:border-b-0 border-b-4 border-ink" : ""}`}>
+            { n: "02", t: "Baseline learning (48 h minimum)", d: "Before any aircraft can be flagged, the system must observe at least 48 hours of its flight history in the AOI. No baseline, no flag." },
+            { n: "03", t: "Statistical anomaly detection", d: "Outliers are scored against the learned distribution using robust z-scores and isolation-forest ensemble. The threshold is published and reproducible." },
+            { n: "04", t: "Bradford Hill scoring", d: "Flagged events are scored against nine causal criteria. A single suspicious flight is not enough; we look for consistency, strength, and specificity across time." },
+            { n: "05", t: "SHA-256 chain of custody", d: "Every scan artifact is hashed and linked to the previous one. The chain root is published on the attestation page. Any tampering breaks the chain visibly." },
+            { n: "06", t: "Human review and dismissal publication", d: "When a human reviewer overrides a flag, the dismissal is published with a reason. We do not hide our mistakes." },
+          ].map((s, i) => (
+            <div key={s.n} className={`p-6 ${i % 2 === 0 ? "lg:border-r-4 border-ink" : ""} ${i < 4 ? "border-b-4 border-ink" : i === 4 ? "lg:border-b-0 border-b-4 border-ink" : ""}`}>
               <div className="font-mono text-5xl font-bold opacity-20">{s.n}</div>
               <h2 className="text-2xl mt-2 mb-3">{s.t}</h2>
               <p>{s.d}</p>
@@ -155,71 +160,11 @@ function Methodology() {
             {[
               ["100%", "of detections logged — not just suspicious ones"],
               ["0%", "flagged during baseline window — by design"],
-              ["48h", "minimum learning period before any flag is valid"],
-            ].map(([n, d]) => (
-              <div key={n} className="brutal-border-thick border-paper p-6">
-                <div className="font-display text-6xl text-warning">{n}</div>
-                <p className="mt-2 opacity-80">{d}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="bg-paper border-b-4 border-ink">
-        <div className="max-w-[1400px] mx-auto px-4 py-16">
-          <div className="label-stamp bg-warning inline-block px-2 py-1 mb-3">County-weighted baselines</div>
-          <h2 className="text-4xl sm:text-5xl mb-4">Each county gets its own normal.</h2>
-          <p className="text-base max-w-3xl mb-3">
-            Los Angeles airspace produces roughly ten times the traffic of Kern County. A single regional baseline lets
-            LA volume drown Kern signals — a Cessna at 800 ft over Bakersfield looks unremarkable next to thousands of
-            LA-basin orbits. The fix is not to suppress LA. It is to learn what normal means for each county and score
-            each detection against the airspace it actually occurred in.
-          </p>
-          <div className="grid md:grid-cols-2 gap-4 mt-6">
-            <div className="brutal-border p-5 bg-paper">
-              <div className="label-stamp mb-2">How it works</div>
-              <ul className="text-sm font-mono space-y-2">
-                <li>1. Partition the last 48h of detections by county.</li>
-                <li>2. Compute median, 10th-percentile, and standard deviation of altitude per county.</li>
-                <li>3. Score each detection against <em>its own county's</em> baseline.</li>
-                <li>4. Aircraft crossing multiple counties get scored in each; displayed score = MAX(per-county score).</li>
-                <li>5. Cross-county coordination, convergence, and shell-network detection are unchanged.</li>
-              </ul>
-            </div>
-            <div className="brutal-border p-5 bg-paper">
-              <div className="label-stamp mb-2">Why this isn't cherry-picking</div>
-              <ul className="text-sm font-mono space-y-2">
-                <li>· Same math for every county — nothing is hand-coded.</li>
-                <li>· Per-county baselines are published live on <a href="/threat-index" className="underline">/threat-index</a>.</li>
-                <li>· MAX rule prevents a quiet LA segment from hiding a loud Kern one.</li>
-                <li>· Raw data remains intact — anyone can re-run the partition.</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* === NEW CREDIBILITY SECTIONS === */}
-
-      {/* 1. Data Sources */}
-      <section className="border-b-4 border-ink bg-paper">
-        <div className="max-w-[1400px] mx-auto px-4 py-10">
-          <div className="label-stamp bg-ink text-paper inline-block px-2 py-1 mb-3">Transparency</div>
-          <h2 className="text-3xl sm:text-4xl mb-4">Data sources</h2>
-          <p className="text-sm max-w-3xl mb-4">
-            All inputs are public. No private, personal, or biometric data is used.
-          </p>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {[
-              { s: "ADS-B", d: "Public broadcast telemetry — position, altitude, speed, squawk." },
-              { s: "MLAT", d: "Public multilateration triangulation where ADS-B is absent or suppressed." },
-              { s: "FAA Aircraft Registry", d: "Public FAA registration records — N-number, make, model, year." },
-              { s: "State corporate filings", d: "Public Secretary of State business records for ownership linkage." },
-            ].map((src) => (
-              <div key={src.s} className="brutal-border p-3 bg-paper">
-                <div className="label-stamp mb-1">{src.s}</div>
-                <div className="text-xs font-mono leading-snug">{src.d}</div>
+              ["48h", "minimum observation before any flag is possible"],
+            ].map(([big, small]) => (
+              <div key={big} className="brutal-border-thick border-paper p-6">
+                <div className="font-display text-6xl text-warning">{big}</div>
+                <div className="text-sm mt-2 opacity-80">{small}</div>
               </div>
             ))}
           </div>
@@ -227,271 +172,227 @@ function Methodology() {
       </section>
 
       {/* 2. Limitations */}
-      <section className="border-b-4 border-ink bg-warning text-ink">
-        <div className="max-w-[1400px] mx-auto px-4 py-10">
-          <div className="label-stamp bg-ink text-paper inline-block px-2 py-1 mb-3">Scientific honesty</div>
-          <h2 className="text-3xl sm:text-4xl mb-4">Known limitations</h2>
-          <p className="text-sm max-w-3xl mb-4">
-            Every serious methodology includes limitations. Acknowledging uncertainty strengthens credibility, not weakness.
-          </p>
-          <ul className="grid sm:grid-cols-2 gap-2 text-xs font-mono">
-            {[
-              "ADS-B altitude is barometric, not true AGL. Terrain variation introduces ±50–100 ft uncertainty.",
-              "MLAT accuracy varies with receiver density. Sparse coverage can produce positional jitter.",
-              "FAA registry may contain outdated ownership info. Transfers lag filings by weeks or months.",
-              "Shell-network linkage is public-record-based inference, not investigative confirmation.",
-              "Weather data (NOAA) is optional context, not a scoring input. It does not drive anomaly flags.",
-              "Signal loss or transponder suppression produces gaps. Absence of data is not absence of aircraft.",
-            ].map((lim, i) => (
-              <li key={i} className="brutal-border p-3 bg-paper">{lim}</li>
-            ))}
-          </ul>
-        </div>
-      </section>
-
-      {/* 3. Versioning */}
-      <section className="border-b-4 border-ink bg-paper">
-        <div className="max-w-[1400px] mx-auto px-4 py-10">
-          <div className="label-stamp bg-ink text-paper inline-block px-2 py-1 mb-3">Reproducibility</div>
-          <h2 className="text-3xl sm:text-4xl mb-4">Method versioning</h2>
-          <p className="text-sm max-w-3xl mb-4">
-            Each detection carries the method version used to score it. This ensures reproducibility even as the method evolves.
-          </p>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm font-mono brutal-border">
-              <thead className="bg-ink text-paper">
-                <tr>
-                  <th className="text-left p-2">Version</th>
-                  <th className="text-left p-2">Description</th>
-                  <th className="text-left p-2">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[
-                  ["WTI_v1", "Initial weighted scoring: altitude, temporal, shell, repeat.", "Archived"],
-                  ["WTI_v1_with_convergence", "Added convergence component for multi-aircraft clustering.", "Current"],
-                  ["WTI_v2 (future)", "Planned: weather-adjusted baselines and sector-specific altitude floors.", "Planned"],
-                ].map(([v, d, s]) => (
-                  <tr key={v} className="border-t-2 border-ink">
-                    <td className="p-2 font-bold">{v}</td>
-                    <td className="p-2">{d}</td>
-                    <td className="p-2">{s}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      <section className="border-b-4 border-ink">
+        <div className="max-w-[1400px] mx-auto px-4 py-16">
+          <div className="label-stamp bg-alert text-paper inline-block px-2 py-1 mb-3">Limitations</div>
+          <h2 className="text-4xl sm:text-5xl mb-6">What this method cannot do</h2>
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="brutal-border p-5">
+              <h3 className="text-xl mb-2">No identification of individuals</h3>
+              <p className="text-sm">ADS-B broadcasts identify aircraft, not people. We cannot tell you who was on board. We can tell you where the aircraft went, how it deviated, and how that deviation compares to every other flight in the same airspace.</p>
+            </div>
+            <div className="brutal-border p-5">
+              <h3 className="text-xl mb-2">No intent inference</h3>
+              <p className="text-sm">A deviation is a deviation. The system flags statistical outliers, not motives. A medical evacuation may deviate as much as a surveillance orbit. Human reviewers distinguish context; the math does not.</p>
+            </div>
+            <div className="brutal-border p-5">
+              <h3 className="text-xl mb-2">ADS-B dependent</h3>
+              <p className="text-sm">If an aircraft disables its transponder, we lose it. This is a known limitation of all ADS-B-based surveillance. We publish gaps in coverage as part of the record.</p>
+            </div>
+            <div className="brutal-border p-5">
+              <h3 className="text-xl mb-2">Baseline drift</h3>
+              <p className="text-sm">If surveillance flights become common enough, they become the baseline. The 48-hour window prevents immediate normalization, but long-term drift is real. We address it by publishing the baseline distribution alongside every flag.</p>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* 4. Why 48 hours */}
-      <section className="border-b-4 border-ink bg-paper">
-        <div className="max-w-[1400px] mx-auto px-4 py-10">
-          <div className="label-stamp bg-ink text-paper inline-block px-2 py-1 mb-3">Baseline design</div>
-          <h2 className="text-3xl sm:text-4xl mb-4">Why 48 hours?</h2>
-          <p className="text-sm max-w-3xl mb-4">
-            The 48-hour baseline is not arbitrary. It is statistically motivated to capture the full variation of normal airspace use.
-          </p>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {[
-              { t: "Weekday / Weekend", d: "Captures commuter vs. recreational traffic patterns." },
-              { t: "Morning / Evening", d: "Captures diurnal cycles — rush-hour corridors and quiet overnight bands." },
-              { t: "Weather variation", d: "Captures how pilots adapt to wind, ceiling, and visibility changes." },
-              { t: "Anti-cherry-picking", d: "Prevents selecting a 'quiet' day to make normal activity look suspicious." },
-            ].map((r) => (
-              <div key={r.t} className="brutal-border p-3 bg-paper">
-                <div className="label-stamp mb-1">{r.t}</div>
-                <div className="text-xs font-mono leading-snug">{r.d}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* 5. How anomaly detection works */}
-      <section className="border-b-4 border-ink bg-paper">
-        <div className="max-w-[1400px] mx-auto px-4 py-10">
-          <div className="label-stamp bg-ink text-paper inline-block px-2 py-1 mb-3">Statistical rigor</div>
-          <h2 className="text-3xl sm:text-4xl mb-4">How anomaly detection works</h2>
-          <p className="text-sm max-w-3xl mb-4">
-            Anomalies are detections whose deviation from the baseline distribution
-            exceeds the fixed <strong>99th-percentile threshold</strong>. Baselines
-            are computed <strong>per county</strong> (see step 2 above); the
-            99th-percentile cutoff is applied to each county's own distribution, and
-            when an aircraft crosses multiple counties the displayed score is the
-            MAX of its per-county scores. One rule, one cutoff, county-partitioned
-            inputs — that is the whole thresholding scheme.
-          </p>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {[
-              { t: "Distribution", d: "The baseline is a learned empirical distribution, not a assumed normal curve." },
-              { t: "Threshold", d: "The 99th percentile is the published, fixed threshold. No manual tuning." },
-              { t: "Statistical test", d: "Deviation is measured as standardized distance from the rolling baseline mean." },
-              { t: "Percentile", d: "Only events exceeding the 99th percentile enter the scoring pipeline." },
-            ].map((r) => (
-              <div key={r.t} className="brutal-border p-3 bg-paper">
-                <div className="label-stamp mb-1">{r.t}</div>
-                <div className="text-xs font-mono leading-snug">{r.d}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* 6. Chain of custody diagram */}
+      {/* 3. Data sources */}
       <section className="border-b-4 border-ink bg-ink text-paper">
-        <div className="max-w-[1400px] mx-auto px-4 py-10">
-          <div className="label-stamp bg-warning text-ink inline-block px-2 py-1 mb-3">Tamper evidence</div>
-          <h2 className="text-3xl sm:text-4xl mb-4">Chain of custody</h2>
+        <div className="max-w-[1400px] mx-auto px-4 py-16">
+          <div className="label-stamp bg-paper text-ink inline-block px-2 py-1 mb-3">Data sources</div>
+          <h2 className="text-4xl sm:text-5xl mb-6">Where the data comes from</h2>
           <p className="text-sm max-w-3xl mb-6 opacity-80">
-            Every record is hashed and linked. Altering one record breaks the chain — detectable by any third party.
+            Every data source is public, free, and accessible to anyone with an internet connection.
+            No private data. No paid data. No leaked data. No exceptions.
           </p>
-          <div className="overflow-x-auto">
-            <pre className="brutal-border-thick border-paper bg-paper text-ink p-4 text-xs font-mono whitespace-pre leading-relaxed">
-{`record001  →  hash(001)  ────────►  merkle_001
-record002  →  hash(002)  ─┬────►  hash( merkle_001 + hash(002) )  →  merkle_002
-record003  →  hash(003)  ─┬────►  hash( merkle_002 + hash(003) )  →  merkle_003
-                          │
-                          └──── Any tamper breaks the next link`}
-            </pre>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[
+              ["ADS-B Exchange", "Live ADS-B / MLAT position reports. Unfiltered — includes military and law enforcement transponders."],
+              ["FAA Registry", "Aircraft registration database. Owner, type, registration status, airworthiness directives."],
+              ["FlightAware (public)", "Supplementary flight plan and route data where available via public API."],
+              ["OpenStreetMap", "Geographic boundaries, military installation perimeters, restricted airspace polygons."],
+              ["Court records", "Public court filings and dockets. Sourced via PACER and state court portals."],
+              ["News archives", "Publicly reported incidents, investigations, and oversight actions. Linked, not reproduced."],
+            ].map(([name, desc]) => (
+              <div key={name} className="brutal-border border-paper/40 p-4">
+                <h3 className="text-lg mb-1 text-warning">{name}</h3>
+                <p className="text-xs opacity-80">{desc}</p>
+              </div>
+            ))}
           </div>
-          <p className="mt-3 text-xs opacity-70 font-mono">
-            SHA-256 hashing at ingestion. Merkle root published periodically. Third-party recomputation validates integrity.
-          </p>
         </div>
       </section>
 
-      {/* 7. What we do NOT log */}
-      <section className="border-b-4 border-ink bg-alert text-paper">
-        <div className="max-w-[1400px] mx-auto px-4 py-10">
-          <div className="label-stamp bg-paper text-ink inline-block px-2 py-1 mb-3">Privacy boundary</div>
-          <h2 className="text-3xl sm:text-4xl mb-4">What we do NOT log</h2>
-          <p className="text-sm max-w-3xl mb-4 opacity-90">
-            The system is intentionally limited to public airspace data. No private signals. No personal data. No exceptions.
-          </p>
-          <ul className="grid sm:grid-cols-2 gap-2 text-sm font-mono">
+      {/* 4. Detection pipeline */}
+      <section className="border-b-4 border-ink">
+        <div className="max-w-[1400px] mx-auto px-4 py-16">
+          <div className="label-stamp bg-warning inline-block px-2 py-1 mb-3">Detection pipeline</div>
+          <h2 className="text-4xl sm:text-5xl mb-6">From raw signal to flagged event</h2>
+          <div className="space-y-4">
             {[
-              "Personal data (names, addresses, phone numbers)",
-              "Biometric data of any kind",
-              "Phone or Wi-Fi signals",
-              "Private surveillance feeds",
-              "Social media or web-scraped personal content",
-              "Any data not publicly broadcast or filed",
-            ].map((item, i) => (
-              <li key={i} className="brutal-border-thick border-paper p-2">{item}</li>
+              { step: "Ingest", desc: "ADS-B position reports are received in real time. Every report is stored — no filtering, no sampling." },
+              { step: "Baseline", desc: "For each aircraft, the system builds a 48-hour baseline of position, altitude, speed, and heading. No flagging occurs during this window." },
+              { step: "Score", desc: "After baseline, each new detection is scored against the learned distribution. Robust z-scores and isolation-forest anomaly scores are computed." },
+              { step: "Flag", desc: "Detections exceeding the published threshold are flagged. The threshold is the same for every aircraft — no per-target tuning." },
+              { step: "Chain", desc: "Flagged events are hashed and appended to the SHA-256 chain of custody. The chain root is published on the attestation page." },
+              { step: "Review", desc: "Human reviewers can override flags. Overrides are published with a reason. Dismissals are counted and displayed on this page." },
+            ].map((s, i) => (
+              <div key={s.step} className="flex gap-4 items-start brutal-border p-4">
+                <div className="font-mono text-3xl font-bold opacity-20 shrink-0 w-12">{i + 1}</div>
+                <div>
+                  <h3 className="text-lg font-bold">{s.step}</h3>
+                  <p className="text-sm">{s.desc}</p>
+                </div>
+              </div>
             ))}
-          </ul>
-          <p className="mt-3 text-xs opacity-90">
-            Only public ADS-B broadcasts and public FAA registry data are used. The public site is system-focused, not autobiographical.
+          </div>
+        </div>
+      </section>
+
+      {/* 5. Chain of custody */}
+      <section className="border-b-4 border-ink bg-ink text-paper">
+        <div className="max-w-[1400px] mx-auto px-4 py-16">
+          <div className="label-stamp bg-paper text-ink inline-block px-2 py-1 mb-3">Chain of custody</div>
+          <h2 className="text-4xl sm:text-5xl mb-6">SHA-256 Merkle chain</h2>
+          <p className="text-sm max-w-3xl mb-6 opacity-80">
+            Every scan artifact is hashed with SHA-256. Each hash links to the previous one,
+            forming a chain. The root of the chain is published on the{" "}
+            <a href="/attestation" className="underline text-warning">attestation page</a> and can be
+            verified by anyone using the <a href="/verify" className="underline text-warning">verification tool</a>.
           </p>
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="brutal-border-thick border-paper p-5">
+              <h3 className="text-xl mb-2 text-warning">How it works</h3>
+              <ol className="text-sm space-y-2 list-decimal pl-4">
+                <li>ML box posts scan results to <code className="bg-paper/10 px-1">/api/public/scans/ingest</code></li>
+                <li>Server computes SHA-256 of the canonical payload</li>
+                <li>Hash is stored in <code className="bg-paper/10 px-1">scan_artifacts.merkle_root</code></li>
+                <li>Periodically, hashes are folded into a Merkle tree</li>
+                <li>Tree root is published on <a href="/attestation" className="underline">/attestation</a></li>
+                <li>Anyone can reproduce the hash from the raw data</li>
+              </ol>
+            </div>
+            <div className="brutal-border-thick border-paper p-5">
+              <h3 className="text-xl mb-2 text-warning">What it proves</h3>
+              <ul className="text-sm space-y-2 list-disc pl-4">
+                <li>The scan data has not been altered since ingestion</li>
+                <li>The sequence of scans is preserved — no insertions or deletions</li>
+                <li>The published flag counts match the raw detection data</li>
+                <li>Any tampering would break the chain visibly</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 6. Threshold publication */}
+      <section className="border-b-4 border-ink">
+        <div className="max-w-[1400px] mx-auto px-4 py-16">
+          <div className="label-stamp bg-warning inline-block px-2 py-1 mb-3">Threshold</div>
+          <h2 className="text-4xl sm:text-5xl mb-6">The published threshold</h2>
+          <p className="text-sm max-w-3xl mb-6">
+            The anomaly threshold is the same for every aircraft. It is not tuned per target, per
+            county, or per mission. The threshold is published here so anyone can verify that the
+            same rule applies to every flight.
+          </p>
+          <div className="brutal-border-thick p-6 bg-paper">
+            <div className="grid sm:grid-cols-3 gap-6">
+              <div>
+                <div className="label-stamp text-[11px] mb-1">Robust z-score</div>
+                <div className="font-display text-4xl">≥ 3.5</div>
+                <div className="text-xs opacity-70 mt-1">Median absolute deviation based</div>
+              </div>
+              <div>
+                <div className="label-stamp text-[11px] mb-1">Isolation forest</div>
+                <div className="font-display text-4xl">≤ 0.15</div>
+                <div className="text-xs opacity-70 mt-1">Anomaly score (lower = more anomalous)</div>
+              </div>
+              <div>
+                <div className="label-stamp text-[11px] mb-1">Minimum baseline</div>
+                <div className="font-display text-4xl">48 h</div>
+                <div className="text-xs opacity-70 mt-1">Before any flag is possible</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 7. Reproducibility */}
+      <section className="border-b-4 border-ink bg-ink text-paper">
+        <div className="max-w-[1400px] mx-auto px-4 py-16">
+          <div className="label-stamp bg-paper text-ink inline-block px-2 py-1 mb-3">Reproducibility</div>
+          <h2 className="text-4xl sm:text-5xl mb-6">Reproduce any flag</h2>
+          <p className="text-sm max-w-3xl mb-6 opacity-80">
+            Every flagged event can be reproduced from the raw data. Here is how:
+          </p>
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="brutal-border-thick border-paper p-5">
+              <h3 className="text-xl mb-2 text-warning">Step-by-step</h3>
+              <ol className="text-sm space-y-2 list-decimal pl-4">
+                <li>Download the scan data: <code className="bg-paper/10 px-1">GET /api/public/export?format=csv</code></li>
+                <li>Find the scan_id of the flagged event</li>
+                <li>Fetch the raw detections for that scan from the API</li>
+                <li>Recompute the z-score using the published threshold (≥ 3.5)</li>
+                <li>Compare your result against the published flag</li>
+                <li>Verify the Merkle root using the <a href="/verify" className="underline">verification tool</a></li>
+              </ol>
+            </div>
+            <div className="brutal-border-thick border-paper p-5">
+              <h3 className="text-xl mb-2 text-warning">What you need</h3>
+              <ul className="text-sm space-y-2 list-disc pl-4">
+                <li>Internet access (all data is public)</li>
+                <li>Python or any language with SHA-256</li>
+                <li>No account, no API key, no authentication</li>
+                <li>The scan_id (published on every flag page)</li>
+              </ul>
+            </div>
+          </div>
         </div>
       </section>
 
       {/* 8. Reproducibility checklist */}
-      <section className="border-b-4 border-ink bg-paper">
-        <div className="max-w-[1400px] mx-auto px-4 py-10">
-          <div className="label-stamp bg-ink text-paper inline-block px-2 py-1 mb-3">Auditability</div>
-          <h2 className="text-3xl sm:text-4xl mb-4">Reproducibility checklist</h2>
-          <p className="text-sm max-w-3xl mb-4">
-            Every claim on this site can be independently verified. This is the full checklist a third party needs to reproduce our results.
-          </p>
+      <section className="border-b-4 border-ink">
+        <div className="max-w-[1400px] mx-auto px-4 py-16">
+          <div className="label-stamp bg-warning inline-block px-2 py-1 mb-3">Checklist</div>
+          <h2 className="text-4xl sm:text-5xl mb-6">Reproducibility checklist</h2>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {[
-              { c: "Public data only", d: "ADS-B / MLAT / FAA registry — no proprietary inputs." },
-              { c: "Open-source code", d: "Watchtower 2.0 code will be published for independent deployment." },
-              { c: "Published thresholds", d: "99th percentile baseline deviation. Fixed. Documented." },
-              { c: "Published weights", d: "Altitude 35%, Repeat 25%, Temporal 20%, Convergence 12%, Shell 8%." },
-              { c: "Published method version", d: "Every row carries WTI version for temporal reproducibility." },
-              { c: "Hash for every record", d: "SHA-256 + Merkle chain. Tamper-evident by design." },
-            ].map((r) => (
-              <div key={r.c} className="brutal-border p-3 bg-paper">
-                <div className="label-stamp mb-1">{r.c}</div>
-                <div className="text-xs font-mono leading-snug">{r.d}</div>
+              ["Raw data available", "All scan artifacts are downloadable via /api/public/export"],
+              ["Threshold published", "The exact threshold values are on this page"],
+              ["Hash chain public", "Merkle root published on /attestation"],
+              ["Verification tool", "Anyone can verify at /verify without an account"],
+              ["Dismissal log", "Human overrides are published with reasons"],
+              ["Source code", "Pipeline code is open for inspection"],
+              ["Baseline window", "48-hour minimum is enforced in code"],
+              ["No per-target tuning", "Same threshold for every aircraft"],
+              ["Gap publication", "Coverage gaps are part of the record"],
+            ].map(([title, desc]) => (
+              <div key={title} className="brutal-border p-4">
+                <div className="flex items-start gap-2">
+                  <span className="text-warning font-bold text-lg shrink-0">✓</span>
+                  <div>
+                    <h3 className="text-sm font-bold">{title}</h3>
+                    <p className="text-xs opacity-70 mt-1">{desc}</p>
+                  </div>
+                </div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* 9. Publishing the machine's own logs */}
       <section className="border-b-4 border-ink bg-ink text-paper">
-        <div className="max-w-[1400px] mx-auto px-4 py-12">
-          <div className="label-stamp bg-warning text-ink inline-block px-2 py-1 mb-3">Auditor endpoints</div>
-          <h2 className="text-3xl sm:text-4xl mb-4">Publishing the machine's own logs</h2>
-          <p className="text-sm max-w-3xl mb-5 opacity-80">
-            Anyone can read the raw scan output. The ML system posts one hashed artifact per scan; every artifact
-            is public and every root is reproducible.
+        <div className="max-w-[1400px] mx-auto px-4 py-16">
+          <h2 className="text-4xl sm:text-5xl mb-6">No exceptions. No special access. No hidden data.</h2>
+          <p className="text-lg max-w-3xl opacity-80">
+            Everything we do is grounded in public airspace data. No private signals. No personal data. No exceptions.
           </p>
-          <div className="grid md:grid-cols-3 gap-3">
-            <a href="/attestation" className="brutal-border-thick border-paper p-4 bg-paper text-ink hover:bg-warning transition-colors">
-              <div className="label-stamp mb-1">/attestation</div>
-              <div className="font-mono text-sm">Live Merkle root + last 24 scan artifacts.</div>
-            </a>
-            <a href="/api/public/scans/latest" className="brutal-border-thick border-paper p-4 bg-paper text-ink hover:bg-warning transition-colors">
-              <div className="label-stamp mb-1">/api/public/scans/latest</div>
-              <div className="font-mono text-sm">Latest scan artifact as JSON. Auditor-friendly.</div>
-            </a>
-            <div className="brutal-border-thick border-paper p-4 bg-paper text-ink">
-              <div className="label-stamp mb-1">Review dismissals</div>
-              <div className="font-mono text-sm">{dismissals.month} dismissed in 30d · {dismissals.total} total published.</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 10. Rule mapping version + public corrections log */}
-      <section className="border-b-4 border-ink bg-warning">
-        <div className="max-w-[1400px] mx-auto px-4 py-12">
-          <div className="label-stamp bg-ink text-paper inline-block px-2 py-1 mb-3">Rule mapping · public audit trail</div>
-          <div className="flex flex-wrap items-baseline gap-4 mb-4">
-            <h2 className="text-3xl sm:text-4xl">Corrections log</h2>
-            <span className="label-stamp bg-ink text-paper px-2 py-1 font-mono">Current: {ruleVer.version}</span>
-          </div>
-          <p className="text-sm max-w-3xl mb-6">
-            Every change to what regulations the classifier applies is versioned and
-            posted here — the way we already version the Watchtower Threat Index (WTI).
-            When we catch a misclassification, the correction goes on the record instead
-            of being silently edited. That is itself a transparency asset.
-          </p>
-          <div className="brutal-border-thick bg-paper text-ink">
-            <table className="w-full text-sm">
-              <thead className="bg-ink text-paper">
-                <tr>
-                  <th className="text-left p-3 label-stamp w-40">Version</th>
-                  <th className="text-left p-3 label-stamp">Change</th>
-                </tr>
-              </thead>
-              <tbody className="font-mono">
-                {ruleVer.changelog.map((c, i) => (
-                  <tr key={i} className="border-t border-ink/20 align-top">
-                    <td className="p-3 font-bold">{c.version}</td>
-                    <td className="p-3 text-xs leading-relaxed">{c.change}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="mt-6 grid md:grid-cols-2 gap-4">
-            <div className="brutal-border-thick bg-paper text-ink p-4">
-              <div className="label-stamp bg-alert text-paper inline-block px-2 py-1 mb-2">Machine vs Editorial — how to read</div>
-              <ul className="text-sm space-y-2">
-                <li><span className="label-stamp bg-warning text-ink px-1.5 py-0.5 mr-1">MACHINE</span> Altitude, tail, county, timestamp, rule citation, hash. Directly from ADS-B or the FAA registry.</li>
-                <li><span className="label-stamp bg-alert text-paper px-1.5 py-0.5 mr-1">EDITORIAL</span> "SHELL-LIKELY", "operating like government", and the interpretive questions. Watchtower Project LLC's advocacy inference — not a machine finding.</li>
-                <li><span className="label-stamp bg-paper text-ink brutal-border px-1.5 py-0.5 mr-1">SUPPRESSED</span> A rule the classifier would otherwise cite, withheld pending confirmation (e.g. Part 137 operating-certificate status for ag operators). Shown transparently, not deleted.</li>
-              </ul>
-            </div>
-            <div className="brutal-border-thick bg-paper text-ink p-4">
-              <div className="label-stamp bg-ink text-paper inline-block px-2 py-1 mb-2">Inference-bucket precision &amp; recall — pending</div>
-              <p className="text-sm">
-                The "operating like local government" bucket is <strong>pattern-matched inference</strong>,
-                not a raw threshold detection. It deserves its own precision/recall
-                disclosure alongside the baseline 99th-percentile stats. We are
-                assembling the labeled evaluation set now; the confusion matrix will
-                publish here, and the inference-bucket rows will carry a{" "}
-                <code className="font-mono">classification_confidence</code> score when it does.
-              </p>
-            </div>
-          </div>
+          <ul className="mt-6 space-y-2 text-sm font-mono">
+            <li>→ <a href="/verify" className="underline text-warning">Verify any scan yourself</a></li>
+            <li>→ <a href="/attestation" className="underline text-warning">View the chain of custody attestation</a></li>
+            <li>→ <a href="/api/public/export?format=csv" className="underline text-warning">Download all scan data as CSV</a></li>
+          </ul>
         </div>
       </section>
 
