@@ -383,19 +383,29 @@ export async function loadFleet(sort: "score" | "detections" | "lowest"): Promis
   const hit = FLEET_CACHE.get(sort);
   if (hit && Date.now() - hit.at < TTL) return hit.rows;
   const w = watchtower();
-  const order =
-    sort === "detections" ? "p.total_detections DESC NULLS LAST"
-    : sort === "lowest" ? "p.min_altitude ASC NULLS LAST"
-    : "d.profile_score DESC NULLS LAST";
-  const rows = (await w`
-    SELECT p.icao_hex, p.observed_registration, p.registered_owner, p.aircraft_model,
-           p.total_detections, p.min_altitude, p.anomaly_score, p.last_seen,
-           p.is_military, p.tactical_role, d.behavioral_cluster, d.profile_score
-      FROM aircraft_deep_profiles d
-      JOIN aircraft_profiles p ON UPPER(p.icao_hex) = UPPER(d.icao_hex)
-     WHERE p.total_detections IS NOT NULL
-     ORDER BY ${w.unsafe ? w.unsafe(order) : order}
-     LIMIT 60`) as any[];
+  const rows = (await (sort === "detections"
+    ? w`SELECT p.icao_hex, p.observed_registration, p.registered_owner, p.aircraft_model,
+               p.total_detections, p.min_altitude, p.anomaly_score, p.last_seen,
+               p.is_military, p.tactical_role, d.behavioral_cluster, d.profile_score
+          FROM aircraft_deep_profiles d
+          JOIN aircraft_profiles p ON UPPER(p.icao_hex) = UPPER(d.icao_hex)
+         WHERE p.total_detections IS NOT NULL
+         ORDER BY p.total_detections DESC NULLS LAST LIMIT 60`
+    : sort === "lowest"
+    ? w`SELECT p.icao_hex, p.observed_registration, p.registered_owner, p.aircraft_model,
+               p.total_detections, p.min_altitude, p.anomaly_score, p.last_seen,
+               p.is_military, p.tactical_role, d.behavioral_cluster, d.profile_score
+          FROM aircraft_deep_profiles d
+          JOIN aircraft_profiles p ON UPPER(p.icao_hex) = UPPER(d.icao_hex)
+         WHERE p.total_detections IS NOT NULL AND p.min_altitude IS NOT NULL AND p.min_altitude > -50
+         ORDER BY p.min_altitude ASC LIMIT 60`
+    : w`SELECT p.icao_hex, p.observed_registration, p.registered_owner, p.aircraft_model,
+               p.total_detections, p.min_altitude, p.anomaly_score, p.last_seen,
+               p.is_military, p.tactical_role, d.behavioral_cluster, d.profile_score
+          FROM aircraft_deep_profiles d
+          JOIN aircraft_profiles p ON UPPER(p.icao_hex) = UPPER(d.icao_hex)
+         WHERE p.total_detections IS NOT NULL
+         ORDER BY d.profile_score DESC NULLS LAST, p.total_detections DESC NULLS LAST LIMIT 60`)) as any[];
   const out: FleetRow[] = rows.map((r) => ({
     icao: String(r.icao_hex).toUpperCase(),
     registration: str(r.observed_registration),
