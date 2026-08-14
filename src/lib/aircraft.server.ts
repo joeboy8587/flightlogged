@@ -225,7 +225,7 @@ export async function loadDossier(input: string): Promise<AircraftDossier | null
        ORDER BY d.profile_score DESC NULLS LAST LIMIT 8`,
   ]);
 
-  const partners = arr(base.confirmed_coord_partners).slice(0, 24);
+  const partners = Array.from(new Set(arr(base.confirmed_coord_partners).map((p) => p.toUpperCase()))).slice(0, 24);
   let handoffs: DossierHandoff[] = partners.map((p) => ({ partner: p, partnerIcao: null, partnerOwner: null }));
   if (partners.length) {
     const pRows = (await w`
@@ -358,10 +358,19 @@ export async function loadDossier(input: string): Promise<AircraftDossier | null
       wtpr: String(r.wtpr), anomalyType: str(r.anomaly_type), legalStatus: str(r.legal_status),
       courtReady: Boolean(r.court_ready), sha256: str(r.sha256), capturedAt: str(r.captured_at),
     })),
-    peers: (peers as any[]).map((r) => ({
-      icao: String(r.icao_hex).toUpperCase(), registration: str(r.observed_registration),
-      owner: str(r.registered_owner), profileScore: num(r.profile_score),
-    })),
+    peers: Array.from(
+      new Map(
+        (peers as any[]).map((r) => [
+          String(r.icao_hex).toUpperCase(),
+          {
+            icao: String(r.icao_hex).toUpperCase(),
+            registration: str(r.observed_registration),
+            owner: str(r.registered_owner),
+            profileScore: num(r.profile_score),
+          },
+        ]),
+      ).values(),
+    ),
     generatedAt: new Date().toISOString(),
   };
 
