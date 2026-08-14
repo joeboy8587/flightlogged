@@ -18,7 +18,7 @@ export function TailBadge({
   const node = <span className="font-mono font-bold">{label}</span>;
   if (!link || !tail) return node;
   return (
-    <Link to="/tail-search" search={{ tail }} className="hover:bg-warning px-1 -mx-1">
+    <Link to="/aircraft/$id" params={{ id: tail }} className="hover:bg-warning px-1 -mx-1">
       {node}
     </Link>
   );

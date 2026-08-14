@@ -40,6 +40,7 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ToolkitIndexRouteImport } from './routes/toolkit.index'
 import { Route as BlogIndexRouteImport } from './routes/blog.index'
+import { Route as AircraftIndexRouteImport } from './routes/aircraft.index'
 import { Route as ToolkitFoiaRouteImport } from './routes/toolkit.foia'
 import { Route as CountyCountyRouteImport } from './routes/county.$county'
 import { Route as BlogWeeklyRouteImport } from './routes/blog.weekly'
@@ -205,6 +206,11 @@ const BlogIndexRoute = BlogIndexRouteImport.update({
   path: '/',
   getParentRoute: () => BlogRoute,
 } as any)
+const AircraftIndexRoute = AircraftIndexRouteImport.update({
+  id: '/aircraft/',
+  path: '/aircraft/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ToolkitFoiaRoute = ToolkitFoiaRouteImport.update({
   id: '/foia',
   path: '/foia',
@@ -286,6 +292,7 @@ export interface FileRoutesByFullPath {
   '/blog/weekly': typeof BlogWeeklyRoute
   '/county/$county': typeof CountyCountyRoute
   '/toolkit/foia': typeof ToolkitFoiaRoute
+  '/aircraft/': typeof AircraftIndexRoute
   '/blog/': typeof BlogIndexRoute
   '/toolkit/': typeof ToolkitIndexRoute
   '/api/public/tts': typeof ApiPublicTtsRoute
@@ -326,6 +333,7 @@ export interface FileRoutesByTo {
   '/blog/weekly': typeof BlogWeeklyRoute
   '/county/$county': typeof CountyCountyRoute
   '/toolkit/foia': typeof ToolkitFoiaRoute
+  '/aircraft': typeof AircraftIndexRoute
   '/blog': typeof BlogIndexRoute
   '/toolkit': typeof ToolkitIndexRoute
   '/api/public/tts': typeof ApiPublicTtsRoute
@@ -369,6 +377,7 @@ export interface FileRoutesById {
   '/blog/weekly': typeof BlogWeeklyRoute
   '/county/$county': typeof CountyCountyRoute
   '/toolkit/foia': typeof ToolkitFoiaRoute
+  '/aircraft/': typeof AircraftIndexRoute
   '/blog/': typeof BlogIndexRoute
   '/toolkit/': typeof ToolkitIndexRoute
   '/api/public/tts': typeof ApiPublicTtsRoute
@@ -413,6 +422,7 @@ export interface FileRouteTypes {
     | '/blog/weekly'
     | '/county/$county'
     | '/toolkit/foia'
+    | '/aircraft/'
     | '/blog/'
     | '/toolkit/'
     | '/api/public/tts'
@@ -453,6 +463,7 @@ export interface FileRouteTypes {
     | '/blog/weekly'
     | '/county/$county'
     | '/toolkit/foia'
+    | '/aircraft'
     | '/blog'
     | '/toolkit'
     | '/api/public/tts'
@@ -495,6 +506,7 @@ export interface FileRouteTypes {
     | '/blog/weekly'
     | '/county/$county'
     | '/toolkit/foia'
+    | '/aircraft/'
     | '/blog/'
     | '/toolkit/'
     | '/api/public/tts'
@@ -535,6 +547,7 @@ export interface RootRouteChildren {
   ViolationsRoute: typeof ViolationsRoute
   AircraftIdRoute: typeof AircraftIdRoute
   CountyCountyRoute: typeof CountyCountyRoute
+  AircraftIndexRoute: typeof AircraftIndexRoute
   ApiPublicTtsRoute: typeof ApiPublicTtsRoute
   ApiPublicScansIngestRoute: typeof ApiPublicScansIngestRoute
   ApiPublicScansLatestRoute: typeof ApiPublicScansLatestRoute
@@ -760,6 +773,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BlogIndexRouteImport
       parentRoute: typeof BlogRoute
     }
+    '/aircraft/': {
+      id: '/aircraft/'
+      path: '/aircraft'
+      fullPath: '/aircraft/'
+      preLoaderRoute: typeof AircraftIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/toolkit/foia': {
       id: '/toolkit/foia'
       path: '/foia'
@@ -885,6 +905,7 @@ const rootRouteChildren: RootRouteChildren = {
   ViolationsRoute: ViolationsRoute,
   AircraftIdRoute: AircraftIdRoute,
   CountyCountyRoute: CountyCountyRoute,
+  AircraftIndexRoute: AircraftIndexRoute,
   ApiPublicTtsRoute: ApiPublicTtsRoute,
   ApiPublicScansIngestRoute: ApiPublicScansIngestRoute,
   ApiPublicScansLatestRoute: ApiPublicScansLatestRoute,
