@@ -66,7 +66,7 @@ function toCSV(rows: ScanRow[]): string {
   return lines.join("\n");
 }
 
-export const Route = createFileRoute("/api/public/export")({
+export const Route = createFileRoute("/api/public/export/")({
   server: {
     handlers: {
       GET: async ({ request }) => {

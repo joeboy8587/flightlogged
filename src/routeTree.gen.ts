@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ViolationsRouteImport } from './routes/violations'
+import { Route as VerifyRouteImport } from './routes/verify'
 import { Route as ToolkitRouteImport } from './routes/toolkit'
 import { Route as ThreatIndexRouteImport } from './routes/threat-index'
 import { Route as TailSearchRouteImport } from './routes/tail-search'
@@ -44,12 +45,18 @@ import { Route as CountyCountyRouteImport } from './routes/county.$county'
 import { Route as BlogWeeklyRouteImport } from './routes/blog.weekly'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as ApiPublicTtsRouteImport } from './routes/api/public/tts'
+import { Route as ApiPublicExportIndexRouteImport } from './routes/api/public/export/index'
 import { Route as ApiPublicScansLatestRouteImport } from './routes/api/public/scans/latest'
 import { Route as ApiPublicScansIngestRouteImport } from './routes/api/public/scans/ingest'
 
 const ViolationsRoute = ViolationsRouteImport.update({
   id: '/violations',
   path: '/violations',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VerifyRoute = VerifyRouteImport.update({
+  id: '/verify',
+  path: '/verify',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ToolkitRoute = ToolkitRouteImport.update({
@@ -222,6 +229,11 @@ const ApiPublicTtsRoute = ApiPublicTtsRouteImport.update({
   path: '/api/public/tts',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicExportIndexRoute = ApiPublicExportIndexRouteImport.update({
+  id: '/api/public/export/',
+  path: '/api/public/export/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicScansLatestRoute = ApiPublicScansLatestRouteImport.update({
   id: '/api/public/scans/latest',
   path: '/api/public/scans/latest',
@@ -261,6 +273,7 @@ export interface FileRoutesByFullPath {
   '/tail-search': typeof TailSearchRoute
   '/threat-index': typeof ThreatIndexRoute
   '/toolkit': typeof ToolkitRouteWithChildren
+  '/verify': typeof VerifyRoute
   '/violations': typeof ViolationsRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/blog/weekly': typeof BlogWeeklyRoute
@@ -271,6 +284,7 @@ export interface FileRoutesByFullPath {
   '/api/public/tts': typeof ApiPublicTtsRoute
   '/api/public/scans/ingest': typeof ApiPublicScansIngestRoute
   '/api/public/scans/latest': typeof ApiPublicScansLatestRoute
+  '/api/public/export/': typeof ApiPublicExportIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -298,6 +312,7 @@ export interface FileRoutesByTo {
   '/surveillance-grid': typeof SurveillanceGridRoute
   '/tail-search': typeof TailSearchRoute
   '/threat-index': typeof ThreatIndexRoute
+  '/verify': typeof VerifyRoute
   '/violations': typeof ViolationsRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/blog/weekly': typeof BlogWeeklyRoute
@@ -308,6 +323,7 @@ export interface FileRoutesByTo {
   '/api/public/tts': typeof ApiPublicTtsRoute
   '/api/public/scans/ingest': typeof ApiPublicScansIngestRoute
   '/api/public/scans/latest': typeof ApiPublicScansLatestRoute
+  '/api/public/export': typeof ApiPublicExportIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -338,6 +354,7 @@ export interface FileRoutesById {
   '/tail-search': typeof TailSearchRoute
   '/threat-index': typeof ThreatIndexRoute
   '/toolkit': typeof ToolkitRouteWithChildren
+  '/verify': typeof VerifyRoute
   '/violations': typeof ViolationsRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/blog/weekly': typeof BlogWeeklyRoute
@@ -348,6 +365,7 @@ export interface FileRoutesById {
   '/api/public/tts': typeof ApiPublicTtsRoute
   '/api/public/scans/ingest': typeof ApiPublicScansIngestRoute
   '/api/public/scans/latest': typeof ApiPublicScansLatestRoute
+  '/api/public/export/': typeof ApiPublicExportIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -379,6 +397,7 @@ export interface FileRouteTypes {
     | '/tail-search'
     | '/threat-index'
     | '/toolkit'
+    | '/verify'
     | '/violations'
     | '/blog/$slug'
     | '/blog/weekly'
@@ -389,6 +408,7 @@ export interface FileRouteTypes {
     | '/api/public/tts'
     | '/api/public/scans/ingest'
     | '/api/public/scans/latest'
+    | '/api/public/export/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -416,6 +436,7 @@ export interface FileRouteTypes {
     | '/surveillance-grid'
     | '/tail-search'
     | '/threat-index'
+    | '/verify'
     | '/violations'
     | '/blog/$slug'
     | '/blog/weekly'
@@ -426,6 +447,7 @@ export interface FileRouteTypes {
     | '/api/public/tts'
     | '/api/public/scans/ingest'
     | '/api/public/scans/latest'
+    | '/api/public/export'
   id:
     | '__root__'
     | '/'
@@ -455,6 +477,7 @@ export interface FileRouteTypes {
     | '/tail-search'
     | '/threat-index'
     | '/toolkit'
+    | '/verify'
     | '/violations'
     | '/blog/$slug'
     | '/blog/weekly'
@@ -465,6 +488,7 @@ export interface FileRouteTypes {
     | '/api/public/tts'
     | '/api/public/scans/ingest'
     | '/api/public/scans/latest'
+    | '/api/public/export/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -495,11 +519,13 @@ export interface RootRouteChildren {
   TailSearchRoute: typeof TailSearchRoute
   ThreatIndexRoute: typeof ThreatIndexRoute
   ToolkitRoute: typeof ToolkitRouteWithChildren
+  VerifyRoute: typeof VerifyRoute
   ViolationsRoute: typeof ViolationsRoute
   CountyCountyRoute: typeof CountyCountyRoute
   ApiPublicTtsRoute: typeof ApiPublicTtsRoute
   ApiPublicScansIngestRoute: typeof ApiPublicScansIngestRoute
   ApiPublicScansLatestRoute: typeof ApiPublicScansLatestRoute
+  ApiPublicExportIndexRoute: typeof ApiPublicExportIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -509,6 +535,13 @@ declare module '@tanstack/react-router' {
       path: '/violations'
       fullPath: '/violations'
       preLoaderRoute: typeof ViolationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/verify': {
+      id: '/verify'
+      path: '/verify'
+      fullPath: '/verify'
+      preLoaderRoute: typeof VerifyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/toolkit': {
@@ -749,6 +782,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicTtsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/export/': {
+      id: '/api/public/export/'
+      path: '/api/public/export'
+      fullPath: '/api/public/export/'
+      preLoaderRoute: typeof ApiPublicExportIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/scans/latest': {
       id: '/api/public/scans/latest'
       path: '/api/public/scans/latest'
@@ -821,12 +861,24 @@ const rootRouteChildren: RootRouteChildren = {
   TailSearchRoute: TailSearchRoute,
   ThreatIndexRoute: ThreatIndexRoute,
   ToolkitRoute: ToolkitRouteWithChildren,
+  VerifyRoute: VerifyRoute,
   ViolationsRoute: ViolationsRoute,
   CountyCountyRoute: CountyCountyRoute,
   ApiPublicTtsRoute: ApiPublicTtsRoute,
   ApiPublicScansIngestRoute: ApiPublicScansIngestRoute,
   ApiPublicScansLatestRoute: ApiPublicScansLatestRoute,
+  ApiPublicExportIndexRoute: ApiPublicExportIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
