@@ -44,6 +44,7 @@ import { Route as ToolkitFoiaRouteImport } from './routes/toolkit.foia'
 import { Route as CountyCountyRouteImport } from './routes/county.$county'
 import { Route as BlogWeeklyRouteImport } from './routes/blog.weekly'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
+import { Route as AircraftIdRouteImport } from './routes/aircraft.$id'
 import { Route as ApiPublicTtsRouteImport } from './routes/api/public/tts'
 import { Route as ApiPublicExportIndexRouteImport } from './routes/api/public/export/index'
 import { Route as ApiPublicScansLatestRouteImport } from './routes/api/public/scans/latest'
@@ -224,6 +225,11 @@ const BlogSlugRoute = BlogSlugRouteImport.update({
   path: '/$slug',
   getParentRoute: () => BlogRoute,
 } as any)
+const AircraftIdRoute = AircraftIdRouteImport.update({
+  id: '/aircraft/$id',
+  path: '/aircraft/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicTtsRoute = ApiPublicTtsRouteImport.update({
   id: '/api/public/tts',
   path: '/api/public/tts',
@@ -275,6 +281,7 @@ export interface FileRoutesByFullPath {
   '/toolkit': typeof ToolkitRouteWithChildren
   '/verify': typeof VerifyRoute
   '/violations': typeof ViolationsRoute
+  '/aircraft/$id': typeof AircraftIdRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/blog/weekly': typeof BlogWeeklyRoute
   '/county/$county': typeof CountyCountyRoute
@@ -314,6 +321,7 @@ export interface FileRoutesByTo {
   '/threat-index': typeof ThreatIndexRoute
   '/verify': typeof VerifyRoute
   '/violations': typeof ViolationsRoute
+  '/aircraft/$id': typeof AircraftIdRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/blog/weekly': typeof BlogWeeklyRoute
   '/county/$county': typeof CountyCountyRoute
@@ -356,6 +364,7 @@ export interface FileRoutesById {
   '/toolkit': typeof ToolkitRouteWithChildren
   '/verify': typeof VerifyRoute
   '/violations': typeof ViolationsRoute
+  '/aircraft/$id': typeof AircraftIdRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/blog/weekly': typeof BlogWeeklyRoute
   '/county/$county': typeof CountyCountyRoute
@@ -399,6 +408,7 @@ export interface FileRouteTypes {
     | '/toolkit'
     | '/verify'
     | '/violations'
+    | '/aircraft/$id'
     | '/blog/$slug'
     | '/blog/weekly'
     | '/county/$county'
@@ -438,6 +448,7 @@ export interface FileRouteTypes {
     | '/threat-index'
     | '/verify'
     | '/violations'
+    | '/aircraft/$id'
     | '/blog/$slug'
     | '/blog/weekly'
     | '/county/$county'
@@ -479,6 +490,7 @@ export interface FileRouteTypes {
     | '/toolkit'
     | '/verify'
     | '/violations'
+    | '/aircraft/$id'
     | '/blog/$slug'
     | '/blog/weekly'
     | '/county/$county'
@@ -521,6 +533,7 @@ export interface RootRouteChildren {
   ToolkitRoute: typeof ToolkitRouteWithChildren
   VerifyRoute: typeof VerifyRoute
   ViolationsRoute: typeof ViolationsRoute
+  AircraftIdRoute: typeof AircraftIdRoute
   CountyCountyRoute: typeof CountyCountyRoute
   ApiPublicTtsRoute: typeof ApiPublicTtsRoute
   ApiPublicScansIngestRoute: typeof ApiPublicScansIngestRoute
@@ -775,6 +788,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BlogSlugRouteImport
       parentRoute: typeof BlogRoute
     }
+    '/aircraft/$id': {
+      id: '/aircraft/$id'
+      path: '/aircraft/$id'
+      fullPath: '/aircraft/$id'
+      preLoaderRoute: typeof AircraftIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/tts': {
       id: '/api/public/tts'
       path: '/api/public/tts'
@@ -863,6 +883,7 @@ const rootRouteChildren: RootRouteChildren = {
   ToolkitRoute: ToolkitRouteWithChildren,
   VerifyRoute: VerifyRoute,
   ViolationsRoute: ViolationsRoute,
+  AircraftIdRoute: AircraftIdRoute,
   CountyCountyRoute: CountyCountyRoute,
   ApiPublicTtsRoute: ApiPublicTtsRoute,
   ApiPublicScansIngestRoute: ApiPublicScansIngestRoute,
