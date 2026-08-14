@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ViolationsRouteImport } from './routes/violations'
+import { Route as VerifyRouteImport } from './routes/verify'
 import { Route as ToolkitRouteImport } from './routes/toolkit'
 import { Route as ThreatIndexRouteImport } from './routes/threat-index'
 import { Route as TailSearchRouteImport } from './routes/tail-search'
@@ -39,17 +40,25 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ToolkitIndexRouteImport } from './routes/toolkit.index'
 import { Route as BlogIndexRouteImport } from './routes/blog.index'
+import { Route as AircraftIndexRouteImport } from './routes/aircraft.index'
 import { Route as ToolkitFoiaRouteImport } from './routes/toolkit.foia'
 import { Route as CountyCountyRouteImport } from './routes/county.$county'
 import { Route as BlogWeeklyRouteImport } from './routes/blog.weekly'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
+import { Route as AircraftIdRouteImport } from './routes/aircraft.$id'
 import { Route as ApiPublicTtsRouteImport } from './routes/api/public/tts'
+import { Route as ApiPublicExportIndexRouteImport } from './routes/api/public/export/index'
 import { Route as ApiPublicScansLatestRouteImport } from './routes/api/public/scans/latest'
 import { Route as ApiPublicScansIngestRouteImport } from './routes/api/public/scans/ingest'
 
 const ViolationsRoute = ViolationsRouteImport.update({
   id: '/violations',
   path: '/violations',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VerifyRoute = VerifyRouteImport.update({
+  id: '/verify',
+  path: '/verify',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ToolkitRoute = ToolkitRouteImport.update({
@@ -197,6 +206,11 @@ const BlogIndexRoute = BlogIndexRouteImport.update({
   path: '/',
   getParentRoute: () => BlogRoute,
 } as any)
+const AircraftIndexRoute = AircraftIndexRouteImport.update({
+  id: '/aircraft/',
+  path: '/aircraft/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ToolkitFoiaRoute = ToolkitFoiaRouteImport.update({
   id: '/foia',
   path: '/foia',
@@ -217,9 +231,19 @@ const BlogSlugRoute = BlogSlugRouteImport.update({
   path: '/$slug',
   getParentRoute: () => BlogRoute,
 } as any)
+const AircraftIdRoute = AircraftIdRouteImport.update({
+  id: '/aircraft/$id',
+  path: '/aircraft/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicTtsRoute = ApiPublicTtsRouteImport.update({
   id: '/api/public/tts',
   path: '/api/public/tts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicExportIndexRoute = ApiPublicExportIndexRouteImport.update({
+  id: '/api/public/export/',
+  path: '/api/public/export/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicScansLatestRoute = ApiPublicScansLatestRouteImport.update({
@@ -261,16 +285,20 @@ export interface FileRoutesByFullPath {
   '/tail-search': typeof TailSearchRoute
   '/threat-index': typeof ThreatIndexRoute
   '/toolkit': typeof ToolkitRouteWithChildren
+  '/verify': typeof VerifyRoute
   '/violations': typeof ViolationsRoute
+  '/aircraft/$id': typeof AircraftIdRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/blog/weekly': typeof BlogWeeklyRoute
   '/county/$county': typeof CountyCountyRoute
   '/toolkit/foia': typeof ToolkitFoiaRoute
+  '/aircraft/': typeof AircraftIndexRoute
   '/blog/': typeof BlogIndexRoute
   '/toolkit/': typeof ToolkitIndexRoute
   '/api/public/tts': typeof ApiPublicTtsRoute
   '/api/public/scans/ingest': typeof ApiPublicScansIngestRoute
   '/api/public/scans/latest': typeof ApiPublicScansLatestRoute
+  '/api/public/export/': typeof ApiPublicExportIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -298,16 +326,20 @@ export interface FileRoutesByTo {
   '/surveillance-grid': typeof SurveillanceGridRoute
   '/tail-search': typeof TailSearchRoute
   '/threat-index': typeof ThreatIndexRoute
+  '/verify': typeof VerifyRoute
   '/violations': typeof ViolationsRoute
+  '/aircraft/$id': typeof AircraftIdRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/blog/weekly': typeof BlogWeeklyRoute
   '/county/$county': typeof CountyCountyRoute
   '/toolkit/foia': typeof ToolkitFoiaRoute
+  '/aircraft': typeof AircraftIndexRoute
   '/blog': typeof BlogIndexRoute
   '/toolkit': typeof ToolkitIndexRoute
   '/api/public/tts': typeof ApiPublicTtsRoute
   '/api/public/scans/ingest': typeof ApiPublicScansIngestRoute
   '/api/public/scans/latest': typeof ApiPublicScansLatestRoute
+  '/api/public/export': typeof ApiPublicExportIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -338,16 +370,20 @@ export interface FileRoutesById {
   '/tail-search': typeof TailSearchRoute
   '/threat-index': typeof ThreatIndexRoute
   '/toolkit': typeof ToolkitRouteWithChildren
+  '/verify': typeof VerifyRoute
   '/violations': typeof ViolationsRoute
+  '/aircraft/$id': typeof AircraftIdRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/blog/weekly': typeof BlogWeeklyRoute
   '/county/$county': typeof CountyCountyRoute
   '/toolkit/foia': typeof ToolkitFoiaRoute
+  '/aircraft/': typeof AircraftIndexRoute
   '/blog/': typeof BlogIndexRoute
   '/toolkit/': typeof ToolkitIndexRoute
   '/api/public/tts': typeof ApiPublicTtsRoute
   '/api/public/scans/ingest': typeof ApiPublicScansIngestRoute
   '/api/public/scans/latest': typeof ApiPublicScansLatestRoute
+  '/api/public/export/': typeof ApiPublicExportIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -379,16 +415,20 @@ export interface FileRouteTypes {
     | '/tail-search'
     | '/threat-index'
     | '/toolkit'
+    | '/verify'
     | '/violations'
+    | '/aircraft/$id'
     | '/blog/$slug'
     | '/blog/weekly'
     | '/county/$county'
     | '/toolkit/foia'
+    | '/aircraft/'
     | '/blog/'
     | '/toolkit/'
     | '/api/public/tts'
     | '/api/public/scans/ingest'
     | '/api/public/scans/latest'
+    | '/api/public/export/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -416,16 +456,20 @@ export interface FileRouteTypes {
     | '/surveillance-grid'
     | '/tail-search'
     | '/threat-index'
+    | '/verify'
     | '/violations'
+    | '/aircraft/$id'
     | '/blog/$slug'
     | '/blog/weekly'
     | '/county/$county'
     | '/toolkit/foia'
+    | '/aircraft'
     | '/blog'
     | '/toolkit'
     | '/api/public/tts'
     | '/api/public/scans/ingest'
     | '/api/public/scans/latest'
+    | '/api/public/export'
   id:
     | '__root__'
     | '/'
@@ -455,16 +499,20 @@ export interface FileRouteTypes {
     | '/tail-search'
     | '/threat-index'
     | '/toolkit'
+    | '/verify'
     | '/violations'
+    | '/aircraft/$id'
     | '/blog/$slug'
     | '/blog/weekly'
     | '/county/$county'
     | '/toolkit/foia'
+    | '/aircraft/'
     | '/blog/'
     | '/toolkit/'
     | '/api/public/tts'
     | '/api/public/scans/ingest'
     | '/api/public/scans/latest'
+    | '/api/public/export/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -495,11 +543,15 @@ export interface RootRouteChildren {
   TailSearchRoute: typeof TailSearchRoute
   ThreatIndexRoute: typeof ThreatIndexRoute
   ToolkitRoute: typeof ToolkitRouteWithChildren
+  VerifyRoute: typeof VerifyRoute
   ViolationsRoute: typeof ViolationsRoute
+  AircraftIdRoute: typeof AircraftIdRoute
   CountyCountyRoute: typeof CountyCountyRoute
+  AircraftIndexRoute: typeof AircraftIndexRoute
   ApiPublicTtsRoute: typeof ApiPublicTtsRoute
   ApiPublicScansIngestRoute: typeof ApiPublicScansIngestRoute
   ApiPublicScansLatestRoute: typeof ApiPublicScansLatestRoute
+  ApiPublicExportIndexRoute: typeof ApiPublicExportIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -509,6 +561,13 @@ declare module '@tanstack/react-router' {
       path: '/violations'
       fullPath: '/violations'
       preLoaderRoute: typeof ViolationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/verify': {
+      id: '/verify'
+      path: '/verify'
+      fullPath: '/verify'
+      preLoaderRoute: typeof VerifyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/toolkit': {
@@ -714,6 +773,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BlogIndexRouteImport
       parentRoute: typeof BlogRoute
     }
+    '/aircraft/': {
+      id: '/aircraft/'
+      path: '/aircraft'
+      fullPath: '/aircraft/'
+      preLoaderRoute: typeof AircraftIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/toolkit/foia': {
       id: '/toolkit/foia'
       path: '/foia'
@@ -742,11 +808,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BlogSlugRouteImport
       parentRoute: typeof BlogRoute
     }
+    '/aircraft/$id': {
+      id: '/aircraft/$id'
+      path: '/aircraft/$id'
+      fullPath: '/aircraft/$id'
+      preLoaderRoute: typeof AircraftIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/tts': {
       id: '/api/public/tts'
       path: '/api/public/tts'
       fullPath: '/api/public/tts'
       preLoaderRoute: typeof ApiPublicTtsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/export/': {
+      id: '/api/public/export/'
+      path: '/api/public/export'
+      fullPath: '/api/public/export/'
+      preLoaderRoute: typeof ApiPublicExportIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/scans/latest': {
@@ -821,12 +901,26 @@ const rootRouteChildren: RootRouteChildren = {
   TailSearchRoute: TailSearchRoute,
   ThreatIndexRoute: ThreatIndexRoute,
   ToolkitRoute: ToolkitRouteWithChildren,
+  VerifyRoute: VerifyRoute,
   ViolationsRoute: ViolationsRoute,
+  AircraftIdRoute: AircraftIdRoute,
   CountyCountyRoute: CountyCountyRoute,
+  AircraftIndexRoute: AircraftIndexRoute,
   ApiPublicTtsRoute: ApiPublicTtsRoute,
   ApiPublicScansIngestRoute: ApiPublicScansIngestRoute,
   ApiPublicScansLatestRoute: ApiPublicScansLatestRoute,
+  ApiPublicExportIndexRoute: ApiPublicExportIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

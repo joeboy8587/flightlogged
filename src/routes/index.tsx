@@ -483,7 +483,7 @@ function Home() {
               <div className="font-display text-2xl mb-1">Coordination graph</div>
               <p className="text-xs font-mono opacity-70">Shell networks coordinating state-actor patrol patterns.</p>
             </Link>
-            <Link to="/tail-search" className="brutal-border p-4 hover:bg-warning/40">
+            <Link to="/tail-search" search={{ tail: undefined }} className="brutal-border p-4 hover:bg-warning/40">
               <div className="label-stamp text-alert mb-1">Operator lookup</div>
               <div className="font-display text-2xl mb-1">Tail number search</div>
               <p className="text-xs font-mono opacity-70">Pull every detection for a tail number. Export forensic CSV.</p>

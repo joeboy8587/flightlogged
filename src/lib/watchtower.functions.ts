@@ -73,6 +73,7 @@ function is13753(rule: string | null | undefined, source: string | null | undefi
 export const getRuleMappingVersion = createServerFn({ method: "GET" }).handler(async () => ({
   version: RULE_MAPPING_VERSION,
   changelog: RULE_MAPPING_CHANGELOG,
+  ruleCount: RULE_MAPPING_CHANGELOG.length,
 }));
 
 // ---- FAA identity enrichment ----
