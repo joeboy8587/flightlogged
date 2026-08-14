@@ -143,9 +143,9 @@ function AircraftDossierPage() {
                 <Row k="Resolved operator" v={data.identity.operatorResolved} />
                 <Row k="Registrant type" v={data.identity.registrantType} />
                 <Row k="Registrant location" v={[data.identity.city, data.identity.state].filter(Boolean).join(", ") || null} />
-                <Row k="Registry county" v={data.identity.county} />
+                <Row k="Registry county code" v={data.identity.county} />
                 <Row k="Serial number" v={data.identity.serial} />
-                <Row k="Engine" v={data.identity.engine} />
+                <Row k="Engine code" v={data.identity.engine} />
                 <Row k="Year manufactured" v={data.identity.manufacturerYear?.toString() ?? null} />
                 <Row k="Certificate issued" v={data.identity.certIssue ? fmtDate(data.identity.certIssue) : null} />
                 <Row k="Registration expires" v={data.identity.expiration ? fmtDate(data.identity.expiration) : null} />
@@ -327,8 +327,8 @@ function AircraftDossierPage() {
                   <div className="label-stamp mb-2">Confirmed coordination partners ({data.handoffs.length})</div>
                   {data.handoffs.length === 0 && <p className="font-mono text-sm">No confirmed partners.</p>}
                   <div className="flex flex-wrap gap-2">
-                    {data.handoffs.map((h) => (
-                      <Link key={h.partner} to="/aircraft/$id" params={{ id: h.partner }} className="brutal-border px-2 py-1 font-mono text-xs hover:bg-warning">
+                    {data.handoffs.map((h, i) => (
+                      <Link key={`${h.partner}-${i}`} to="/aircraft/$id" params={{ id: h.partner }} className="brutal-border px-2 py-1 font-mono text-xs hover:bg-warning">
                         {h.partner}
                         {h.partnerOwner && <span className="opacity-60"> · {h.partnerOwner.slice(0, 22)}</span>}
                       </Link>
@@ -352,8 +352,8 @@ function AircraftDossierPage() {
                 <div className="mt-6">
                   <div className="label-stamp mb-2">Aircraft that behave like this one (same cluster)</div>
                   <div className="flex flex-wrap gap-2">
-                    {data.peers.map((p) => (
-                      <Link key={p.icao} to="/aircraft/$id" params={{ id: p.registration ?? p.icao }} className="brutal-border px-2 py-1 font-mono text-xs hover:bg-warning">
+                    {data.peers.map((p, i) => (
+                      <Link key={`${p.icao}-${i}`} to="/aircraft/$id" params={{ id: p.registration ?? p.icao }} className="brutal-border px-2 py-1 font-mono text-xs hover:bg-warning">
                         {p.registration ?? p.icao}
                         {p.profileScore != null && <span className="opacity-60"> · {p.profileScore}</span>}
                       </Link>
