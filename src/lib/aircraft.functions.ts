@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
-import type { AircraftDossier, FleetRow } from "./aircraft.server";
+import type { AircraftDossier, FleetRow, DossierPeerMatch, DossierPattern } from "./aircraft.server";
 
-export type { AircraftDossier, FleetRow };
+export type { AircraftDossier, FleetRow, DossierPeerMatch, DossierPattern };
 
 export const getAircraftDossier = createServerFn({ method: "GET" })
   .inputValidator((d: { tail: string }) => ({ tail: String(d?.tail ?? "").slice(0, 20) }))

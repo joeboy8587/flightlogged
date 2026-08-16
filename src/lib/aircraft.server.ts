@@ -81,6 +81,12 @@ export type DossierSpoofing = {
 } | null;
 export type DossierReceipt = { wtpr: string; anomalyType: string | null; legalStatus: string | null; courtReady: boolean; sha256: string | null; capturedAt: string | null };
 export type DossierPeer = { icao: string; registration: string | null; owner: string | null; profileScore: number | null };
+export type DossierPeerMatch = DossierPeer & { similarity: number | null };
+export type DossierPattern = {
+  type: string; description: string | null; confidence: number | null; evidenceCount: number | null;
+  peakHour: number | null; activeDays: number | null; isActive: boolean; lastMatched: string | null;
+  fleetSize: number | null; sha256: string | null;
+};
 
 export type AircraftDossier = {
   query: string;
@@ -97,6 +103,8 @@ export type AircraftDossier = {
   spoofing: DossierSpoofing;
   receipts: DossierReceipt[];
   peers: DossierPeer[];
+  neighbors: DossierPeerMatch[];
+  patterns: DossierPattern[];
   generatedAt: string;
 };
 
@@ -240,6 +248,71 @@ export async function loadDossier(input: string): Promise<AircraftDossier | null
     });
   }
 
+  // True nearest-neighbour behavioural match via pgvector (HNSW, cosine).
+  let neighbors: DossierPeerMatch[] = [];
+  try {
+    const vec = (await w`
+      SELECT embedding_vector::text AS v FROM aircraft_deep_profiles
+       WHERE UPPER(icao_hex) = ${icao} AND embedding_vector IS NOT NULL LIMIT 1`) as any[];
+    const v = vec[0]?.v as string | undefined;
+    if (v) {
+      const nn = (await w`
+        SELECT d.icao_hex, d.profile_score, (d.embedding_vector <=> ${v}::vector) AS dist,
+               p.observed_registration, p.registered_owner
+          FROM aircraft_deep_profiles d
+          LEFT JOIN aircraft_profiles p ON UPPER(p.icao_hex) = UPPER(d.icao_hex)
+         WHERE d.embedding_vector IS NOT NULL AND UPPER(d.icao_hex) <> ${icao}
+         ORDER BY d.embedding_vector <=> ${v}::vector
+         LIMIT 24`) as any[];
+      neighbors = Array.from(
+        new Map(
+          nn.map((r) => {
+            const dist = num(r.dist);
+            return [
+              String(r.icao_hex).toUpperCase(),
+              {
+                icao: String(r.icao_hex).toUpperCase(),
+                registration: str(r.observed_registration),
+                owner: str(r.registered_owner),
+                profileScore: num(r.profile_score),
+                similarity: dist == null ? null : Math.max(0, 1 - dist),
+              } as DossierPeerMatch,
+            ];
+          }),
+        ).values(),
+      ).slice(0, 10);
+    }
+  } catch (err) {
+    console.warn("vector neighbour lookup unavailable", String(err));
+  }
+
+  // Learned fleet-wide patterns this tail is a member of (GIN-indexed array match).
+  let patterns: DossierPattern[] = [];
+  try {
+    const pRows = (await w`
+      SELECT pattern_type, pattern_description, confidence, evidence_count, peak_hour,
+             active_days, is_active, last_matched_at, sha256_hash,
+             array_length(aircraft_icao_hexes, 1) AS fleet
+        FROM learned_patterns
+       WHERE aircraft_icao_hexes && ARRAY[${icao}]::text[]
+       ORDER BY confidence DESC NULLS LAST, evidence_count DESC NULLS LAST
+       LIMIT 12`) as any[];
+    patterns = pRows.map((r) => ({
+      type: str(r.pattern_type) ?? "UNTYPED",
+      description: str(r.pattern_description),
+      confidence: num(r.confidence),
+      evidenceCount: num(r.evidence_count),
+      peakHour: num(r.peak_hour),
+      activeDays: num(r.active_days),
+      isActive: Boolean(r.is_active),
+      lastMatched: str(r.last_matched_at),
+      fleetSize: num(r.fleet),
+      sha256: str(r.sha256_hash),
+    }));
+  } catch (err) {
+    console.warn("learned pattern lookup unavailable", String(err));
+  }
+
   const d0 = (deep as any[])[0];
   const e0 = (ens as any[])[0] ?? {};
 
@@ -371,6 +444,8 @@ export async function loadDossier(input: string): Promise<AircraftDossier | null
         ]),
       ).values(),
     ),
+    neighbors,
+    patterns,
     generatedAt: new Date().toISOString(),
   };
 

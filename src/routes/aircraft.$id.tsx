@@ -350,7 +350,7 @@ function AircraftDossierPage() {
               </div>
               {data.peers.length > 0 && (
                 <div className="mt-6">
-                  <div className="label-stamp mb-2">Aircraft that behave like this one (same cluster)</div>
+                  <div className="label-stamp mb-2">Same behavioural cluster</div>
                   <div className="flex flex-wrap gap-2">
                     {data.peers.map((p, i) => (
                       <Link key={`${p.icao}-${i}`} to="/aircraft/$id" params={{ id: p.registration ?? p.icao }} className="brutal-border px-2 py-1 font-mono text-xs hover:bg-warning">
@@ -359,6 +359,46 @@ function AircraftDossierPage() {
                       </Link>
                     ))}
                   </div>
+                </div>
+              )}
+              {data.neighbors.length > 0 && (
+                <div className="mt-6">
+                  <div className="label-stamp mb-2">Aircraft that behave like this one (nearest-neighbour match)</div>
+                  <ul className="grid gap-1 sm:grid-cols-2">
+                    {data.neighbors.map((p) => (
+                      <li key={p.icao} className="brutal-border px-3 py-2 font-mono text-xs">
+                        <Link to="/aircraft/$id" params={{ id: p.registration ?? p.icao }} className="underline">
+                          {p.registration ?? p.icao}
+                        </Link>
+                        <span className="opacity-70">
+                          {" "}· {p.similarity != null ? `${(p.similarity * 100).toFixed(1)}% similar` : "similarity —"}
+                          {p.owner ? ` · ${p.owner.slice(0, 28)}` : ""}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="mt-2 text-xs font-mono opacity-70">
+                    Similarity compares the machine's 64-dimension behaviour fingerprint. It is a likeness measure, not an accusation.
+                  </p>
+                </div>
+              )}
+              {data.patterns.length > 0 && (
+                <div className="mt-6">
+                  <div className="label-stamp mb-2">Learned patterns this aircraft belongs to</div>
+                  <ul className="space-y-1 font-mono text-sm">
+                    {data.patterns.map((p, i) => (
+                      <li key={`${p.type}-${i}`} className="brutal-border px-3 py-2">
+                        <strong>{p.type.replace(/_/g, " ")}</strong>
+                        {p.confidence != null && <span className="opacity-70"> · confidence {(p.confidence * 100).toFixed(0)}%</span>}
+                        {!p.isActive && <span className="opacity-70"> · retired</span>}
+                        {p.description && <div className="mt-1 text-xs opacity-80">{p.description}</div>}
+                        <div className="text-xs opacity-60">
+                          {p.evidenceCount ?? "—"} supporting observations · {p.fleetSize ?? "—"} tails in pattern
+                          {p.peakHour != null ? ` · peak hour ${String(p.peakHour).padStart(2, "0")}:00` : ""} · last matched {fmtDate(p.lastMatched)}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               )}
             </Section>
