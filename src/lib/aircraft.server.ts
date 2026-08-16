@@ -81,6 +81,12 @@ export type DossierSpoofing = {
 } | null;
 export type DossierReceipt = { wtpr: string; anomalyType: string | null; legalStatus: string | null; courtReady: boolean; sha256: string | null; capturedAt: string | null };
 export type DossierPeer = { icao: string; registration: string | null; owner: string | null; profileScore: number | null };
+export type DossierPeerMatch = DossierPeer & { similarity: number | null };
+export type DossierPattern = {
+  type: string; description: string | null; confidence: number | null; evidenceCount: number | null;
+  peakHour: number | null; activeDays: number | null; isActive: boolean; lastMatched: string | null;
+  fleetSize: number | null; sha256: string | null;
+};
 
 export type AircraftDossier = {
   query: string;
@@ -97,6 +103,8 @@ export type AircraftDossier = {
   spoofing: DossierSpoofing;
   receipts: DossierReceipt[];
   peers: DossierPeer[];
+  neighbors: DossierPeerMatch[];
+  patterns: DossierPattern[];
   generatedAt: string;
 };
 
