@@ -42,8 +42,6 @@ const PRIMARY_NAV = [
   { to: "/master-report", label: "Master Report" },
   { to: "/surveillance-grid", label: "Surveillance Grid" },
   { to: "/live", label: "Live Feed" },
-  { to: "/accountability", label: "Accountability" },
-  { to: "/aircraft", label: "Aircraft" },
   { to: "/findings", label: "Findings" },
   { to: "/reports", label: "Reports" },
   { to: "/methodology", label: "Methodology" },
