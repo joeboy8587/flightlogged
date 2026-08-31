@@ -6,6 +6,7 @@ import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetHeader } from "@/co
 
 const NAV = [
   { to: "/", label: "Home" },
+  { to: "/master-report", label: "Master Report" },
   { to: "/how-to-read", label: "How to Read" },
   { to: "/accountability", label: "Accountability" },
   { to: "/surveillance-grid", label: "Surveillance Grid" },
@@ -38,15 +39,12 @@ const NAV = [
 // Primary nav shown on desktop; full list stays in the mobile/hamburger sheet.
 const PRIMARY_NAV = [
   { to: "/", label: "Home" },
+  { to: "/master-report", label: "Master Report" },
   { to: "/surveillance-grid", label: "Surveillance Grid" },
   { to: "/live", label: "Live Feed" },
-  { to: "/accountability", label: "Accountability" },
-  { to: "/aircraft", label: "Aircraft" },
   { to: "/findings", label: "Findings" },
   { to: "/reports", label: "Reports" },
   { to: "/methodology", label: "Methodology" },
-  { to: "/verify", label: "Verify" },
-  { to: "/about", label: "About" },
 ] as const;
 
 export function SiteHeader() {

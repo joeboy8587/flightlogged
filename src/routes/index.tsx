@@ -152,9 +152,13 @@ function Home() {
               Silence after this point is a choice — and it is on the record.
             </p>
             <div className="flex flex-wrap gap-3">
-              <Link to="/surveillance-grid" className="label-stamp bg-ink text-paper px-5 py-3 brutal-shadow-warning hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all">
+              <Link to="/master-report" className="label-stamp bg-ink text-paper px-5 py-3 brutal-shadow-warning hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all">
+                Read the Master Report 2026 →
+              </Link>
+              <Link to="/surveillance-grid" className="label-stamp brutal-border bg-paper px-5 py-3 hover:bg-warning transition-colors">
                 Read the full case →
               </Link>
+
               <Link to="/reports" className="label-stamp brutal-border bg-warning px-5 py-3 hover:bg-alert hover:text-paper transition-colors">
                 Download evidence packet
               </Link>

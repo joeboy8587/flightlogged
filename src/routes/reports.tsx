@@ -395,8 +395,27 @@ function Reports() {
         </div>
       </section>
 
+      <section className="border-b-4 border-ink bg-warning">
+        <div className="max-w-[1400px] mx-auto px-4 py-10">
+          <div className="label-stamp bg-ink text-paper inline-block px-2 py-1 mb-3">Latest · Master Report 2026</div>
+          <h2 className="text-3xl sm:text-5xl mb-3 max-w-4xl leading-tight">
+            Master Investigative Report — systemic aerial surveillance, proxy registrations, and an open
+            consent decree
+          </h2>
+          <p className="max-w-3xl mb-5">
+            The whole record in one place: seven counties, 411,691 sub-1,000 ft detections statewide, the
+            trustee and leasing registrations behind repeat tails, and the four enforcement packages built
+            from it. Every figure stamped VERIFIED or REPORTED.
+          </p>
+          <Link to="/master-report" className="label-stamp bg-ink text-paper px-5 py-3 inline-block brutal-border">
+            Read the master report →
+          </Link>
+        </div>
+      </section>
+
       <section>
         <div className="max-w-[1400px] mx-auto px-4 py-16 space-y-10">
+
           {REPORTS.map((r, idx) => (
             <article key={r.slug} className="brutal-border-thick bg-paper">
               <div className="grid lg:grid-cols-12">
