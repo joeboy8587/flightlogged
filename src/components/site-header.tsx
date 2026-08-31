@@ -47,8 +47,6 @@ const PRIMARY_NAV = [
   { to: "/findings", label: "Findings" },
   { to: "/reports", label: "Reports" },
   { to: "/methodology", label: "Methodology" },
-  { to: "/verify", label: "Verify" },
-  { to: "/about", label: "About" },
 ] as const;
 
 export function SiteHeader() {
