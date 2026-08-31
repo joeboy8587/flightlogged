@@ -24,6 +24,7 @@ import { Route as MosaicRouteImport } from './routes/mosaic'
 import { Route as MlDetectionsRouteImport } from './routes/ml-detections'
 import { Route as MilitaryRouteImport } from './routes/military'
 import { Route as MethodologyRouteImport } from './routes/methodology'
+import { Route as MasterReportRouteImport } from './routes/master-report'
 import { Route as LiveRouteImport } from './routes/live'
 import { Route as LegalRouteImport } from './routes/legal'
 import { Route as HowToReadRouteImport } from './routes/how-to-read'
@@ -124,6 +125,11 @@ const MilitaryRoute = MilitaryRouteImport.update({
 const MethodologyRoute = MethodologyRouteImport.update({
   id: '/methodology',
   path: '/methodology',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MasterReportRoute = MasterReportRouteImport.update({
+  id: '/master-report',
+  path: '/master-report',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LiveRoute = LiveRouteImport.update({
@@ -272,6 +278,7 @@ export interface FileRoutesByFullPath {
   '/how-to-read': typeof HowToReadRoute
   '/legal': typeof LegalRoute
   '/live': typeof LiveRoute
+  '/master-report': typeof MasterReportRoute
   '/methodology': typeof MethodologyRoute
   '/military': typeof MilitaryRoute
   '/ml-detections': typeof MlDetectionsRoute
@@ -314,6 +321,7 @@ export interface FileRoutesByTo {
   '/how-to-read': typeof HowToReadRoute
   '/legal': typeof LegalRoute
   '/live': typeof LiveRoute
+  '/master-report': typeof MasterReportRoute
   '/methodology': typeof MethodologyRoute
   '/military': typeof MilitaryRoute
   '/ml-detections': typeof MlDetectionsRoute
@@ -357,6 +365,7 @@ export interface FileRoutesById {
   '/how-to-read': typeof HowToReadRoute
   '/legal': typeof LegalRoute
   '/live': typeof LiveRoute
+  '/master-report': typeof MasterReportRoute
   '/methodology': typeof MethodologyRoute
   '/military': typeof MilitaryRoute
   '/ml-detections': typeof MlDetectionsRoute
@@ -402,6 +411,7 @@ export interface FileRouteTypes {
     | '/how-to-read'
     | '/legal'
     | '/live'
+    | '/master-report'
     | '/methodology'
     | '/military'
     | '/ml-detections'
@@ -444,6 +454,7 @@ export interface FileRouteTypes {
     | '/how-to-read'
     | '/legal'
     | '/live'
+    | '/master-report'
     | '/methodology'
     | '/military'
     | '/ml-detections'
@@ -486,6 +497,7 @@ export interface FileRouteTypes {
     | '/how-to-read'
     | '/legal'
     | '/live'
+    | '/master-report'
     | '/methodology'
     | '/military'
     | '/ml-detections'
@@ -530,6 +542,7 @@ export interface RootRouteChildren {
   HowToReadRoute: typeof HowToReadRoute
   LegalRoute: typeof LegalRoute
   LiveRoute: typeof LiveRoute
+  MasterReportRoute: typeof MasterReportRoute
   MethodologyRoute: typeof MethodologyRoute
   MilitaryRoute: typeof MilitaryRoute
   MlDetectionsRoute: typeof MlDetectionsRoute
@@ -659,6 +672,13 @@ declare module '@tanstack/react-router' {
       path: '/methodology'
       fullPath: '/methodology'
       preLoaderRoute: typeof MethodologyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/master-report': {
+      id: '/master-report'
+      path: '/master-report'
+      fullPath: '/master-report'
+      preLoaderRoute: typeof MasterReportRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/live': {
@@ -888,6 +908,7 @@ const rootRouteChildren: RootRouteChildren = {
   HowToReadRoute: HowToReadRoute,
   LegalRoute: LegalRoute,
   LiveRoute: LiveRoute,
+  MasterReportRoute: MasterReportRoute,
   MethodologyRoute: MethodologyRoute,
   MilitaryRoute: MilitaryRoute,
   MlDetectionsRoute: MlDetectionsRoute,
