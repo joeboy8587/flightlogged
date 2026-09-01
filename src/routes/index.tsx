@@ -126,6 +126,20 @@ function Home() {
         </div>
       </section>
 
+      {/* FEDERAL FLEET — public-record match strip */}
+      <section className="border-b-4 border-ink bg-ink text-paper">
+        <div className="max-w-[1400px] mx-auto px-4 py-4 flex flex-wrap items-center gap-3">
+          <span className="label-stamp bg-warning text-ink px-2 py-1 text-[10px]">NEW · PUBLIC RECORD MATCH</span>
+          <p className="text-sm sm:text-base flex-1 min-w-[260px]">
+            Federal surveillance aircraft registered to reported front companies have flown through our
+            footprint. We matched the published names against the FAA registry — then against our own detections.
+          </p>
+          <Link to="/federal" className="label-stamp brutal-border bg-paper text-ink px-4 py-2 text-[11px] hover:bg-warning transition-colors">
+            See the federal fleet →
+          </Link>
+        </div>
+      </section>
+
       {/* WATCHTOWER ALERT — persistent hero */}
       <section className="border-b-4 border-ink bg-paper">
         <div className="max-w-[1400px] mx-auto px-4 py-12 sm:py-16 grid lg:grid-cols-12 gap-8 lg:gap-10">

@@ -18,6 +18,7 @@ const NAV = [
   { to: "/threat-index", label: "Threat Index" },
   { to: "/operators", label: "Operators" },
   { to: "/cases", label: "Cases" },
+  { to: "/federal", label: "Federal Fleet" },
   { to: "/foreign", label: "Foreign" },
   { to: "/military", label: "Military" },
   { to: "/aircraft", label: "Aircraft Dossiers" },
