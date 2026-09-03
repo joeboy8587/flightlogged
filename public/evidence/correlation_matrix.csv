@@ -1,0 +1,14 @@
+census_tract_fips,neighborhood_name,low_alt_detections,unique_tails,avg_altitude_ft,poverty_rate_pct,disability_rate_pct,overdose_rate_per_100k
+06029000101,Oildale Core (Tract 1.01),8660,964,447.8,26.4,18.2,84.2
+06029000102,Oildale East (Tract 1.02),3683,599,673.1,28.2,17.8,78.5
+06029000200,Oildale North (Tract 2.00),2511,478,487.8,25.0,16.5,76.0
+06029000300,Oildale West (Tract 3.00),2433,539,557.6,22.1,15.1,52.0
+06029000400,Oildale Residential Core,2067,221,489.1,27.5,18.0,79.2
+06029002800,East Bakersfield / MLK,3113,457,432.3,31.8,16.9,81.0
+06029002900,Southeast Bakersfield Grid,1659,119,761.6,34.0,19.1,88.0
+06029003100,South Bakersfield Corridor,1170,232,627.4,32.5,17.4,83.0
+06029004201,Wasco Agricultural Basin,4091,311,444.0,24.1,12.4,42.1
+06029004300,Wasco Urban Central,758,113,493.9,29.1,13.0,49.0
+06029003802,Seven Oaks (Affluent Control),142,38,920.0,6.2,7.8,14.3
+06029003803,Southwest BFL (Affluent Control),118,29,940.0,7.8,8.1,16.1
+06029003700,Rosedale North (Affluent Control),95,22,980.0,5.4,6.9,12.0
