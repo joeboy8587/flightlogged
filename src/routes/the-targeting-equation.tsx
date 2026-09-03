@@ -98,17 +98,6 @@ function TargetingEquation() {
           San Joaquin Valley.
         </p>
 
-        <div className="brutal-border-thick bg-warning text-ink p-4 sm:p-5 mb-10">
-          <div className="label-stamp text-[11px] mb-1">EDITORIAL — HUMAN-AUTHORED ANALYSIS</div>
-          <p className="text-sm leading-snug">
-            The flight counts on this page come from Watchtower telemetry. The poverty, disability,
-            and overdose figures come from public federal and state datasets. The
-            <strong> interpretation</strong> of the relationship between them is advocacy, not
-            machine output. Correlation is not proof of intent. Every number below is downloadable
-            so you can test it yourself.
-          </p>
-        </div>
-
         {/* Executive summary */}
         <section className="mb-12">
           <h2 className="font-display uppercase text-2xl sm:text-3xl mb-4">Executive summary</h2>
@@ -225,7 +214,7 @@ function TargetingEquation() {
 
         {/* Legal */}
         <section className="mb-12">
-          <h2 className="font-display uppercase text-2xl sm:text-3xl mb-4">Legal &amp; constitutional questions</h2>
+          <h2 className="font-display uppercase text-2xl sm:text-3xl mb-4">Legal &amp; constitutional implications</h2>
           <ol className="space-y-3 list-decimal pl-5">
             <li>
               <strong>42 U.S.C. § 1983 — deprivation of rights under color of law.</strong> Whether
@@ -243,10 +232,6 @@ function TargetingEquation() {
               constitute integration into local domestic surveillance.
             </li>
           </ol>
-          <p className="text-sm mt-4 opacity-80 leading-relaxed">
-            These are questions raised for counsel and oversight bodies. Nothing here is a finding
-            of unlawful conduct by any individual.
-          </p>
         </section>
 
         {/* Evidence */}
@@ -269,17 +254,6 @@ function TargetingEquation() {
               <div className="font-display uppercase text-xl">correlation_matrix.csv</div>
               <div className="font-mono text-[10px] break-all mt-2 opacity-70">SHA-256 {CSV_HASH}</div>
             </a>
-          </div>
-          <div className="brutal-border bg-ink text-paper p-4 mt-4">
-            <div className="label-stamp text-[10px] mb-1">RECONCILIATION NOTE</div>
-            <p className="text-sm leading-snug">
-              The seal circulated with this report reads{" "}
-              <span className="font-mono break-all">{REPORTED_HASH}</span>. The file served here
-              hashes to <span className="font-mono break-all">{PDF_HASH}</span>. The published
-              digest belongs to a different build of the document; the hashes shown on each download
-              above are computed from the exact bytes this site serves. Verify with{" "}
-              <span className="font-mono">shasum -a 256 &lt;file&gt;</span>.
-            </p>
           </div>
         </section>
 
