@@ -300,7 +300,6 @@ function TargetingEquation() {
 
         <nav className="flex flex-wrap gap-2">
           {[
-            { to: "/county/kern", label: "Kern County Pulse" },
             { to: "/violations", label: "Violations ledger" },
             { to: "/methodology", label: "Methodology" },
             { to: "/verify", label: "Verify a claim" },

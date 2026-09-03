@@ -8,6 +8,7 @@ const NAV = [
   { to: "/", label: "Home" },
   { to: "/master-report", label: "Master Report" },
   { to: "/how-to-read", label: "How to Read" },
+  { to: "/the-targeting-equation", label: "The Targeting Equation" },
   { to: "/accountability", label: "Accountability" },
   { to: "/surveillance-grid", label: "Surveillance Grid" },
   { to: "/live", label: "Live Feed" },
@@ -41,10 +42,10 @@ const NAV = [
 const PRIMARY_NAV = [
   { to: "/", label: "Home" },
   { to: "/master-report", label: "Master Report" },
+  { to: "/the-targeting-equation", label: "Targeting Equation" },
   { to: "/surveillance-grid", label: "Surveillance Grid" },
   { to: "/live", label: "Live Feed" },
   { to: "/findings", label: "Findings" },
-  { to: "/reports", label: "Reports" },
   { to: "/methodology", label: "Methodology" },
 ] as const;
 

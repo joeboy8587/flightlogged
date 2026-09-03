@@ -13,6 +13,7 @@ import { Route as ViolationsRouteImport } from './routes/violations'
 import { Route as VerifyRouteImport } from './routes/verify'
 import { Route as ToolkitRouteImport } from './routes/toolkit'
 import { Route as ThreatIndexRouteImport } from './routes/threat-index'
+import { Route as TheTargetingEquationRouteImport } from './routes/the-targeting-equation'
 import { Route as TailSearchRouteImport } from './routes/tail-search'
 import { Route as SurveillanceGridRouteImport } from './routes/surveillance-grid'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
@@ -71,6 +72,11 @@ const ToolkitRoute = ToolkitRouteImport.update({
 const ThreatIndexRoute = ThreatIndexRouteImport.update({
   id: '/threat-index',
   path: '/threat-index',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TheTargetingEquationRoute = TheTargetingEquationRouteImport.update({
+  id: '/the-targeting-equation',
+  path: '/the-targeting-equation',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TailSearchRoute = TailSearchRouteImport.update({
@@ -297,6 +303,7 @@ export interface FileRoutesByFullPath {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/surveillance-grid': typeof SurveillanceGridRoute
   '/tail-search': typeof TailSearchRoute
+  '/the-targeting-equation': typeof TheTargetingEquationRoute
   '/threat-index': typeof ThreatIndexRoute
   '/toolkit': typeof ToolkitRouteWithChildren
   '/verify': typeof VerifyRoute
@@ -341,6 +348,7 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/surveillance-grid': typeof SurveillanceGridRoute
   '/tail-search': typeof TailSearchRoute
+  '/the-targeting-equation': typeof TheTargetingEquationRoute
   '/threat-index': typeof ThreatIndexRoute
   '/verify': typeof VerifyRoute
   '/violations': typeof ViolationsRoute
@@ -386,6 +394,7 @@ export interface FileRoutesById {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/surveillance-grid': typeof SurveillanceGridRoute
   '/tail-search': typeof TailSearchRoute
+  '/the-targeting-equation': typeof TheTargetingEquationRoute
   '/threat-index': typeof ThreatIndexRoute
   '/toolkit': typeof ToolkitRouteWithChildren
   '/verify': typeof VerifyRoute
@@ -433,6 +442,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/surveillance-grid'
     | '/tail-search'
+    | '/the-targeting-equation'
     | '/threat-index'
     | '/toolkit'
     | '/verify'
@@ -477,6 +487,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/surveillance-grid'
     | '/tail-search'
+    | '/the-targeting-equation'
     | '/threat-index'
     | '/verify'
     | '/violations'
@@ -521,6 +532,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/surveillance-grid'
     | '/tail-search'
+    | '/the-targeting-equation'
     | '/threat-index'
     | '/toolkit'
     | '/verify'
@@ -567,6 +579,7 @@ export interface RootRouteChildren {
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   SurveillanceGridRoute: typeof SurveillanceGridRoute
   TailSearchRoute: typeof TailSearchRoute
+  TheTargetingEquationRoute: typeof TheTargetingEquationRoute
   ThreatIndexRoute: typeof ThreatIndexRoute
   ToolkitRoute: typeof ToolkitRouteWithChildren
   VerifyRoute: typeof VerifyRoute
@@ -608,6 +621,13 @@ declare module '@tanstack/react-router' {
       path: '/threat-index'
       fullPath: '/threat-index'
       preLoaderRoute: typeof ThreatIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/the-targeting-equation': {
+      id: '/the-targeting-equation'
+      path: '/the-targeting-equation'
+      fullPath: '/the-targeting-equation'
+      preLoaderRoute: typeof TheTargetingEquationRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/tail-search': {
@@ -941,6 +961,7 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   SurveillanceGridRoute: SurveillanceGridRoute,
   TailSearchRoute: TailSearchRoute,
+  TheTargetingEquationRoute: TheTargetingEquationRoute,
   ThreatIndexRoute: ThreatIndexRoute,
   ToolkitRoute: ToolkitRouteWithChildren,
   VerifyRoute: VerifyRoute,
