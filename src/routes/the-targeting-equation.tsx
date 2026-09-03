@@ -131,16 +131,53 @@ function TargetingEquation() {
           </p>
         </section>
 
-        {/* Chart */}
+        {/* Key Findings Metrics grid */}
+        <section className="grid sm:grid-cols-4 gap-3 mb-12">
+          <div className="brutal-border bg-alert text-paper p-4">
+            <div className="label-stamp text-[10px] opacity-90 mb-1">Targeting Ratio</div>
+            <div className="font-display text-4xl">84.9x</div>
+            <div className="label-stamp text-[10px] mt-1 opacity-90">Poor vs. Affluent Pings</div>
+          </div>
+          <div className="brutal-border bg-ink text-paper p-4">
+            <div className="label-stamp text-[10px] opacity-70 mb-1">Spearman Rank Correlation</div>
+            <div className="font-display text-4xl">ρ = +0.892</div>
+            <div className="label-stamp text-[10px] mt-1 opacity-70">p &lt; 0.001</div>
+          </div>
+          <div className="brutal-border bg-paper p-4">
+            <div className="label-stamp text-[10px] mb-1">Altitude Differential</div>
+            <div className="font-display text-4xl">1.7x</div>
+            <div className="label-stamp text-[10px] mt-1 opacity-70">Lower Over Poor (541ft vs 947ft)</div>
+          </div>
+          <div className="brutal-border bg-warning text-ink p-4">
+            <div className="label-stamp text-[10px] mb-1">Oildale Core Intensity</div>
+            <div className="font-display text-4xl">98.9/100</div>
+            <div className="label-stamp text-[10px] mt-1">964 Unique Aircraft</div>
+          </div>
+        </section>
+
+        {/* 4-Panel Verification Graphic */}
         <figure className="mb-12">
           <img
-            src={chart.url}
-            alt="Scatter plot of low-altitude overflight detections against census-tract poverty rate for Kern County, showing a positive trendline with Spearman rho of +0.892"
-            className="brutal-border-thick w-full"
+            src="/images/targeting_equation_4panel.jpg"
+            alt="THE TARGETING EQUATION: Multi-Dimensional Surveillance Bias 4-Panel Chart"
+            className="brutal-border-thick w-full shadow-2xl"
             loading="lazy"
           />
           <figcaption className="label-stamp text-[10px] mt-2 opacity-70">
-            Low-altitude flight density vs. poverty rate, Kern County census tracts (sub-1,000 ft AGL).
+            Figure 1: Multi-dimensional surveillance bias analysis showing 85x targeting ratio, low-altitude proximity over poor tracts, and overdose correlation.
+          </figcaption>
+        </figure>
+
+        {/* Surveillance Intensity Rankings */}
+        <figure className="mb-12">
+          <img
+            src="/images/targeting_equation_intensity_table.jpg"
+            alt="WATCHTOWER VERIFIED: Raw Data & Intensity Rankings Chart"
+            className="brutal-border-thick w-full shadow-2xl"
+            loading="lazy"
+          />
+          <figcaption className="label-stamp text-[10px] mt-2 opacity-70">
+            Figure 2: Census tract surveillance intensity index rankings (Oildale Core 98.9 vs Rosedale North 0.0).
           </figcaption>
         </figure>
 
