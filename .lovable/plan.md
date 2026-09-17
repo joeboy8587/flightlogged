@@ -2,6 +2,55 @@
 
 I ran a read-only audit of every page and the live Quiet Math database this morning. The site builds clean and no page is erroring. But there are six real discrepancies, and two of them could be used to attack our credibility. Fixing them is mostly honesty plumbing, not new features.
 
+## Priority zero — Live Feed legal and evidentiary corrections
+
+These corrections will be completed before the broader audit work. The live checks confirm all three reported failures and identify their causes.
+
+### 1. Correct the altitude citation
+
+The live rule table contains both `14 CFR 137.51` (incorrect for this purpose) and `14 CFR 91.119`. The page matcher excludes §137.53 but fails to exclude §137.51, then selects it because its score is higher than §91.119. The matcher will:
+
+- exclude all Part 137 rules from general minimum-altitude citation;
+- use §91.119 for ordinary aircraft only where the measured facts support that comparison;
+- preserve the existing agricultural-operator exception;
+- show Part 137 on `/rules` as an agricultural-operations rule that must not tag the general feed;
+- audit every other feed query that maps altitude to a citation, not only the five cards.
+
+### 2. Remove the synthetic funnel until real stage data arrives
+
+The scan-artifact table is empty. The page currently fabricates a fallback funnel by combining three unrelated 24-hour queries, then copies the same anomaly count into Kinematic hits, Handoffs, and Flagged. That creates the impossible 4,244 → 11,880 sequence. The fallback will be removed. Until the scanner submits a real artifact, the page will show one honest state: **Scan-stage artifact not received**, alongside the independently measured 24-hour detection total. A staged funnel returns only when a valid artifact satisfies `detections ≥ candidates ≥ kinematic hits ≥ handoffs ≥ flagged`; invalid artifacts display a data-integrity warning rather than impossible numbers.
+
+### 3. Repair FAA owner resolution
+
+The latest-events query currently selects only six detection fields and never joins the FAA registry or aircraft profile, even though the mapper later expects owner fields. That is why known aircraft become “no public owner.” The query will resolve owners by case-normalised ICAO first and registration second, deduplicate upper/lower-case profile rows, and return the registry owner. Verified live owners include:
+
+- N71FF — FF22 LLC
+- N743AM — TEXTRON FINANCIAL CORP
+- N912PF — ANYWHERE AIRPLANE LLC
+- N514JD — CITY OF FRESNO POLICE DEPARTMENT
+- N21714 — AERO EQUITIES LLC
+
+If a tail remains unresolved after both joins, the card will identify it by tail only. “No public owner on file” will be reserved for a confirmed no-match result, not an empty joined field.
+
+### 4. Resolve KCSO manual section consistency
+
+The live baseline table currently contains both §B-401 and §B-301 at a 2,000-foot night floor, with §B-401 chosen only because it ties at the highest score and appears first. The website will not silently choose between conflicting internal citations. It will use the consistently documented §B-301 baseline and display a correction note on `/rules`; §B-401 remains visible as a conflicting source record pending source-document reconciliation.
+
+### 5. Make scope and denominator explicit
+
+- Label the 2,852.3-hour figure **lifetime AOI observation window**.
+- Keep Kern’s table labeled **last 24 hours**.
+- Rewrite the anomaly percentage as a complete fraction: anomaly events divided by all monitored detections in the same named window, with numerator and denominator visible.
+- Do not compare percentages built from different time windows.
+
+### 6. Make “latest five” chronologically honest
+
+The query is correctly sorted by newest timestamp, but multiple receivers can record several aircraft in the same second. The section will say **five latest distinct aircraft observations**, preserve descending timestamps, and show sub-minute precision or relative ordering so same-second records do not appear duplicated. If the intended editorial view is five separate moments, it will select one record per timestamp bucket rather than claiming they are simply the latest five rows.
+
+### Protected elements
+
+The KCSO Active Now banner, Your Rights panel, MACHINE / EDITORIAL split, and sensor-coverage disclosure remain unchanged.
+
 ## What is genuinely healthy
 
 - Raw detections are seconds fresh (1,905 in the last hour).
