@@ -1,0 +1,77 @@
+name: Rule map v2.2 bump (one-shot)
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/rulemap-v22.yml']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rulemap-v22
+  cancel-in-progress: false
+
+jobs:
+  bump:
+    name: Bump RULE_MAPPING_VERSION to v2.2 with changelog entry
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify base blob SHA (chain of custody)
+        run: |
+          SHA=$(git hash-object src/lib/watchtower.functions.ts)
+          if [ "$SHA" != "15b4536027510287abeeef4cb6767123dc051a65" ]; then
+            echo "BASE BLOB MISMATCH: $SHA — aborting, no changes made."
+            exit 1
+          fi
+          echo "Base blob verified: $SHA"
+
+      - name: Apply v2.2 bump (assert-exact replacements only)
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const p = 'src/lib/watchtower.functions.ts';
+          let t = fs.readFileSync(p, 'utf8');
+          const versionOld = 'export const RULE_MAPPING_VERSION = "v2.1 (2026-07-12)";';
+          const versionNew = 'export const RULE_MAPPING_VERSION = "v2.2 (2026-09-23)";';
+          const anchor = 'export const RULE_MAPPING_CHANGELOG = [';
+          const entry = [
+            '',
+            '  {',
+            '    version: "v2.2 (2026-09-23)",',
+            '    change:',
+            '      "Four UI-layer attribution fixes. (1) Dossier backend (aircraft.server.ts, 1043e80) now enforces the KCSO firewall — KCSO_* policy rules apply only to N912KC, N913KC, N911KC, N597E; every other tail is measured against FAA CFR/USC only. (2) ruleStatute() (aircraft.ts, 82bdfb8) no longer blanket-maps \"137\" rule codes to 14 CFR Part 137 — Part 137 is cited only for confirmed agricultural operators; the non-ag default is 14 CFR 91.119. (3) Dead Man Curve / autorotation language (translate.ts, 51c5210; story-card.tsx, 6e7dfb2) is gated on rotorcraft airframe type via the FAA registry model, so helicopter physics no longer attaches to fixed-wing aircraft. (4) Uncited magnification claims (read your license plate, see through your windows) replaced with cited 91.119(b)/(c) regulatory floors (index.tsx, 6e7bdad).",',
+            '  },'
+          ].join('\n');
+          if (t.includes('v2.2 (2026-09-23)')) {
+            console.error('v2.2 already present — aborting (idempotency guard).');
+            process.exit(1);
+          }
+          if (t.split(versionOld).length !== 2) {
+            console.error('FATAL: version constant not found exactly once.');
+            process.exit(1);
+          }
+          if (t.split(anchor).length !== 2) {
+            console.error('FATAL: changelog anchor not found exactly once.');
+            process.exit(1);
+          }
+          t = t.replace(versionOld, versionNew);
+          t = t.replace(anchor, anchor + entry);
+          fs.writeFileSync(p, t);
+          console.log('v2.2 bump applied.');
+          NODE
+
+      - name: Commit bump
+        run: |
+          git config user.name "watchtower-bot"
+          git config user.email "205856129+joeboy8587@users.noreply.github.com"
+          git add src/lib/watchtower.functions.ts
+          git commit -m "chore(rule-map): bump RULE_MAPPING_VERSION to v2.2 (2026-09-23) with changelog entry" -m "Version record for the four attribution fixes shipped 2026-09-23: KCSO dossier-path firewall (1043e80), Part 137 statute correction (82bdfb8), rotorcraft-gated language (51c5210, 6e7dfb2), cited regulatory floors on the homepage legend (6e7bdad). Base blob 15b45360 verified by git hash-object before the edit; replacements assert-exact and abort on any mismatch."
+          git push
+
+      - name: Remove one-shot workflow (self-clean)
+        run: |
+          git rm .github/workflows/rulemap-v22.yml
+          git commit -m "chore: remove one-shot v2.2 rule-map bump workflow"
+          git push
