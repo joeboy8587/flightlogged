@@ -1,5 +1,6 @@
 import { watchtower } from "./neon.server";
 import { tailForms } from "./aircraft";
+import { KCSO_TAILS } from "./watchtower.functions";
 
 /** ---- Types returned to the UI (plain DTOs only) ---- */
 export type DossierIdentity = {
@@ -181,13 +182,16 @@ export async function loadDossier(input: string): Promise<AircraftDossier | null
     w`SELECT rule_violated, COUNT(*)::int AS c, MIN(altitude_ft)::int AS min_alt,
              MAX(captured_at) AS last_seen, MIN(statute_reference) AS statute
         FROM violation_classifications WHERE UPPER(icao_hex) = ${icao}
+         AND (rule_violated NOT LIKE 'KCSO_%' OR UPPER(registration) = ANY(${KCSO_TAILS as readonly string[]}))
        GROUP BY rule_violated ORDER BY c DESC LIMIT 20`,
     w`SELECT captured_at, rule_violated, altitude_ft, latitude, longitude, severity_score,
              statute_reference, sha256_hash, description
         FROM violation_classifications WHERE UPPER(icao_hex) = ${icao}
+         AND (rule_violated NOT LIKE 'KCSO_%' OR UPPER(registration) = ANY(${KCSO_TAILS as readonly string[]}))
        ORDER BY captured_at DESC LIMIT 25`,
     w`SELECT detection_timestamp, violation_type, altitude, county, severity, description, sha256_hash
         FROM sentinel_violations WHERE UPPER(aircraft_registration) = ANY(${regForms})
+         AND (violation_type NOT LIKE 'KCSO_%' OR UPPER(aircraft_registration) = ANY(${KCSO_TAILS as readonly string[]}))
        ORDER BY detection_timestamp DESC LIMIT 25`,
     w`SELECT anomaly_type, COUNT(*)::int AS c, MAX(anomaly_score)::float AS max_score,
              MAX(detected_at) AS last_seen
