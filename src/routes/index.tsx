@@ -258,10 +258,10 @@ function Home() {
           <aside className="lg:col-span-5 brutal-border-thick border-paper bg-paper text-ink p-6 self-start">
             <div className="label-stamp bg-alert text-paper inline-block px-2 py-1 mb-3">What counts as low?</div>
             <ul className="space-y-3 text-sm font-medium">
-              <li><strong className="font-mono">1,500 ft</strong> — a helicopter can see your backyard.</li>
-              <li><strong className="font-mono">1,000 ft</strong> — it can read your license plate.</li>
-              <li><strong className="font-mono">500 ft</strong> — it can see through your windows.</li>
-              <li><strong className="font-mono">Below 500 ft</strong> — it&apos;s inside the Dead Man&apos;s Curve. If the engine fails, there is not enough altitude for the rotor to autorotate.</li>
+              <li><strong className="font-mono">1,500 ft</strong> — the Watchtower low-altitude review band begins. Every pass below it is logged and hashed.</li>
+              <li><strong className="font-mono">1,000 ft</strong> — the 14 CFR § 91.119(b) minimum over congested areas.</li>
+              <li><strong className="font-mono">500 ft</strong> — the 14 CFR § 91.119(c) minimum over open, sparsely populated areas.</li>
+              <li><strong className="font-mono">Below 500 ft</strong> — for helicopters only: inside the height-velocity &quot;Dead Man&apos;s Curve&quot; (FAA AC 90-87). For fixed-wing aircraft, below every FAA minimum safe altitude.</li>
             </ul>
             <p className="mt-4 text-xs opacity-70 font-mono">
               Source: FAA AC 90-87C (Helicopter Height-Velocity Diagram), 14 CFR § 91.119 (minimum safe altitudes).
