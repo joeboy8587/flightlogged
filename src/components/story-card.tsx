@@ -14,22 +14,41 @@ export type StoryCardProps = {
   headline?: string;
 };
 
+/**
+ * Rotorcraft check from the FAA registry model string. Gates helicopter-only
+ * language (Dead Man's Curve / autorotation) so it never attaches to
+ * fixed-wing aircraft. Unknown model => treated as fixed-wing (conservative:
+ * the claim simply is not made).
+ */
+function isRotorcraft(model: string | null | undefined): boolean {
+  const m = (model ?? "").toUpperCase();
+  if (!m) return false;
+  return /HELICOPTER|ROTORCRAFT|ROTO(RCRAFT|RWAY|R)|GYRO/.test(m) || /\b(R22|R44|R66|AS350|AS355|EC130|EC135|EC145|H125|H130|H135|H145|A109|A119|BELL ?(206|212|214|407|429|445|505)|BO ?105|MD ?(500|520|530|600|900)|S-?76|S-?92|UH-?\d|AH-?\d|OH-?\d|TH-?\d|CH-?\d|V-?22|AW109|AW119|AW139|BK ?117)\b/.test(m);
+}
+
 function ownerLabel(r: LowAltDescent): string {
   return r.identifiedName ?? r.owner ?? "Unidentified operator";
 }
 
-function altStory(alt: number | null): string {
+function altStory(alt: number | null, model: string | null): string {
   if (alt == null) return "Altitude unreported.";
-  if (alt <= 500) return `At ${alt} ft, this aircraft was inside the Dead Man's Curve — too low to autorotate to a survivable landing if the engine failed.`;
+  if (alt <= 500 && isRotorcraft(model)) {
+    return `At ${alt} ft, this helicopter was inside the Dead Man's Curve — too low to autorotate to a survivable landing if the engine failed.`;
+  }
+  if (alt <= 500) return `At ${alt} ft, this aircraft was below the FAA minimum safe altitude over a populated area.`;
   if (alt < 1000) return `At ${alt} ft, this aircraft was below the FAA minimum safe altitude over a populated area.`;
-  if (alt < 1500) return `At ${alt} ft, an aircraft can see your backyard. At this altitude, observers can read license plates.`;
+  if (alt < 1500) return `At ${alt} ft, this aircraft was inside the Watchtower low-altitude review band.`;
   return `At ${alt} ft, this aircraft was inside the public-safety review band — flagged for pattern review.`;
 }
 
 function autoHeadline(r: LowAltDescent): string {
   const who = ownerLabel(r);
   const when = fmtClock(r.capturedAt);
-  if (r.altitude != null && r.altitude <= 500) return `${when} — ${who} flew so low they couldn't survive a crash.`;
+  if (r.altitude != null && r.altitude <= 500) {
+    return isRotorcraft(r.model)
+      ? `${when} — ${who} flew so low they couldn't survive a crash.`
+      : `${when} — ${who} flew below the FAA minimum safe altitude over a populated area.`;
+  }
   if (r.violationSource) return `${when} — ${who} crossed an FAA altitude floor.`;
   return `${when} — ${who} loitered low over a populated area.`;
 }
@@ -57,7 +76,7 @@ export function StoryCard({ row, headline }: StoryCardProps) {
         <p className="text-sm font-bold">{question}</p>
       </div>
       <p className="text-xs opacity-70 mb-3 italic">
-        Machine logged: {autoHeadline(row)} — {altStory(row.altitude)}
+        Machine logged: {autoHeadline(row)} — {altStory(row.altitude, row.model)}
       </p>
       <dl className="grid grid-cols-2 sm:grid-cols-4 gap-x-3 gap-y-2 text-xs font-mono mb-4">
         <div>
