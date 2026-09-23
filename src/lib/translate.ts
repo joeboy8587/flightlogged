@@ -11,6 +11,18 @@ import type { LowAltDescent } from "@/lib/watchtower.functions";
  *   • The ML score, hash, and receipts stay visible alongside the sentence.
  */
 
+/**
+ * Rotorcraft check from the FAA registry model string. Gates helicopter-only
+ * language (Dead Man's Curve / autorotation) so it never attaches to
+ * fixed-wing aircraft. Unknown model => treated as fixed-wing (conservative:
+ * the claim simply is not made).
+ */
+function isRotorcraft(model: string | null | undefined): boolean {
+  const m = (model ?? "").toUpperCase();
+  if (!m) return false;
+  return /HELICOPTER|ROTORCRAFT|ROTO(RCRAFT|RWAY|R)|GYRO/.test(m) || /\b(R22|R44|R66|AS350|AS355|EC130|EC135|EC145|H125|H130|H135|H145|A109|A119|BELL ?(206|212|214|407|429|445|505)|BO ?105|MD ?(500|520|530|600|900)|S-?76|S-?92|UH-?\d|AH-?\d|OH-?\d|TH-?\d|CH-?\d|V-?22|AW109|AW119|AW139|BK ?117)\b/.test(m);
+}
+
 function ownerPhrase(r: LowAltDescent): string | null {
   const name = (r.identifiedName ?? r.owner ?? "").trim();
   if (!name) return null;
@@ -20,11 +32,12 @@ function ownerPhrase(r: LowAltDescent): string | null {
   return name;
 }
 
-function altitudePhrase(alt: number | null): string | null {
+function altitudePhrase(alt: number | null, model: string | null): string | null {
   if (alt == null) return null;
-  if (alt <= 500) return `flew at ${alt} ft — inside the Dead Man's Curve, too low to survive an engine failure`;
+  if (alt <= 500 && isRotorcraft(model)) {
+    return `flew at ${alt} ft — inside the Dead Man's Curve, too low to survive an engine failure`;
+  }
   if (alt < 1000) return `flew at ${alt} ft — below the FAA minimum safe altitude over a populated area`;
-  if (alt < 1500) return `flew at ${alt} ft — low enough to read a license plate from above`;
   return `flew at ${alt} ft over a populated county`;
 }
 
@@ -41,7 +54,7 @@ export function verdictFor(r: LowAltDescent): string {
   const parts: string[] = [];
   const who = ownerPhrase(r) ?? "An aircraft with no public owner on file";
   parts.push(who);
-  const alt = altitudePhrase(r.altitude);
+  const alt = altitudePhrase(r.altitude, r.model);
   if (alt) parts.push(alt);
   const where = placePhrase(r);
   if (where) parts.push(where);
