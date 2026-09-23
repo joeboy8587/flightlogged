@@ -25,8 +25,13 @@ function isKcsoPolicyCitation(...values: Array<string | null | undefined>): bool
 // RULE MAPPING VERSION — public audit trail
 // Bump this string whenever we change what regulations the classifier applies.
 // -----------------------------------------------------------------------------
-export const RULE_MAPPING_VERSION = "v2.1 (2026-07-12)";
+export const RULE_MAPPING_VERSION = "v2.2 (2026-09-23)";
 export const RULE_MAPPING_CHANGELOG = [
+  {
+    version: "v2.2 (2026-09-23)",
+    change:
+      "Four UI-layer attribution fixes. (1) Dossier backend (aircraft.server.ts, 1043e80) now enforces the KCSO firewall — KCSO_* policy rules apply only to N912KC, N913KC, N911KC, N597E; every other tail is measured against FAA CFR/USC only. (2) ruleStatute() (aircraft.ts, 82bdfb8) no longer blanket-maps '137' rule codes to 14 CFR Part 137 — Part 137 is cited only for confirmed agricultural operators; the non-ag default is 14 CFR 91.119. (3) Dead Man's Curve / autorotation language (translate.ts, 51c5210; story-card.tsx, 6e7dfb2) is gated on rotorcraft airframe type via the FAA registry model, so helicopter physics no longer attaches to fixed-wing aircraft. (4) Uncited magnification claims (license-plate readability, see-through-windows) replaced with cited 14 CFR 91.119(b)/(c) regulatory floors (index.tsx, 6e7bdad).",
+  },
   {
     version: "v2.1 (2026-07-12)",
     change:
