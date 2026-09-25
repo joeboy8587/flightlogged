@@ -16,5 +16,16 @@ export const getFleetDirectory = createServerFn({ method: "GET" })
   }))
   .handler(async ({ data }): Promise<FleetRow[]> => {
     const { loadFleet } = await import("./aircraft.server");
-    return loadFleet(data.sort);
+    const rows = await loadFleet(data.sort);
+    // The database contains historical casing variants. Keep the most useful
+    // profile per normalized hex so counts, links, and dossiers have one identity.
+    const byHex = new Map<string, FleetRow>();
+    for (const row of rows) {
+      const key = row.icao.trim().toUpperCase();
+      const previous = byHex.get(key);
+      if (!previous || (row.totalDetections ?? 0) > (previous.totalDetections ?? 0)) {
+        byHex.set(key, { ...row, icao: key });
+      }
+    }
+    return [...byHex.values()];
   });
