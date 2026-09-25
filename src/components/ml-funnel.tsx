@@ -9,7 +9,7 @@ export function MlFunnel({ stats, compact = false }: { stats: FunnelStats; compa
     { label: "Handoffs", value: stats.handoffs },
     { label: "Flagged", value: stats.flagged },
   ];
-  const hasData = steps.some((s) => s.value > 0);
+  const hasVerifiedArtifact = stats.status === "verified";
   return (
     <div className={compact ? "" : "brutal-border-thick bg-paper p-4"}>
       {!compact && (
@@ -22,7 +22,7 @@ export function MlFunnel({ stats, compact = false }: { stats: FunnelStats; compa
           )}
         </div>
       )}
-      <div className="flex items-stretch gap-1 overflow-x-auto">
+      {hasVerifiedArtifact ? <div className="flex items-stretch gap-1 overflow-x-auto">
         {steps.map((s, i) => (
           <div key={s.label} className="flex items-center gap-1 shrink-0">
             <div className={`brutal-border px-3 py-2 text-center ${i === steps.length - 1 && s.value > 0 ? "bg-alert text-paper" : "bg-paper"}`}>
@@ -32,15 +32,17 @@ export function MlFunnel({ stats, compact = false }: { stats: FunnelStats; compa
             {i < steps.length - 1 && <span className="font-mono opacity-40">→</span>}
           </div>
         ))}
-      </div>
-      {!hasData && (
-        <p className="mt-2 text-xs font-mono opacity-70">
-          No detections in the last 24 hours. The funnel will populate once the
-          public <code>detections</code> feed has activity, or when the ML box POSTs
-          a signed scan artifact to <code>/api/public/scans/ingest</code>.
-        </p>
+      </div> : (
+        <div className="brutal-border bg-warning/40 p-3">
+          <div className="label-stamp text-alert">{stats.status === "invalid" ? "DATA INTEGRITY WARNING" : "SCAN-STAGE ARTIFACT NOT RECEIVED"}</div>
+          <p className="mt-1 text-xs font-mono">
+            {stats.status === "invalid"
+              ? "The latest artifact failed the required descending-stage check, so its funnel is withheld."
+              : `${stats.observed24h.toLocaleString()} detections were independently observed in the last 24 hours. Candidate, kinematic, handoff, and flagged stages are not published without a signed scan artifact.`}
+          </p>
+        </div>
       )}
-      {!compact && hasData && stats.flagged === 0 && (
+      {!compact && hasVerifiedArtifact && stats.flagged === 0 && (
         <p className="mt-2 text-xs font-mono opacity-70">
           {stats.candidates} candidate{stats.candidates === 1 ? "" : "s"} evaluated · 0 flagged. Most scans flag nothing — that is the pipeline working.
         </p>

@@ -39,7 +39,7 @@ function placePhrase(r: LowAltDescent): string | null {
  */
 export function verdictFor(r: LowAltDescent): string {
   const parts: string[] = [];
-  const who = ownerPhrase(r) ?? "An aircraft with no public owner on file";
+  const who = ownerPhrase(r) ?? `Aircraft ${r.registration ?? r.icao}`;
   parts.push(who);
   const alt = altitudePhrase(r.altitude);
   if (alt) parts.push(alt);

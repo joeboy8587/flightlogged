@@ -30,8 +30,7 @@ export function ruleLabel(code: string | null | undefined): string {
 /** Statute cite for a rule code, when the machine did not supply one. */
 export function ruleStatute(code: string | null | undefined): string {
   const c = String(code ?? "").toUpperCase();
-  if (c.includes("137.51")) return "14 CFR 137.51";
-  if (c.includes("137")) return "14 CFR 137.53";
+  if (c.includes("137")) return "14 CFR Part 137 (agricultural operations; not a general minimum-altitude citation)";
   if (c.includes("119_C") || c.includes("POPULATED")) return "14 CFR 91.119(c)";
   if (c.includes("119") || c.includes("CONGESTED")) return "14 CFR 91.119(b)";
   return "14 CFR 91.119";

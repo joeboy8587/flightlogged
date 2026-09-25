@@ -15,7 +15,14 @@ export type StoryCardProps = {
 };
 
 function ownerLabel(r: LowAltDescent): string {
-  return r.identifiedName ?? r.owner ?? "Unidentified operator";
+  return r.identifiedName ?? r.owner ?? `Aircraft ${r.registration ?? r.icao}`;
+}
+
+function storyTime(value: string): string {
+  return new Date(value).toLocaleString("en-US", {
+    month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit",
+    timeZone: "America/Los_Angeles", timeZoneName: "short",
+  });
 }
 
 function altStory(alt: number | null): string {
@@ -28,7 +35,7 @@ function altStory(alt: number | null): string {
 
 function autoHeadline(r: LowAltDescent): string {
   const who = ownerLabel(r);
-  const when = fmtClock(r.capturedAt);
+  const when = storyTime(r.capturedAt);
   if (r.altitude != null && r.altitude <= 500) return `${when} — ${who} flew so low they couldn't survive a crash.`;
   if (r.violationSource) return `${when} — ${who} crossed an FAA altitude floor.`;
   return `${when} — ${who} loitered low over a populated area.`;
@@ -74,12 +81,12 @@ export function StoryCard({ row, headline }: StoryCardProps) {
         </div>
         <div>
           <dt className="label-stamp opacity-60">WHEN</dt>
-          <dd className="font-bold">{fmtClock(row.capturedAt)}</dd>
+          <dd className="font-bold">{storyTime(row.capturedAt)}</dd>
         </div>
       </dl>
       <div className="flex items-center justify-between gap-3 pt-3 border-t-2 border-ink/10">
         <span className="text-[11px] opacity-70 font-mono">
-          Source: public ADS-B broadcast {row.identifiedName ? "+ FAA Aircraft Registry" : ""}.
+          Source: public ADS-B broadcast {row.identifiedName || row.owner ? "+ FAA Aircraft Registry" : ""}.
         </span>
         <Link
           to="/tail-search"

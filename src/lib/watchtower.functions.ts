@@ -268,25 +268,79 @@ export const getRecentLowAltitude = createServerFn({ method: "GET" }).handler(as
     const rows = await (async () => {
       try {
         return await w`
-          SELECT icao_hex, registration, captured_at, altitude_ft, speed_kts, county
-          FROM detections
-          WHERE altitude_ft IS NOT NULL
-            AND altitude_ft < 1500
-            AND altitude_ft >= -100
-            AND on_ground = false
-          ORDER BY captured_at DESC
-          LIMIT 400
+          WITH recent AS (
+            SELECT icao_hex, registration, captured_at, altitude_ft, speed_kts, county
+            FROM detections
+            WHERE altitude_ft IS NOT NULL
+              AND altitude_ft < 1500
+              AND altitude_ft >= -100
+              AND on_ground = false
+            ORDER BY captured_at DESC
+            LIMIT 400
+          )
+          SELECT r.*,
+                 COALESCE(p.registered_owner, m.name) AS registered_owner,
+                 COALESCE(m.name, p.registered_owner) AS reg_name,
+                 COALESCE(p.aircraft_model, m.mfr_mdl_code) AS aircraft_model,
+                 m.type_registrant, m.city AS reg_city, m.state AS reg_state,
+                 p.total_detections, p.tactical_role, p.confirmed_coord_partners,
+                 p.reg_violation_count
+          FROM recent r
+          LEFT JOIN LATERAL (
+            SELECT registered_owner, aircraft_model, total_detections, tactical_role,
+                   confirmed_coord_partners, reg_violation_count
+            FROM aircraft_profiles
+            WHERE UPPER(icao_hex) = UPPER(r.icao_hex)
+               OR (r.registration IS NOT NULL AND UPPER(observed_registration) = UPPER(r.registration))
+            ORDER BY total_detections DESC NULLS LAST
+            LIMIT 1
+          ) p ON true
+          LEFT JOIN LATERAL (
+            SELECT name, type_registrant, city, state, mfr_mdl_code
+            FROM faa_master
+            WHERE UPPER(mode_s_code_hex) = UPPER(r.icao_hex)
+               OR (r.registration IS NOT NULL AND UPPER(registration) = UPPER(r.registration))
+            LIMIT 1
+          ) m ON true
+          ORDER BY r.captured_at DESC
         `;
       } catch (err) {
         console.error("getRecentLowAltitude primary query failed; retrying without on_ground:", err);
         return await w`
-          SELECT icao_hex, registration, captured_at, altitude_ft, speed_kts, county
-          FROM detections
-          WHERE altitude_ft IS NOT NULL
-            AND altitude_ft < 1500
-            AND altitude_ft >= -100
-          ORDER BY captured_at DESC
-          LIMIT 400
+          WITH recent AS (
+            SELECT icao_hex, registration, captured_at, altitude_ft, speed_kts, county
+            FROM detections
+            WHERE altitude_ft IS NOT NULL
+              AND altitude_ft < 1500
+              AND altitude_ft >= -100
+            ORDER BY captured_at DESC
+            LIMIT 400
+          )
+          SELECT r.*,
+                 COALESCE(p.registered_owner, m.name) AS registered_owner,
+                 COALESCE(m.name, p.registered_owner) AS reg_name,
+                 COALESCE(p.aircraft_model, m.mfr_mdl_code) AS aircraft_model,
+                 m.type_registrant, m.city AS reg_city, m.state AS reg_state,
+                 p.total_detections, p.tactical_role, p.confirmed_coord_partners,
+                 p.reg_violation_count
+          FROM recent r
+          LEFT JOIN LATERAL (
+            SELECT registered_owner, aircraft_model, total_detections, tactical_role,
+                   confirmed_coord_partners, reg_violation_count
+            FROM aircraft_profiles
+            WHERE UPPER(icao_hex) = UPPER(r.icao_hex)
+               OR (r.registration IS NOT NULL AND UPPER(observed_registration) = UPPER(r.registration))
+            ORDER BY total_detections DESC NULLS LAST
+            LIMIT 1
+          ) p ON true
+          LEFT JOIN LATERAL (
+            SELECT name, type_registrant, city, state, mfr_mdl_code
+            FROM faa_master
+            WHERE UPPER(mode_s_code_hex) = UPPER(r.icao_hex)
+               OR (r.registration IS NOT NULL AND UPPER(registration) = UPPER(r.registration))
+            LIMIT 1
+          ) m ON true
+          ORDER BY r.captured_at DESC
         `;
       }
     })();
@@ -304,7 +358,9 @@ export const getRecentLowAltitude = createServerFn({ method: "GET" }).handler(as
       return text.startsWith("KCSO_") || text.includes("KCSO") || text.includes("KERN COUNTY SHERIFF") || text.includes("AIR SUPPORT UNIT OPERATIONS MANUAL");
     });
     const isAg = (name: string | null | undefined) => !!name && /\bAG\b|\bAGRICULT|CROP\s*DUST|AERIAL\s+APPLIC|\bDUSTER|SPRAY/i.test(String(name));
-    const isPart137 = (rule: string | null | undefined, source: string | null | undefined) => /137\.53|PART\s*137/i.test(`${rule ?? ""} ${source ?? ""}`);
+    const isPart137 = (rule: string | null | undefined, source: string | null | undefined) => /(?:14\s*CFR\s*|FAR\s*|PART\s*)137(?:\.|\b)/i.test(`${rule ?? ""} ${source ?? ""}`);
+    const isGeneralMinimumAltitude = (rule: string | null | undefined, source: string | null | undefined) => /91\.119/i.test(`${rule ?? ""} ${source ?? ""}`);
+    const isKcsoB301 = (rule: string | null | undefined, source: string | null | undefined) => /B-301/i.test(`${rule ?? ""} ${source ?? ""}`);
 
   // NOTE: The on-the-fly coordination self-join (detections ⋈ detections on
   // county / ±30 min / ±1000 ft) was doing a Cartesian-scale scan against the
@@ -319,8 +375,12 @@ export const getRecentLowAltitude = createServerFn({ method: "GET" }).handler(as
     if (alt == null) return null;
     let best: any = null;
     for (const b of baselines) {
-      if (isKcsoRule(b.rule_name, b.rule_source) && !isKcso(registration)) continue;
-      // §137.53 is an authorization for ag operators, NOT a floor. Never cite as a violation.
+      if (isKcsoRule(b.rule_name, b.rule_source)) {
+        if (!isKcso(registration) || !isKcsoB301(b.rule_name, b.rule_source)) continue;
+      } else if (!isGeneralMinimumAltitude(b.rule_name, b.rule_source)) {
+        continue;
+      }
+      // Part 137 governs agricultural operations; it is not a general minimum-altitude floor.
       if (isPart137(b.rule_name, b.rule_source)) continue;
       if (alt < b.min_altitude_violation_ft) {
         if (!best || Number(b.violation_score) > Number(best.violation_score)) best = b;
