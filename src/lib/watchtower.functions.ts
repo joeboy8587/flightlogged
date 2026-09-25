@@ -268,79 +268,25 @@ export const getRecentLowAltitude = createServerFn({ method: "GET" }).handler(as
     const rows = await (async () => {
       try {
         return await w`
-          WITH recent AS (
-            SELECT icao_hex, registration, captured_at, altitude_ft, speed_kts, county
-            FROM detections
-            WHERE altitude_ft IS NOT NULL
-              AND altitude_ft < 1500
-              AND altitude_ft >= -100
-              AND on_ground = false
-            ORDER BY captured_at DESC
-            LIMIT 400
-          )
-          SELECT r.*,
-                 COALESCE(p.registered_owner, m.name) AS registered_owner,
-                 COALESCE(m.name, p.registered_owner) AS reg_name,
-                 COALESCE(p.aircraft_model, m.mfr_mdl_code) AS aircraft_model,
-                 m.type_registrant, m.city AS reg_city, m.state AS reg_state,
-                 p.total_detections, p.tactical_role, p.confirmed_coord_partners,
-                 p.reg_violation_count
-          FROM recent r
-          LEFT JOIN LATERAL (
-            SELECT registered_owner, aircraft_model, total_detections, tactical_role,
-                   confirmed_coord_partners, reg_violation_count
-            FROM aircraft_profiles
-            WHERE UPPER(icao_hex) = UPPER(r.icao_hex)
-               OR (r.registration IS NOT NULL AND UPPER(observed_registration) = UPPER(r.registration))
-            ORDER BY total_detections DESC NULLS LAST
-            LIMIT 1
-          ) p ON true
-          LEFT JOIN LATERAL (
-            SELECT name, type_registrant, city, state, mfr_mdl_code
-            FROM faa_master
-            WHERE UPPER(mode_s_code_hex) = UPPER(r.icao_hex)
-               OR (r.registration IS NOT NULL AND UPPER(registration) = UPPER(r.registration))
-            LIMIT 1
-          ) m ON true
-          ORDER BY r.captured_at DESC
+          SELECT icao_hex, registration, captured_at, altitude_ft, speed_kts, county
+          FROM detections
+          WHERE altitude_ft IS NOT NULL
+            AND altitude_ft < 1500
+            AND altitude_ft >= -100
+            AND on_ground = false
+          ORDER BY captured_at DESC
+          LIMIT 400
         `;
       } catch (err) {
         console.error("getRecentLowAltitude primary query failed; retrying without on_ground:", err);
         return await w`
-          WITH recent AS (
-            SELECT icao_hex, registration, captured_at, altitude_ft, speed_kts, county
-            FROM detections
-            WHERE altitude_ft IS NOT NULL
-              AND altitude_ft < 1500
-              AND altitude_ft >= -100
-            ORDER BY captured_at DESC
-            LIMIT 400
-          )
-          SELECT r.*,
-                 COALESCE(p.registered_owner, m.name) AS registered_owner,
-                 COALESCE(m.name, p.registered_owner) AS reg_name,
-                 COALESCE(p.aircraft_model, m.mfr_mdl_code) AS aircraft_model,
-                 m.type_registrant, m.city AS reg_city, m.state AS reg_state,
-                 p.total_detections, p.tactical_role, p.confirmed_coord_partners,
-                 p.reg_violation_count
-          FROM recent r
-          LEFT JOIN LATERAL (
-            SELECT registered_owner, aircraft_model, total_detections, tactical_role,
-                   confirmed_coord_partners, reg_violation_count
-            FROM aircraft_profiles
-            WHERE UPPER(icao_hex) = UPPER(r.icao_hex)
-               OR (r.registration IS NOT NULL AND UPPER(observed_registration) = UPPER(r.registration))
-            ORDER BY total_detections DESC NULLS LAST
-            LIMIT 1
-          ) p ON true
-          LEFT JOIN LATERAL (
-            SELECT name, type_registrant, city, state, mfr_mdl_code
-            FROM faa_master
-            WHERE UPPER(mode_s_code_hex) = UPPER(r.icao_hex)
-               OR (r.registration IS NOT NULL AND UPPER(registration) = UPPER(r.registration))
-            LIMIT 1
-          ) m ON true
-          ORDER BY r.captured_at DESC
+          SELECT icao_hex, registration, captured_at, altitude_ft, speed_kts, county
+          FROM detections
+          WHERE altitude_ft IS NOT NULL
+            AND altitude_ft < 1500
+            AND altitude_ft >= -100
+          ORDER BY captured_at DESC
+          LIMIT 400
         `;
       }
     })();
@@ -350,6 +296,25 @@ export const getRecentLowAltitude = createServerFn({ method: "GET" }).handler(as
       console.error("getRecentLowAltitude baselines unavailable:", err);
       return [] as any[];
     });
+    const icaos = [...new Set((rows as any[]).map((r) => String(r.icao_hex ?? "").toUpperCase()).filter(Boolean))];
+    const registrations = [...new Set((rows as any[]).map((r) => String(r.registration ?? "").toUpperCase()).filter(Boolean))];
+    const [profiles, registry] = await Promise.all([
+      icaos.length === 0 ? [] : w`
+        SELECT DISTINCT ON (UPPER(icao_hex)) icao_hex, observed_registration, registered_owner,
+               aircraft_model, total_detections, tactical_role, confirmed_coord_partners,
+               reg_violation_count
+        FROM aircraft_profiles
+        WHERE UPPER(icao_hex) = ANY(${icaos}::text[])
+        ORDER BY UPPER(icao_hex), total_detections DESC NULLS LAST`,
+      icaos.length === 0 && registrations.length === 0 ? [] : w`
+        SELECT mode_s_code_hex, registration, name, type_registrant, city, state, mfr_mdl_code
+        FROM faa_master
+        WHERE UPPER(mode_s_code_hex) = ANY(${icaos}::text[])
+           OR UPPER(registration) = ANY(${registrations}::text[])`,
+    ]);
+    const profileByIcao = new Map((profiles as any[]).map((p) => [String(p.icao_hex).toUpperCase(), p]));
+    const registryByIcao = new Map((registry as any[]).map((m) => [String(m.mode_s_code_hex).toUpperCase(), m]));
+    const registryByReg = new Map((registry as any[]).map((m) => [String(m.registration).toUpperCase(), m]));
 
     const kcsoTails = ["N912KC", "N913KC", "N597E", "N911KC"];
     const isKcso = (reg: string | null | undefined) => !!reg && kcsoTails.includes(String(reg).trim().toUpperCase());
@@ -390,6 +355,22 @@ export const getRecentLowAltitude = createServerFn({ method: "GET" }).handler(as
   };
 
   const out: LowAltDescent[] = (rows as any[]).map((r: any) => {
+    const profile = profileByIcao.get(String(r.icao_hex ?? "").toUpperCase()) as any;
+    const faa = (registryByIcao.get(String(r.icao_hex ?? "").toUpperCase())
+      ?? registryByReg.get(String(r.registration ?? "").toUpperCase())) as any;
+    r = {
+      ...r,
+      registered_owner: profile?.registered_owner ?? faa?.name ?? null,
+      reg_name: faa?.name ?? profile?.registered_owner ?? null,
+      aircraft_model: profile?.aircraft_model ?? faa?.mfr_mdl_code ?? null,
+      total_detections: profile?.total_detections ?? null,
+      tactical_role: profile?.tactical_role ?? null,
+      confirmed_coord_partners: profile?.confirmed_coord_partners ?? [],
+      reg_violation_count: profile?.reg_violation_count ?? null,
+      type_registrant: faa?.type_registrant ?? null,
+      reg_city: faa?.city ?? null,
+      reg_state: faa?.state ?? null,
+    };
     const ownerName: string = (r.reg_name || r.registered_owner || "").toString();
     const stateRaw = (r.reg_state || "").toString().toUpperCase();
     const isLLC = /\bLLC\b|\bL\.L\.C\.|\bINC\b|\bCORP\b|\bTRUST\b/.test(ownerName.toUpperCase());
