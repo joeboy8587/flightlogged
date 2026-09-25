@@ -99,6 +99,9 @@ function Rules() {
           <p className="mt-3 text-xs opacity-70 font-mono">
             Source: <code>regulatory_baselines</code> in Neon. Edit the rule, the feed re-tags accordingly.
           </p>
+          <div className="mt-4 brutal-border bg-warning/40 p-4 text-sm">
+            <strong>Citation correction.</strong> The general low-altitude feed uses 14 CFR § 91.119. Part 137 governs agricultural operations and is never used there as a general minimum-altitude citation. KCSO aircraft use the documented §B-301 baseline; a duplicate §B-401 night-floor record remains visible above as a source conflict pending document reconciliation, but it is not selected by the live feed.
+          </div>
         </div>
       </section>
 

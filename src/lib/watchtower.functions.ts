@@ -25,13 +25,8 @@ function isKcsoPolicyCitation(...values: Array<string | null | undefined>): bool
 // RULE MAPPING VERSION — public audit trail
 // Bump this string whenever we change what regulations the classifier applies.
 // -----------------------------------------------------------------------------
-export const RULE_MAPPING_VERSION = "v2.2 (2026-09-23)";
+export const RULE_MAPPING_VERSION = "v2.1 (2026-07-12)";
 export const RULE_MAPPING_CHANGELOG = [
-  {
-    version: "v2.2 (2026-09-23)",
-    change:
-      "Four UI-layer attribution fixes. (1) Dossier backend (aircraft.server.ts, 1043e80) now enforces the KCSO firewall — KCSO_* policy rules apply only to N912KC, N913KC, N911KC, N597E; every other tail is measured against FAA CFR/USC only. (2) ruleStatute() (aircraft.ts, 82bdfb8) no longer blanket-maps '137' rule codes to 14 CFR Part 137 — Part 137 is cited only for confirmed agricultural operators; the non-ag default is 14 CFR 91.119. (3) Dead Man's Curve / autorotation language (translate.ts, 51c5210; story-card.tsx, 6e7dfb2) is gated on rotorcraft airframe type via the FAA registry model, so helicopter physics no longer attaches to fixed-wing aircraft. (4) Uncited magnification claims (license-plate readability, see-through-windows) replaced with cited 14 CFR 91.119(b)/(c) regulatory floors (index.tsx, 6e7bdad).",
-  },
   {
     version: "v2.1 (2026-07-12)",
     change:
@@ -301,6 +296,25 @@ export const getRecentLowAltitude = createServerFn({ method: "GET" }).handler(as
       console.error("getRecentLowAltitude baselines unavailable:", err);
       return [] as any[];
     });
+    const icaos = [...new Set((rows as any[]).map((r) => String(r.icao_hex ?? "").toUpperCase()).filter(Boolean))];
+    const registrations = [...new Set((rows as any[]).map((r) => String(r.registration ?? "").toUpperCase()).filter(Boolean))];
+    const [profiles, registry] = await Promise.all([
+      icaos.length === 0 ? [] : w`
+        SELECT DISTINCT ON (UPPER(icao_hex)) icao_hex, observed_registration, registered_owner,
+               aircraft_model, total_detections, tactical_role, confirmed_coord_partners,
+               reg_violation_count
+        FROM aircraft_profiles
+        WHERE UPPER(icao_hex) = ANY(${icaos}::text[])
+        ORDER BY UPPER(icao_hex), total_detections DESC NULLS LAST`,
+      icaos.length === 0 && registrations.length === 0 ? [] : w`
+        SELECT mode_s_code_hex, registration, name, type_registrant, city, state, mfr_mdl_code
+        FROM faa_master
+        WHERE UPPER(mode_s_code_hex) = ANY(${icaos}::text[])
+           OR UPPER(registration) = ANY(${registrations}::text[])`,
+    ]);
+    const profileByIcao = new Map((profiles as any[]).map((p) => [String(p.icao_hex).toUpperCase(), p]));
+    const registryByIcao = new Map((registry as any[]).map((m) => [String(m.mode_s_code_hex).toUpperCase(), m]));
+    const registryByReg = new Map((registry as any[]).map((m) => [String(m.registration).toUpperCase(), m]));
 
     const kcsoTails = ["N912KC", "N913KC", "N597E", "N911KC"];
     const isKcso = (reg: string | null | undefined) => !!reg && kcsoTails.includes(String(reg).trim().toUpperCase());
@@ -309,7 +323,9 @@ export const getRecentLowAltitude = createServerFn({ method: "GET" }).handler(as
       return text.startsWith("KCSO_") || text.includes("KCSO") || text.includes("KERN COUNTY SHERIFF") || text.includes("AIR SUPPORT UNIT OPERATIONS MANUAL");
     });
     const isAg = (name: string | null | undefined) => !!name && /\bAG\b|\bAGRICULT|CROP\s*DUST|AERIAL\s+APPLIC|\bDUSTER|SPRAY/i.test(String(name));
-    const isPart137 = (rule: string | null | undefined, source: string | null | undefined) => /137\.53|PART\s*137/i.test(`${rule ?? ""} ${source ?? ""}`);
+    const isPart137 = (rule: string | null | undefined, source: string | null | undefined) => /(?:14\s*CFR\s*|FAR\s*|PART\s*)137(?:\.|\b)/i.test(`${rule ?? ""} ${source ?? ""}`);
+    const isGeneralMinimumAltitude = (rule: string | null | undefined, source: string | null | undefined) => /91\.119/i.test(`${rule ?? ""} ${source ?? ""}`);
+    const isKcsoB301 = (rule: string | null | undefined, source: string | null | undefined) => /B-301/i.test(`${rule ?? ""} ${source ?? ""}`);
 
   // NOTE: The on-the-fly coordination self-join (detections ⋈ detections on
   // county / ±30 min / ±1000 ft) was doing a Cartesian-scale scan against the
@@ -324,8 +340,12 @@ export const getRecentLowAltitude = createServerFn({ method: "GET" }).handler(as
     if (alt == null) return null;
     let best: any = null;
     for (const b of baselines) {
-      if (isKcsoRule(b.rule_name, b.rule_source) && !isKcso(registration)) continue;
-      // §137.53 is an authorization for ag operators, NOT a floor. Never cite as a violation.
+      if (isKcsoRule(b.rule_name, b.rule_source)) {
+        if (!isKcso(registration) || !isKcsoB301(b.rule_name, b.rule_source)) continue;
+      } else if (!isGeneralMinimumAltitude(b.rule_name, b.rule_source)) {
+        continue;
+      }
+      // Part 137 governs agricultural operations; it is not a general minimum-altitude floor.
       if (isPart137(b.rule_name, b.rule_source)) continue;
       if (alt < b.min_altitude_violation_ft) {
         if (!best || Number(b.violation_score) > Number(best.violation_score)) best = b;
@@ -335,6 +355,22 @@ export const getRecentLowAltitude = createServerFn({ method: "GET" }).handler(as
   };
 
   const out: LowAltDescent[] = (rows as any[]).map((r: any) => {
+    const profile = profileByIcao.get(String(r.icao_hex ?? "").toUpperCase()) as any;
+    const faa = (registryByIcao.get(String(r.icao_hex ?? "").toUpperCase())
+      ?? registryByReg.get(String(r.registration ?? "").toUpperCase())) as any;
+    r = {
+      ...r,
+      registered_owner: profile?.registered_owner ?? faa?.name ?? null,
+      reg_name: faa?.name ?? profile?.registered_owner ?? null,
+      aircraft_model: profile?.aircraft_model ?? faa?.mfr_mdl_code ?? null,
+      total_detections: profile?.total_detections ?? null,
+      tactical_role: profile?.tactical_role ?? null,
+      confirmed_coord_partners: profile?.confirmed_coord_partners ?? [],
+      reg_violation_count: profile?.reg_violation_count ?? null,
+      type_registrant: faa?.type_registrant ?? null,
+      reg_city: faa?.city ?? null,
+      reg_state: faa?.state ?? null,
+    };
     const ownerName: string = (r.reg_name || r.registered_owner || "").toString();
     const stateRaw = (r.reg_state || "").toString().toUpperCase();
     const isLLC = /\bLLC\b|\bL\.L\.C\.|\bINC\b|\bCORP\b|\bTRUST\b/.test(ownerName.toUpperCase());

@@ -45,6 +45,8 @@ const EMPTY_FUNNEL = {
   handoffs: 0,
   flagged: 0,
   scanTs: null,
+  status: "missing" as const,
+  observed24h: 0,
 };
 
 const crumbs = [{ label: "Home", href: "/" }, { label: "Live Feed" }];
@@ -369,8 +371,8 @@ function Live() {
             <div className="label-stamp bg-ink text-paper inline-block px-2 py-0.5 mb-2">What you're looking at</div>
             <p className="text-sm sm:text-base font-medium leading-relaxed max-w-4xl">
               An autonomous monitoring system has tracked <strong>{fmt(s.uniqueAircraft)}</strong> unique aircraft
-              over <strong>{s.windowHours}h</strong> in Kern County and surrounding airspace.{" "}
-              <strong>{anomalyPct}%</strong> of detections triggered anomaly flags — persistent low-altitude loitering,
+              across a <strong>{s.windowHours}h lifetime AOI observation window</strong> in Kern County and surrounding airspace.{" "}
+              <strong>{anomalyPct}%</strong> ({fmt(s.anomalyEvents)} anomaly events ÷ {fmt(s.totalDetections)} monitored detections in that lifetime window) triggered anomaly flags — persistent low-altitude loitering,
               masked identities, and night operations inconsistent with normal traffic. Shell companies, law
               enforcement helicopters, and military aircraft appear in coordinated patterns. The FAA has been
               formally notified. <strong>This is the evidence.</strong>
@@ -388,8 +390,8 @@ function Live() {
           <div className="max-w-[1400px] mx-auto px-4 py-12">
             <div className="flex items-end justify-between gap-4 flex-wrap mb-5">
               <div>
-                <div className="label-stamp bg-alert text-paper inline-block px-2 py-0.5 mb-2">Latest events · in plain English</div>
-                <h2 className="text-3xl sm:text-4xl">The five most recent things the sky did.</h2>
+                <div className="label-stamp bg-alert text-paper inline-block px-2 py-0.5 mb-2">Latest distinct aircraft observations · in plain English</div>
+                <h2 className="text-3xl sm:text-4xl">The five latest distinct aircraft observations.</h2>
               </div>
               <a href="#raw-feed" className="label-stamp brutal-border bg-ink text-paper px-3 py-2 hover:bg-warning hover:text-ink">
                 Jump to raw feed ↓
@@ -419,7 +421,7 @@ function Live() {
             {([
               { label: "Detections", aoi: fmt(s.aoiTotalDetections), global: fmt(s.totalDetections) },
               { label: "Unique aircraft", aoi: fmt(s.aoiUniqueAircraft), global: fmt(s.uniqueAircraft) },
-              { label: "Observation window", aoi: `${s.windowHours}h`, global: null as string | null },
+              { label: "Lifetime AOI observation window", aoi: `${s.windowHours}h`, global: null as string | null },
               { label: "Anomaly events", aoi: fmt(s.aoiAnomalyEvents), global: fmt(s.anomalyEvents), alert: true },
             ]).map((cell, i) => (
               <div key={cell.label} className={`p-5 ${i < 3 ? "sm:border-r border-paper/30" : ""} ${cell.alert ? "bg-warning text-ink" : ""}`}>

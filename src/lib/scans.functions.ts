@@ -97,6 +97,8 @@ export type FunnelStats = {
   handoffs: number;
   flagged: number;
   scanTs: string | null;
+  status: "verified" | "missing" | "invalid";
+  observed24h: number;
 };
 
 export const getFunnelStats = createServerFn({ method: "GET" }).handler(async (): Promise<FunnelStats> => {
@@ -109,6 +111,10 @@ export const getFunnelStats = createServerFn({ method: "GET" }).handler(async ()
     } catch { return null; }
   })();
   if (latest) {
+    const valid = latest.detections >= latest.candidates
+      && latest.candidates >= latest.kinematicHits
+      && latest.kinematicHits >= latest.handoffs
+      && latest.handoffs >= latest.flagged;
     return {
       detections: latest.detections,
       candidates: latest.candidates,
@@ -116,30 +122,31 @@ export const getFunnelStats = createServerFn({ method: "GET" }).handler(async ()
       handoffs: latest.handoffs,
       flagged: latest.flagged,
       scanTs: latest.ts,
+      status: valid ? "verified" : "invalid",
+      observed24h: 0,
     };
   }
-  // Fallback: derive a live funnel from the public detections / anomaly_events
-  // tables so the strip is never blank before the ML box starts POSTing artifacts.
+  // A detection count is not a scan stage. Never synthesize downstream stages
+  // from unrelated tables when the ML box has not submitted an artifact.
   try {
     const w = watchtower();
-    const [det, cand, anom, last] = await Promise.all([
+    const [det, last] = await Promise.all([
       w`SELECT COUNT(*)::int AS c FROM detections WHERE captured_at >= now() - interval '24 hours'`,
-      w`SELECT COUNT(DISTINCT icao_hex)::int AS c FROM detections WHERE captured_at >= now() - interval '24 hours'`,
-      w`SELECT COUNT(*)::int AS c FROM anomaly_events WHERE detected_at >= now() - interval '24 hours'`,
       w`SELECT MAX(captured_at) AS t FROM detections`,
     ]);
-    const flagged = Number(anom[0]?.c ?? 0);
     return {
-      detections: Number(det[0]?.c ?? 0),
-      candidates: Number(cand[0]?.c ?? 0),
-      kinematicHits: flagged,
-      handoffs: flagged,
-      flagged,
+      detections: 0,
+      candidates: 0,
+      kinematicHits: 0,
+      handoffs: 0,
+      flagged: 0,
       scanTs: last[0]?.t ? new Date(last[0].t).toISOString() : null,
+      status: "missing",
+      observed24h: Number(det[0]?.c ?? 0),
     };
   } catch (err) {
     console.error("getFunnelStats fallback failed:", err);
-    return { detections: 0, candidates: 0, kinematicHits: 0, handoffs: 0, flagged: 0, scanTs: null };
+    return { detections: 0, candidates: 0, kinematicHits: 0, handoffs: 0, flagged: 0, scanTs: null, status: "missing", observed24h: 0 };
   }
 });
 

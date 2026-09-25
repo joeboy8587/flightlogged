@@ -16,7 +16,7 @@ export function tailForms(input: string): TailForms {
 /** Plain-English label for each machine rule code. */
 export function ruleLabel(code: string | null | undefined): string {
   const c = String(code ?? "").toUpperCase();
-  if (c.includes("AG_") || c.includes("AGRICULTURAL")) return "Agricultural operation (Part 137 — confirmed ag operator only)";
+  if (c.includes("137")) return "Agricultural operation (authorized low flight)";
   if (c.includes("NIGHT") && c.includes("LOW")) return "Low pass over homes at night";
   if (c.includes("NIGHT")) return "Night operations over residential area";
   if (c.includes("CONGESTED")) return "Below 1,000 ft over a congested area";
@@ -29,10 +29,8 @@ export function ruleLabel(code: string | null | undefined): string {
 
 /** Statute cite for a rule code, when the machine did not supply one. */
 export function ruleStatute(code: string | null | undefined): string {
-  // Part 137 applies ONLY to confirmed agricultural operators. Non-ag aircraft
-  // are never cited against Part 137; default is 14 CFR 91.119. (v2.2 fix:
-  // prior version blanket-mapped any "137" code to Part 137 — see changelog.)
   const c = String(code ?? "").toUpperCase();
+  if (c.includes("137")) return "14 CFR Part 137 (agricultural operations; not a general minimum-altitude citation)";
   if (c.includes("119_C") || c.includes("POPULATED")) return "14 CFR 91.119(c)";
   if (c.includes("119") || c.includes("CONGESTED")) return "14 CFR 91.119(b)";
   return "14 CFR 91.119";
