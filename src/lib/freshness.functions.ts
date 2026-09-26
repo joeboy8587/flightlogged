@@ -30,7 +30,8 @@ export const getFeedFreshness = createServerFn({ method: "GET" }).handler(async 
     try {
       // Identifiers are compile-time constants above; this function intentionally
       // performs read-only MAX watermark queries and never touches raw rows.
-      const result = await w(`SELECT MAX(${feed.column}) AS last_updated FROM ${feed.table}`) as any[];
+      const q = `SELECT MAX(${feed.column}) AS last_updated FROM ${feed.table}`;
+      const result = await (w as any).query?.(q) ?? await (w as any)(Object.assign([q], { raw: [q] }));
       const raw = result[0]?.last_updated;
       const lastUpdated = raw ? new Date(raw).toISOString() : null;
       const ageHours = lastUpdated ? (Date.now() - new Date(lastUpdated).getTime()) / 36e5 : Infinity;
