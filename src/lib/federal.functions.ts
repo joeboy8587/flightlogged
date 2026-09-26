@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
-import type { FederalLayer, FederalRegistryRow, FederalObservedRow } from "./federal.server";
+import type { FederalLayer, FederalRegistryRow, FederalObservedRow, FederalCandidateRow } from "./federal.server";
 
-export type { FederalLayer, FederalRegistryRow, FederalObservedRow };
+export type { FederalLayer, FederalRegistryRow, FederalObservedRow, FederalCandidateRow };
 
 export const getFederalLayer = createServerFn({ method: "GET" }).handler(async (): Promise<FederalLayer> => {
   const { loadFederalLayer } = await import("./federal.server");
