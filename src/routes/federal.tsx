@@ -190,6 +190,62 @@ function FederalPage() {
           </div>
         </section>
 
+        <section className="mt-12">
+          <p className="label-stamp text-[11px] mb-2">
+            <span className="brutal-border bg-alert text-paper px-2 py-0.5">AUTO-DETECTOR</span>{" "}
+            <span className="brutal-border bg-paper px-2 py-0.5">LEAD, NOT A FINDING</span>
+          </p>
+          <h2 className="text-3xl mb-1">New possible fronts, found automatically</h2>
+          <p className="text-sm mb-4 max-w-3xl">
+            Every 10 minutes the system checks the FAA registry for any other company registered at the
+            exact same mailing address as a reported front company. Shared addresses are how journalists
+            first uncovered these fleets. Anything new that flies through our footprint appears here on its
+            own. A shared address is a lead to check — not proof of federal ownership.
+          </p>
+          <div className="flex flex-wrap gap-2 mb-4">
+            {(data?.candidateRegistrants ?? []).map((c) => (
+              <span key={c.company} className="brutal-border bg-paper px-2 py-1 label-stamp text-[10px]">
+                {c.company} · {c.fleetSize} aircraft · shares address with {c.sharedWith}
+              </span>
+            ))}
+          </div>
+          <div className="overflow-x-auto brutal-border bg-paper">
+            <table className="w-full text-sm min-w-[860px]">
+              <thead className="bg-ink text-paper label-stamp text-[10px]">
+                <tr>
+                  <th className="text-left p-2">Aircraft</th>
+                  <th className="text-left p-2">Registrant</th>
+                  <th className="text-left p-2">Shared address</th>
+                  <th className="text-right p-2">Detections</th>
+                  <th className="text-right p-2">Lowest alt.</th>
+                  <th className="text-left p-2">Primary county</th>
+                  <th className="text-left p-2">Last seen</th>
+                </tr>
+              </thead>
+              <tbody>
+                {isLoading && <tr><td colSpan={7} className="p-4 label-stamp text-[11px]">Scanning registry addresses…</td></tr>}
+                {(data?.candidates ?? []).map((o) => (
+                  <tr key={o.icao ?? o.registration} className="border-t-2 border-ink/20">
+                    <td className="p-2"><TailBadge registration={o.registration} icao={o.icao} /></td>
+                    <td className="p-2">
+                      <span className="block font-bold">{o.company}</span>
+                      <span className="label-stamp text-[10px] opacity-70">matches {o.sharedWith}</span>
+                    </td>
+                    <td className="p-2 text-xs">{o.sharedAddress}</td>
+                    <td className="p-2 text-right">{o.detections == null ? "—" : nf.format(o.detections)}</td>
+                    <td className="p-2 text-right">{o.minAltitude == null ? "—" : `${nf.format(o.minAltitude)} ft`}</td>
+                    <td className="p-2">{o.primaryCounty ?? "—"}</td>
+                    <td className="p-2 whitespace-nowrap">{o.lastSeen ? fmtDate(o.lastSeen) : "—"}</td>
+                  </tr>
+                ))}
+                {!isLoading && (data?.candidates ?? []).length === 0 && (
+                  <tr><td colSpan={7} className="p-4 label-stamp text-[11px]">No new shared-address aircraft detected in our footprint yet.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
         <section className="mt-12 brutal-border bg-ink text-paper p-5">
           <h2 className="text-2xl mb-2 text-warning">How to read this honestly</h2>
           <ul className="text-sm space-y-2 list-disc pl-5">
