@@ -10,3 +10,5 @@
 - [ ] Add Master Report verification date and refresh its county figures.
 - [ ] Rebuild the sitemap with current public pages.
 - [ ] Verify the corrected live page, rules page, and build status.
+
+- [ ] Correct site-wide language: ML generates findings, labels, and threat tags from multiple factors over time; humans advocate from those outputs.
