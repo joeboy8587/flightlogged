@@ -120,7 +120,7 @@ export function KernAirspaceApp() {
     : 'Awaiting data'
 
   return (
-    <main className="app-shell">
+    <main className="kern-airspace app-shell">
       <header className="topbar">
         <div className="brand">
           <span className="brand-mark"><Radar size={22} strokeWidth={1.7} /></span>
