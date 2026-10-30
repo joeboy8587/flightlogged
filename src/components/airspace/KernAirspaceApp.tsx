@@ -141,7 +141,7 @@ export function KernAirspaceApp() {
                 <p>Airspace footprints, vertical limits, airport positions, and field elevations come from FAA Aeronautical Information Services. The FAA Class Airspace cycle used here is effective October 29 through December 24, 2026.</p>
                 <p>County context uses a generalized U.S. Census county boundary. Elevation is sampled from Mapzen/Terrain Tiles and vertically exaggerated approximately 2.5× to make terrain and altitude layers legible.</p>
                 <p>Live detections come from adsb.lol within 120 nautical miles of the county center, refreshed every 12 seconds through a cached server proxy. Coverage depends on community receivers and is not a complete traffic picture. adsb.lol data is available under ODbL.</p>
-                <p>A server-only Neon PostgreSQL connection enriches positioned aircraft with public FAA master registry matches and stores fresh observations in the existing detections table. Registry and storage interruptions do not interrupt the live traffic feed.</p>
+                <p>Live positions come from the public adsb.lol feed and are matched against the public FAA master registry. This view is read-only: it does not write into the Watchtower evidence record or change any machine findings.</p>
                 <p>The Pilot Avenue area of interest comes from the shared Google Maps pin, with its address-level position matched through the U.S. Census Geocoder. Regional terrain covers the complete 120-NM detection footprint; offshore elevations are clamped to sea level.</p>
                 <div className="source-links">
                   <a href="https://ais-faa.opendata.arcgis.com/datasets/faa::class-airspace/about" target="_blank" rel="noreferrer">FAA Class Airspace <ExternalLink size={13} /></a>
@@ -216,8 +216,8 @@ export function KernAirspaceApp() {
               {liveEnabled && database && (
                 <div className={`database-feed database-feed--${database.status}`}>
                   <Database size={11} />
-                  <span>{database.status === 'linked' ? 'Neon linked' : database.status === 'partial' ? 'Neon partial' : 'Neon unavailable'}</span>
-                  <small>{database.registryMatches} FAA · {database.persistedDetections} saved</small>
+                  <span>{database.status === 'linked' ? 'FAA registry linked' : database.status === 'partial' ? 'FAA registry partial' : 'FAA registry unavailable'}</span>
+                  <small>{database.registryMatches} FAA matches · view only</small>
                 </div>
               )}
               {liveEnabled && liveError && <p className="feed-error">{liveError}</p>}
