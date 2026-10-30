@@ -34,7 +34,7 @@
  color-scheme:dark;background:var(--background);color:var(--foreground);font-family:'Space Grotesk','Avenir Next',sans-serif;font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased;min-height:100dvh;}
 .kern-airspace *{box-sizing:border-box;border-color:var(--border);}
 .kern-airspace button,.kern-airspace input{font:inherit;}
-.kern-airspace .app-shell{
+.kern-airspace.app-shell{
   min-height: 100dvh;
   background: var(--ink-950);
 }.kern-airspace .topbar{
@@ -973,7 +973,7 @@
   }.kern-airspace .viewport-hint, .kern-airspace .scale-note{
     display: none;
   }
-}@media (max-width: 900px){.kern-airspace .app-shell{
+}@media (max-width: 900px){.kern-airspace.app-shell{
     min-height: 100dvh;
   }.kern-airspace .topbar{
     height: 64px;
