@@ -37,6 +37,7 @@ import { Route as CitationsRouteImport } from './routes/citations'
 import { Route as CasesRouteImport } from './routes/cases'
 import { Route as BlogRouteImport } from './routes/blog'
 import { Route as AttestationRouteImport } from './routes/attestation'
+import { Route as AirspaceRouteImport } from './routes/airspace'
 import { Route as ActRouteImport } from './routes/act'
 import { Route as AccountabilityRouteImport } from './routes/accountability'
 import { Route as AboutRouteImport } from './routes/about'
@@ -50,6 +51,7 @@ import { Route as BlogWeeklyRouteImport } from './routes/blog.weekly'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as AircraftIdRouteImport } from './routes/aircraft.$id'
 import { Route as ApiPublicTtsRouteImport } from './routes/api/public/tts'
+import { Route as ApiPublicAirspaceAircraftRouteImport } from './routes/api/public/airspace-aircraft'
 import { Route as ApiPublicExportIndexRouteImport } from './routes/api/public/export/index'
 import { Route as ApiPublicScansLatestRouteImport } from './routes/api/public/scans/latest'
 import { Route as ApiPublicScansIngestRouteImport } from './routes/api/public/scans/ingest'
@@ -194,6 +196,11 @@ const AttestationRoute = AttestationRouteImport.update({
   path: '/attestation',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AirspaceRoute = AirspaceRouteImport.update({
+  id: '/airspace',
+  path: '/airspace',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ActRoute = ActRouteImport.update({
   id: '/act',
   path: '/act',
@@ -259,6 +266,12 @@ const ApiPublicTtsRoute = ApiPublicTtsRouteImport.update({
   path: '/api/public/tts',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicAirspaceAircraftRoute =
+  ApiPublicAirspaceAircraftRouteImport.update({
+    id: '/api/public/airspace-aircraft',
+    path: '/api/public/airspace-aircraft',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicExportIndexRoute = ApiPublicExportIndexRouteImport.update({
   id: '/api/public/export/',
   path: '/api/public/export/',
@@ -280,6 +293,7 @@ export interface FileRoutesByFullPath {
   '/about': typeof AboutRoute
   '/accountability': typeof AccountabilityRoute
   '/act': typeof ActRoute
+  '/airspace': typeof AirspaceRoute
   '/attestation': typeof AttestationRoute
   '/blog': typeof BlogRouteWithChildren
   '/cases': typeof CasesRoute
@@ -316,6 +330,7 @@ export interface FileRoutesByFullPath {
   '/aircraft/': typeof AircraftIndexRoute
   '/blog/': typeof BlogIndexRoute
   '/toolkit/': typeof ToolkitIndexRoute
+  '/api/public/airspace-aircraft': typeof ApiPublicAirspaceAircraftRoute
   '/api/public/tts': typeof ApiPublicTtsRoute
   '/api/public/scans/ingest': typeof ApiPublicScansIngestRoute
   '/api/public/scans/latest': typeof ApiPublicScansLatestRoute
@@ -326,6 +341,7 @@ export interface FileRoutesByTo {
   '/about': typeof AboutRoute
   '/accountability': typeof AccountabilityRoute
   '/act': typeof ActRoute
+  '/airspace': typeof AirspaceRoute
   '/attestation': typeof AttestationRoute
   '/cases': typeof CasesRoute
   '/citations': typeof CitationsRoute
@@ -360,6 +376,7 @@ export interface FileRoutesByTo {
   '/aircraft': typeof AircraftIndexRoute
   '/blog': typeof BlogIndexRoute
   '/toolkit': typeof ToolkitIndexRoute
+  '/api/public/airspace-aircraft': typeof ApiPublicAirspaceAircraftRoute
   '/api/public/tts': typeof ApiPublicTtsRoute
   '/api/public/scans/ingest': typeof ApiPublicScansIngestRoute
   '/api/public/scans/latest': typeof ApiPublicScansLatestRoute
@@ -371,6 +388,7 @@ export interface FileRoutesById {
   '/about': typeof AboutRoute
   '/accountability': typeof AccountabilityRoute
   '/act': typeof ActRoute
+  '/airspace': typeof AirspaceRoute
   '/attestation': typeof AttestationRoute
   '/blog': typeof BlogRouteWithChildren
   '/cases': typeof CasesRoute
@@ -407,6 +425,7 @@ export interface FileRoutesById {
   '/aircraft/': typeof AircraftIndexRoute
   '/blog/': typeof BlogIndexRoute
   '/toolkit/': typeof ToolkitIndexRoute
+  '/api/public/airspace-aircraft': typeof ApiPublicAirspaceAircraftRoute
   '/api/public/tts': typeof ApiPublicTtsRoute
   '/api/public/scans/ingest': typeof ApiPublicScansIngestRoute
   '/api/public/scans/latest': typeof ApiPublicScansLatestRoute
@@ -419,6 +438,7 @@ export interface FileRouteTypes {
     | '/about'
     | '/accountability'
     | '/act'
+    | '/airspace'
     | '/attestation'
     | '/blog'
     | '/cases'
@@ -455,6 +475,7 @@ export interface FileRouteTypes {
     | '/aircraft/'
     | '/blog/'
     | '/toolkit/'
+    | '/api/public/airspace-aircraft'
     | '/api/public/tts'
     | '/api/public/scans/ingest'
     | '/api/public/scans/latest'
@@ -465,6 +486,7 @@ export interface FileRouteTypes {
     | '/about'
     | '/accountability'
     | '/act'
+    | '/airspace'
     | '/attestation'
     | '/cases'
     | '/citations'
@@ -499,6 +521,7 @@ export interface FileRouteTypes {
     | '/aircraft'
     | '/blog'
     | '/toolkit'
+    | '/api/public/airspace-aircraft'
     | '/api/public/tts'
     | '/api/public/scans/ingest'
     | '/api/public/scans/latest'
@@ -509,6 +532,7 @@ export interface FileRouteTypes {
     | '/about'
     | '/accountability'
     | '/act'
+    | '/airspace'
     | '/attestation'
     | '/blog'
     | '/cases'
@@ -545,6 +569,7 @@ export interface FileRouteTypes {
     | '/aircraft/'
     | '/blog/'
     | '/toolkit/'
+    | '/api/public/airspace-aircraft'
     | '/api/public/tts'
     | '/api/public/scans/ingest'
     | '/api/public/scans/latest'
@@ -556,6 +581,7 @@ export interface RootRouteChildren {
   AboutRoute: typeof AboutRoute
   AccountabilityRoute: typeof AccountabilityRoute
   ActRoute: typeof ActRoute
+  AirspaceRoute: typeof AirspaceRoute
   AttestationRoute: typeof AttestationRoute
   BlogRoute: typeof BlogRouteWithChildren
   CasesRoute: typeof CasesRoute
@@ -587,6 +613,7 @@ export interface RootRouteChildren {
   AircraftIdRoute: typeof AircraftIdRoute
   CountyCountyRoute: typeof CountyCountyRoute
   AircraftIndexRoute: typeof AircraftIndexRoute
+  ApiPublicAirspaceAircraftRoute: typeof ApiPublicAirspaceAircraftRoute
   ApiPublicTtsRoute: typeof ApiPublicTtsRoute
   ApiPublicScansIngestRoute: typeof ApiPublicScansIngestRoute
   ApiPublicScansLatestRoute: typeof ApiPublicScansLatestRoute
@@ -791,6 +818,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AttestationRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/airspace': {
+      id: '/airspace'
+      path: '/airspace'
+      fullPath: '/airspace'
+      preLoaderRoute: typeof AirspaceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/act': {
       id: '/act'
       path: '/act'
@@ -882,6 +916,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicTtsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/airspace-aircraft': {
+      id: '/api/public/airspace-aircraft'
+      path: '/api/public/airspace-aircraft'
+      fullPath: '/api/public/airspace-aircraft'
+      preLoaderRoute: typeof ApiPublicAirspaceAircraftRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/export/': {
       id: '/api/public/export/'
       path: '/api/public/export'
@@ -938,6 +979,7 @@ const rootRouteChildren: RootRouteChildren = {
   AboutRoute: AboutRoute,
   AccountabilityRoute: AccountabilityRoute,
   ActRoute: ActRoute,
+  AirspaceRoute: AirspaceRoute,
   AttestationRoute: AttestationRoute,
   BlogRoute: BlogRouteWithChildren,
   CasesRoute: CasesRoute,
@@ -969,6 +1011,7 @@ const rootRouteChildren: RootRouteChildren = {
   AircraftIdRoute: AircraftIdRoute,
   CountyCountyRoute: CountyCountyRoute,
   AircraftIndexRoute: AircraftIndexRoute,
+  ApiPublicAirspaceAircraftRoute: ApiPublicAirspaceAircraftRoute,
   ApiPublicTtsRoute: ApiPublicTtsRoute,
   ApiPublicScansIngestRoute: ApiPublicScansIngestRoute,
   ApiPublicScansLatestRoute: ApiPublicScansLatestRoute,
