@@ -1,5 +1,11 @@
 # Roadmap
 
+## Current approved database integrations
+- [ ] Connect Cases to public-safe case_file records.
+- [ ] Show machine mission hypotheses and broadcast gaps on Live Feed and aircraft dossiers.
+- [ ] Make active violation_classifications the primary Violations source.
+- [ ] Verify real records, navigation, and exports without changing ML scores or database rows.
+
 - [ ] Correct live low-altitude citations to 14 CFR § 91.119 and reconcile KCSO §B-301/§B-401.
 - [ ] Replace the synthetic scan funnel with an honest missing/invalid artifact state.
 - [ ] Join FAA owners into latest-event cards and reserve unidentified language for confirmed no-match aircraft.
