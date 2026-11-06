@@ -1,12 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { watchtower } from "./neon.server";
+import { KCSO_TAILS, KCSO_HEX_TO_TAIL } from "./kcso";
+export { KCSO_TAILS } from "./kcso";
 
 // KCSO_* rules in violation_classifications are Kern County Sheriff's Office
 // policy rules (e.g. B301 minimums, night VFR, practice-emergency). They are
 // only enforceable against KCSO-operated aircraft. Every other tail is bound
 // by FAA CFR/USC, not by KCSO policy — so anywhere we surface KCSO_* rules
 // in the UI we must first restrict them to this allow-list.
-export const KCSO_TAILS = ["N912KC", "N913KC", "N597E", "N911KC"] as const;
 function isKcsoTail(reg: string | null | undefined): boolean {
   if (!reg) return false;
   return (KCSO_TAILS as readonly string[]).includes(String(reg).trim().toUpperCase());
@@ -316,7 +317,7 @@ export const getRecentLowAltitude = createServerFn({ method: "GET" }).handler(as
     const registryByIcao = new Map((registry as any[]).map((m) => [String(m.mode_s_code_hex).toUpperCase(), m]));
     const registryByReg = new Map((registry as any[]).map((m) => [String(m.registration).toUpperCase(), m]));
 
-    const kcsoTails = ["N912KC", "N913KC", "N597E", "N911KC"];
+    const kcsoTails: readonly string[] = KCSO_TAILS;
     const isKcso = (reg: string | null | undefined) => !!reg && kcsoTails.includes(String(reg).trim().toUpperCase());
     const isKcsoRule = (...values: Array<string | null | undefined>) => values.some((value) => {
       const text = String(value ?? "").toUpperCase();
@@ -1085,7 +1086,7 @@ export type KcsoActive = {
 
 // N913KC = aca2b4. Known KCSO Mode-S codes. Registration column is sometimes
 // blank on raw ADS-B, so we OR-match on hex too.
-const KCSO_ICAO_HEX = ["aca2b4"] as const;
+const KCSO_ICAO_HEX = Object.keys(KCSO_HEX_TO_TAIL).map((hex) => hex.toLowerCase());
 
 export const getActiveKcsoAircraft = createServerFn({ method: "GET" }).handler(
   async (): Promise<KcsoActive[]> => {
@@ -1111,7 +1112,7 @@ export const getActiveKcsoAircraft = createServerFn({ method: "GET" }).handler(
         const hexRaw = String(r.icao_hex ?? "").trim().toLowerCase();
         // Prefer registration; otherwise map known hex → tail.
         const reg = regRaw
-          || (hexRaw === "aca2b4" ? "N913KC" : "")
+          || KCSO_HEX_TO_TAIL[hexRaw.toUpperCase()]
           || hexRaw.toUpperCase();
         return {
           registration: reg,
