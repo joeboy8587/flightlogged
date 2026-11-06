@@ -1,6 +1,7 @@
 # Roadmap
 
 ## Current approved database integrations
+- [x] Explain missing scan-stage artifact notice: observed detections are independent of authenticated stage summaries.
 - [ ] Add user-identified N97E to KCSO aircraft matching and test policy eligibility.
 - [ ] Connect Cases to public-safe case_file records.
 - [ ] Show machine mission hypotheses and broadcast gaps on Live Feed and aircraft dossiers.
