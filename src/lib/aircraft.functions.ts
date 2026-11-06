@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import type { AircraftDossier, FleetRow, DossierPeerMatch, DossierPattern } from "./aircraft.server";
+import { isKcsoAircraft } from "./kcso";
 
 export type { AircraftDossier, FleetRow, DossierPeerMatch, DossierPattern };
 
@@ -7,7 +8,9 @@ export const getAircraftDossier = createServerFn({ method: "GET" })
   .inputValidator((d: { tail: string }) => ({ tail: String(d?.tail ?? "").slice(0, 20) }))
   .handler(async ({ data }): Promise<AircraftDossier | null> => {
     const { loadDossier } = await import("./aircraft.server");
-    return loadDossier(data.tail);
+    const dossier = await loadDossier(data.tail);
+    if (!dossier) return null;
+    return { ...dossier, identity: { ...dossier.identity, kcsoFlag: dossier.identity.kcsoFlag || isKcsoAircraft(dossier.identity.registration, dossier.identity.icao) } };
   });
 
 export const getFleetDirectory = createServerFn({ method: "GET" })
