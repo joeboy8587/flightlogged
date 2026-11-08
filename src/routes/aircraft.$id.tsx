@@ -8,6 +8,7 @@ import { getAircraftDossier, type AircraftDossier } from "@/lib/aircraft.functio
 import { featureLabel, ruleLabel, ruleStatute, DOSSIER_SECTIONS } from "@/lib/aircraft";
 import { fmtClock, fmtDate, fmtPct } from "@/lib/format";
 import { normalizeSeverity } from "@/lib/counties";
+import { GuardianRecordsPanel } from "@/components/guardian-records";
 
 export const Route = createFileRoute("/aircraft/$id")({
   head: ({ params }) => {
@@ -126,6 +127,7 @@ function AircraftDossierPage() {
 
         {data && (
           <>
+            <GuardianRecordsPanel aircraft={data.identity.icao ?? tail} />
             {/* IDENTITY */}
             <Section id="identity" kicker="FAA master registry + machine profile" title="Identity & registry">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
