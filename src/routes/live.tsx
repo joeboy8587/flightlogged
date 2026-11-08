@@ -11,6 +11,7 @@ import { MlFunnel } from "@/components/ml-funnel";
 import { ShareRow } from "@/components/share-row";
 import { fmtPct, DISPLAY_TZ } from "@/lib/format";
 import { StoryCard } from "@/components/story-card";
+import { GuardianRecordsPanel } from "@/components/guardian-records";
 
 const snapQO = queryOptions({ queryKey: ["snapshot"], queryFn: () => getSnapshot(), refetchInterval: 30000 });
 const lowAltQO = queryOptions({ queryKey: ["low-alt"], queryFn: () => getRecentLowAltitude(), refetchInterval: 30000 });
@@ -59,6 +60,8 @@ export const Route = createFileRoute("/live")({
     { property: "og:title", content: "Live Watchtower Feed" },
     { property: "og:description", content: "Real-time civilian airspace surveillance, math-chosen, court-ready." },
     { property: "og:url", content: "https://advocacywatch.live/live" },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [{ rel: "canonical", href: "https://advocacywatch.live/live" }],
     scripts: [breadcrumbScript(crumbs)],
@@ -307,6 +310,7 @@ function Live() {
       </section>
 
       {/* KERN COUNTY ALERTS — surfaced above LA-volume noise */}
+      <div className="border-b-4 border-ink"><div className="max-w-[1400px] mx-auto px-4 py-8"><GuardianRecordsPanel county={county} /></div></div>
       {showKernAlerts && kern.length > 0 && (
         <section id="kern-alerts" className="border-b-4 border-ink bg-alert text-paper">
           <div className="max-w-[1400px] mx-auto px-4 py-8">
