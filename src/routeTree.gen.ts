@@ -9,206 +9,56 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as ViolationsRouteImport } from './routes/violations'
-import { Route as VerifyRouteImport } from './routes/verify'
-import { Route as ToolkitRouteImport } from './routes/toolkit'
-import { Route as ThreatIndexRouteImport } from './routes/threat-index'
-import { Route as TheTargetingEquationRouteImport } from './routes/the-targeting-equation'
-import { Route as TailSearchRouteImport } from './routes/tail-search'
-import { Route as SurveillanceGridRouteImport } from './routes/surveillance-grid'
-import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
-import { Route as RulesRouteImport } from './routes/rules'
-import { Route as ReportsRouteImport } from './routes/reports'
-import { Route as PodcastsRouteImport } from './routes/podcasts'
-import { Route as OperatorsRouteImport } from './routes/operators'
-import { Route as MosaicRouteImport } from './routes/mosaic'
-import { Route as MlDetectionsRouteImport } from './routes/ml-detections'
-import { Route as MilitaryRouteImport } from './routes/military'
-import { Route as MethodologyRouteImport } from './routes/methodology'
-import { Route as MasterReportRouteImport } from './routes/master-report'
-import { Route as LiveRouteImport } from './routes/live'
-import { Route as LegalRouteImport } from './routes/legal'
-import { Route as HowToReadRouteImport } from './routes/how-to-read'
-import { Route as ForeignRouteImport } from './routes/foreign'
-import { Route as FindingsRouteImport } from './routes/findings'
-import { Route as FederalRouteImport } from './routes/federal'
-import { Route as CoordinationRouteImport } from './routes/coordination'
-import { Route as CitationsRouteImport } from './routes/citations'
-import { Route as CasesRouteImport } from './routes/cases'
-import { Route as BlogRouteImport } from './routes/blog'
-import { Route as AttestationRouteImport } from './routes/attestation'
-import { Route as AirspaceRouteImport } from './routes/airspace'
-import { Route as ActRouteImport } from './routes/act'
-import { Route as AccountabilityRouteImport } from './routes/accountability'
-import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ToolkitIndexRouteImport } from './routes/toolkit.index'
-import { Route as BlogIndexRouteImport } from './routes/blog.index'
+import { Route as AboutRouteImport } from './routes/about'
+import { Route as AccountabilityRouteImport } from './routes/accountability'
+import { Route as ActRouteImport } from './routes/act'
+import { Route as AirspaceRouteImport } from './routes/airspace'
+import { Route as AttestationRouteImport } from './routes/attestation'
+import { Route as BlogRouteImport } from './routes/blog'
+import { Route as CasesRouteImport } from './routes/cases'
+import { Route as CitationsRouteImport } from './routes/citations'
+import { Route as CoordinationRouteImport } from './routes/coordination'
+import { Route as FederalRouteImport } from './routes/federal'
+import { Route as FindingsRouteImport } from './routes/findings'
+import { Route as ForeignRouteImport } from './routes/foreign'
+import { Route as HowToReadRouteImport } from './routes/how-to-read'
+import { Route as LegalRouteImport } from './routes/legal'
+import { Route as LiveRouteImport } from './routes/live'
+import { Route as MasterReportRouteImport } from './routes/master-report'
+import { Route as MethodologyRouteImport } from './routes/methodology'
+import { Route as MilitaryRouteImport } from './routes/military'
+import { Route as MlDetectionsRouteImport } from './routes/ml-detections'
+import { Route as MosaicRouteImport } from './routes/mosaic'
+import { Route as OperatorsRouteImport } from './routes/operators'
+import { Route as PodcastsRouteImport } from './routes/podcasts'
+import { Route as ReportsRouteImport } from './routes/reports'
+import { Route as RulesRouteImport } from './routes/rules'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as SurveillanceGridRouteImport } from './routes/surveillance-grid'
+import { Route as TailSearchRouteImport } from './routes/tail-search'
+import { Route as TheTargetingEquationRouteImport } from './routes/the-targeting-equation'
+import { Route as ThreatIndexRouteImport } from './routes/threat-index'
+import { Route as ToolkitRouteImport } from './routes/toolkit'
+import { Route as VerifyRouteImport } from './routes/verify'
+import { Route as ViolationsRouteImport } from './routes/violations'
 import { Route as AircraftIndexRouteImport } from './routes/aircraft.index'
-import { Route as ToolkitFoiaRouteImport } from './routes/toolkit.foia'
-import { Route as CountyCountyRouteImport } from './routes/county.$county'
-import { Route as BlogWeeklyRouteImport } from './routes/blog.weekly'
-import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as AircraftIdRouteImport } from './routes/aircraft.$id'
-import { Route as ApiPublicTtsRouteImport } from './routes/api/public/tts'
+import { Route as BlogIndexRouteImport } from './routes/blog.index'
+import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
+import { Route as BlogWeeklyRouteImport } from './routes/blog.weekly'
+import { Route as CountyCountyRouteImport } from './routes/county.$county'
+import { Route as ToolkitIndexRouteImport } from './routes/toolkit.index'
+import { Route as ToolkitFoiaRouteImport } from './routes/toolkit.foia'
 import { Route as ApiPublicAirspaceAircraftRouteImport } from './routes/api/public/airspace-aircraft'
+import { Route as ApiPublicTtsRouteImport } from './routes/api/public/tts'
 import { Route as ApiPublicExportIndexRouteImport } from './routes/api/public/export/index'
-import { Route as ApiPublicScansLatestRouteImport } from './routes/api/public/scans/latest'
 import { Route as ApiPublicScansIngestRouteImport } from './routes/api/public/scans/ingest'
+import { Route as ApiPublicScansLatestRouteImport } from './routes/api/public/scans/latest'
 
-const ViolationsRoute = ViolationsRouteImport.update({
-  id: '/violations',
-  path: '/violations',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const VerifyRoute = VerifyRouteImport.update({
-  id: '/verify',
-  path: '/verify',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ToolkitRoute = ToolkitRouteImport.update({
-  id: '/toolkit',
-  path: '/toolkit',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ThreatIndexRoute = ThreatIndexRouteImport.update({
-  id: '/threat-index',
-  path: '/threat-index',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TheTargetingEquationRoute = TheTargetingEquationRouteImport.update({
-  id: '/the-targeting-equation',
-  path: '/the-targeting-equation',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TailSearchRoute = TailSearchRouteImport.update({
-  id: '/tail-search',
-  path: '/tail-search',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SurveillanceGridRoute = SurveillanceGridRouteImport.update({
-  id: '/surveillance-grid',
-  path: '/surveillance-grid',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
-  id: '/sitemap.xml',
-  path: '/sitemap.xml',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RulesRoute = RulesRouteImport.update({
-  id: '/rules',
-  path: '/rules',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ReportsRoute = ReportsRouteImport.update({
-  id: '/reports',
-  path: '/reports',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PodcastsRoute = PodcastsRouteImport.update({
-  id: '/podcasts',
-  path: '/podcasts',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OperatorsRoute = OperatorsRouteImport.update({
-  id: '/operators',
-  path: '/operators',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MosaicRoute = MosaicRouteImport.update({
-  id: '/mosaic',
-  path: '/mosaic',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MlDetectionsRoute = MlDetectionsRouteImport.update({
-  id: '/ml-detections',
-  path: '/ml-detections',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MilitaryRoute = MilitaryRouteImport.update({
-  id: '/military',
-  path: '/military',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MethodologyRoute = MethodologyRouteImport.update({
-  id: '/methodology',
-  path: '/methodology',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MasterReportRoute = MasterReportRouteImport.update({
-  id: '/master-report',
-  path: '/master-report',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LiveRoute = LiveRouteImport.update({
-  id: '/live',
-  path: '/live',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LegalRoute = LegalRouteImport.update({
-  id: '/legal',
-  path: '/legal',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const HowToReadRoute = HowToReadRouteImport.update({
-  id: '/how-to-read',
-  path: '/how-to-read',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ForeignRoute = ForeignRouteImport.update({
-  id: '/foreign',
-  path: '/foreign',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const FindingsRoute = FindingsRouteImport.update({
-  id: '/findings',
-  path: '/findings',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const FederalRoute = FederalRouteImport.update({
-  id: '/federal',
-  path: '/federal',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CoordinationRoute = CoordinationRouteImport.update({
-  id: '/coordination',
-  path: '/coordination',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CitationsRoute = CitationsRouteImport.update({
-  id: '/citations',
-  path: '/citations',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CasesRoute = CasesRouteImport.update({
-  id: '/cases',
-  path: '/cases',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BlogRoute = BlogRouteImport.update({
-  id: '/blog',
-  path: '/blog',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AttestationRoute = AttestationRouteImport.update({
-  id: '/attestation',
-  path: '/attestation',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AirspaceRoute = AirspaceRouteImport.update({
-  id: '/airspace',
-  path: '/airspace',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ActRoute = ActRouteImport.update({
-  id: '/act',
-  path: '/act',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AccountabilityRoute = AccountabilityRouteImport.update({
-  id: '/accountability',
-  path: '/accountability',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AboutRoute = AboutRouteImport.update({
@@ -216,39 +66,174 @@ const AboutRoute = AboutRouteImport.update({
   path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const AccountabilityRoute = AccountabilityRouteImport.update({
+  id: '/accountability',
+  path: '/accountability',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ToolkitIndexRoute = ToolkitIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => ToolkitRoute,
+const ActRoute = ActRouteImport.update({
+  id: '/act',
+  path: '/act',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const BlogIndexRoute = BlogIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => BlogRoute,
+const AirspaceRoute = AirspaceRouteImport.update({
+  id: '/airspace',
+  path: '/airspace',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AttestationRoute = AttestationRouteImport.update({
+  id: '/attestation',
+  path: '/attestation',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BlogRoute = BlogRouteImport.update({
+  id: '/blog',
+  path: '/blog',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CasesRoute = CasesRouteImport.update({
+  id: '/cases',
+  path: '/cases',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CitationsRoute = CitationsRouteImport.update({
+  id: '/citations',
+  path: '/citations',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CoordinationRoute = CoordinationRouteImport.update({
+  id: '/coordination',
+  path: '/coordination',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FederalRoute = FederalRouteImport.update({
+  id: '/federal',
+  path: '/federal',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FindingsRoute = FindingsRouteImport.update({
+  id: '/findings',
+  path: '/findings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForeignRoute = ForeignRouteImport.update({
+  id: '/foreign',
+  path: '/foreign',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HowToReadRoute = HowToReadRouteImport.update({
+  id: '/how-to-read',
+  path: '/how-to-read',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LegalRoute = LegalRouteImport.update({
+  id: '/legal',
+  path: '/legal',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LiveRoute = LiveRouteImport.update({
+  id: '/live',
+  path: '/live',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MasterReportRoute = MasterReportRouteImport.update({
+  id: '/master-report',
+  path: '/master-report',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MethodologyRoute = MethodologyRouteImport.update({
+  id: '/methodology',
+  path: '/methodology',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MilitaryRoute = MilitaryRouteImport.update({
+  id: '/military',
+  path: '/military',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MlDetectionsRoute = MlDetectionsRouteImport.update({
+  id: '/ml-detections',
+  path: '/ml-detections',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MosaicRoute = MosaicRouteImport.update({
+  id: '/mosaic',
+  path: '/mosaic',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OperatorsRoute = OperatorsRouteImport.update({
+  id: '/operators',
+  path: '/operators',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PodcastsRoute = PodcastsRouteImport.update({
+  id: '/podcasts',
+  path: '/podcasts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsRoute = ReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RulesRoute = RulesRouteImport.update({
+  id: '/rules',
+  path: '/rules',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SurveillanceGridRoute = SurveillanceGridRouteImport.update({
+  id: '/surveillance-grid',
+  path: '/surveillance-grid',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TailSearchRoute = TailSearchRouteImport.update({
+  id: '/tail-search',
+  path: '/tail-search',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TheTargetingEquationRoute = TheTargetingEquationRouteImport.update({
+  id: '/the-targeting-equation',
+  path: '/the-targeting-equation',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ThreatIndexRoute = ThreatIndexRouteImport.update({
+  id: '/threat-index',
+  path: '/threat-index',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ToolkitRoute = ToolkitRouteImport.update({
+  id: '/toolkit',
+  path: '/toolkit',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VerifyRoute = VerifyRouteImport.update({
+  id: '/verify',
+  path: '/verify',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ViolationsRoute = ViolationsRouteImport.update({
+  id: '/violations',
+  path: '/violations',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AircraftIndexRoute = AircraftIndexRouteImport.update({
   id: '/aircraft/',
   path: '/aircraft/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ToolkitFoiaRoute = ToolkitFoiaRouteImport.update({
-  id: '/foia',
-  path: '/foia',
-  getParentRoute: () => ToolkitRoute,
-} as any)
-const CountyCountyRoute = CountyCountyRouteImport.update({
-  id: '/county/$county',
-  path: '/county/$county',
+const AircraftIdRoute = AircraftIdRouteImport.update({
+  id: '/aircraft/$id',
+  path: '/aircraft/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
-const BlogWeeklyRoute = BlogWeeklyRouteImport.update({
-  id: '/weekly',
-  path: '/weekly',
+const BlogIndexRoute = BlogIndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => BlogRoute,
 } as any)
 const BlogSlugRoute = BlogSlugRouteImport.update({
@@ -256,15 +241,25 @@ const BlogSlugRoute = BlogSlugRouteImport.update({
   path: '/$slug',
   getParentRoute: () => BlogRoute,
 } as any)
-const AircraftIdRoute = AircraftIdRouteImport.update({
-  id: '/aircraft/$id',
-  path: '/aircraft/$id',
+const BlogWeeklyRoute = BlogWeeklyRouteImport.update({
+  id: '/weekly',
+  path: '/weekly',
+  getParentRoute: () => BlogRoute,
+} as any)
+const CountyCountyRoute = CountyCountyRouteImport.update({
+  id: '/county/$county',
+  path: '/county/$county',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicTtsRoute = ApiPublicTtsRouteImport.update({
-  id: '/api/public/tts',
-  path: '/api/public/tts',
-  getParentRoute: () => rootRouteImport,
+const ToolkitIndexRoute = ToolkitIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ToolkitRoute,
+} as any)
+const ToolkitFoiaRoute = ToolkitFoiaRouteImport.update({
+  id: '/foia',
+  path: '/foia',
+  getParentRoute: () => ToolkitRoute,
 } as any)
 const ApiPublicAirspaceAircraftRoute =
   ApiPublicAirspaceAircraftRouteImport.update({
@@ -272,19 +267,24 @@ const ApiPublicAirspaceAircraftRoute =
     path: '/api/public/airspace-aircraft',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicTtsRoute = ApiPublicTtsRouteImport.update({
+  id: '/api/public/tts',
+  path: '/api/public/tts',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicExportIndexRoute = ApiPublicExportIndexRouteImport.update({
   id: '/api/public/export/',
   path: '/api/public/export/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicScansLatestRoute = ApiPublicScansLatestRouteImport.update({
-  id: '/api/public/scans/latest',
-  path: '/api/public/scans/latest',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiPublicScansIngestRoute = ApiPublicScansIngestRouteImport.update({
   id: '/api/public/scans/ingest',
   path: '/api/public/scans/ingest',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicScansLatestRoute = ApiPublicScansLatestRouteImport.update({
+  id: '/api/public/scans/latest',
+  path: '/api/public/scans/latest',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -622,221 +622,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/violations': {
-      id: '/violations'
-      path: '/violations'
-      fullPath: '/violations'
-      preLoaderRoute: typeof ViolationsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/verify': {
-      id: '/verify'
-      path: '/verify'
-      fullPath: '/verify'
-      preLoaderRoute: typeof VerifyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/toolkit': {
-      id: '/toolkit'
-      path: '/toolkit'
-      fullPath: '/toolkit'
-      preLoaderRoute: typeof ToolkitRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/threat-index': {
-      id: '/threat-index'
-      path: '/threat-index'
-      fullPath: '/threat-index'
-      preLoaderRoute: typeof ThreatIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/the-targeting-equation': {
-      id: '/the-targeting-equation'
-      path: '/the-targeting-equation'
-      fullPath: '/the-targeting-equation'
-      preLoaderRoute: typeof TheTargetingEquationRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/tail-search': {
-      id: '/tail-search'
-      path: '/tail-search'
-      fullPath: '/tail-search'
-      preLoaderRoute: typeof TailSearchRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/surveillance-grid': {
-      id: '/surveillance-grid'
-      path: '/surveillance-grid'
-      fullPath: '/surveillance-grid'
-      preLoaderRoute: typeof SurveillanceGridRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/sitemap.xml': {
-      id: '/sitemap.xml'
-      path: '/sitemap.xml'
-      fullPath: '/sitemap.xml'
-      preLoaderRoute: typeof SitemapDotxmlRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rules': {
-      id: '/rules'
-      path: '/rules'
-      fullPath: '/rules'
-      preLoaderRoute: typeof RulesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/reports': {
-      id: '/reports'
-      path: '/reports'
-      fullPath: '/reports'
-      preLoaderRoute: typeof ReportsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/podcasts': {
-      id: '/podcasts'
-      path: '/podcasts'
-      fullPath: '/podcasts'
-      preLoaderRoute: typeof PodcastsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/operators': {
-      id: '/operators'
-      path: '/operators'
-      fullPath: '/operators'
-      preLoaderRoute: typeof OperatorsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/mosaic': {
-      id: '/mosaic'
-      path: '/mosaic'
-      fullPath: '/mosaic'
-      preLoaderRoute: typeof MosaicRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/ml-detections': {
-      id: '/ml-detections'
-      path: '/ml-detections'
-      fullPath: '/ml-detections'
-      preLoaderRoute: typeof MlDetectionsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/military': {
-      id: '/military'
-      path: '/military'
-      fullPath: '/military'
-      preLoaderRoute: typeof MilitaryRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/methodology': {
-      id: '/methodology'
-      path: '/methodology'
-      fullPath: '/methodology'
-      preLoaderRoute: typeof MethodologyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/master-report': {
-      id: '/master-report'
-      path: '/master-report'
-      fullPath: '/master-report'
-      preLoaderRoute: typeof MasterReportRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/live': {
-      id: '/live'
-      path: '/live'
-      fullPath: '/live'
-      preLoaderRoute: typeof LiveRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/legal': {
-      id: '/legal'
-      path: '/legal'
-      fullPath: '/legal'
-      preLoaderRoute: typeof LegalRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/how-to-read': {
-      id: '/how-to-read'
-      path: '/how-to-read'
-      fullPath: '/how-to-read'
-      preLoaderRoute: typeof HowToReadRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/foreign': {
-      id: '/foreign'
-      path: '/foreign'
-      fullPath: '/foreign'
-      preLoaderRoute: typeof ForeignRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/findings': {
-      id: '/findings'
-      path: '/findings'
-      fullPath: '/findings'
-      preLoaderRoute: typeof FindingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/federal': {
-      id: '/federal'
-      path: '/federal'
-      fullPath: '/federal'
-      preLoaderRoute: typeof FederalRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/coordination': {
-      id: '/coordination'
-      path: '/coordination'
-      fullPath: '/coordination'
-      preLoaderRoute: typeof CoordinationRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/citations': {
-      id: '/citations'
-      path: '/citations'
-      fullPath: '/citations'
-      preLoaderRoute: typeof CitationsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/cases': {
-      id: '/cases'
-      path: '/cases'
-      fullPath: '/cases'
-      preLoaderRoute: typeof CasesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/blog': {
-      id: '/blog'
-      path: '/blog'
-      fullPath: '/blog'
-      preLoaderRoute: typeof BlogRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/attestation': {
-      id: '/attestation'
-      path: '/attestation'
-      fullPath: '/attestation'
-      preLoaderRoute: typeof AttestationRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/airspace': {
-      id: '/airspace'
-      path: '/airspace'
-      fullPath: '/airspace'
-      preLoaderRoute: typeof AirspaceRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/act': {
-      id: '/act'
-      path: '/act'
-      fullPath: '/act'
-      preLoaderRoute: typeof ActRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/accountability': {
-      id: '/accountability'
-      path: '/accountability'
-      fullPath: '/accountability'
-      preLoaderRoute: typeof AccountabilityRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/about': {
@@ -846,26 +636,222 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/accountability': {
+      id: '/accountability'
+      path: '/accountability'
+      fullPath: '/accountability'
+      preLoaderRoute: typeof AccountabilityRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/toolkit/': {
-      id: '/toolkit/'
-      path: '/'
-      fullPath: '/toolkit/'
-      preLoaderRoute: typeof ToolkitIndexRouteImport
-      parentRoute: typeof ToolkitRoute
+    '/act': {
+      id: '/act'
+      path: '/act'
+      fullPath: '/act'
+      preLoaderRoute: typeof ActRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/blog/': {
-      id: '/blog/'
-      path: '/'
-      fullPath: '/blog/'
-      preLoaderRoute: typeof BlogIndexRouteImport
-      parentRoute: typeof BlogRoute
+    '/airspace': {
+      id: '/airspace'
+      path: '/airspace'
+      fullPath: '/airspace'
+      preLoaderRoute: typeof AirspaceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/attestation': {
+      id: '/attestation'
+      path: '/attestation'
+      fullPath: '/attestation'
+      preLoaderRoute: typeof AttestationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog': {
+      id: '/blog'
+      path: '/blog'
+      fullPath: '/blog'
+      preLoaderRoute: typeof BlogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cases': {
+      id: '/cases'
+      path: '/cases'
+      fullPath: '/cases'
+      preLoaderRoute: typeof CasesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/citations': {
+      id: '/citations'
+      path: '/citations'
+      fullPath: '/citations'
+      preLoaderRoute: typeof CitationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/coordination': {
+      id: '/coordination'
+      path: '/coordination'
+      fullPath: '/coordination'
+      preLoaderRoute: typeof CoordinationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/federal': {
+      id: '/federal'
+      path: '/federal'
+      fullPath: '/federal'
+      preLoaderRoute: typeof FederalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/findings': {
+      id: '/findings'
+      path: '/findings'
+      fullPath: '/findings'
+      preLoaderRoute: typeof FindingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/foreign': {
+      id: '/foreign'
+      path: '/foreign'
+      fullPath: '/foreign'
+      preLoaderRoute: typeof ForeignRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/how-to-read': {
+      id: '/how-to-read'
+      path: '/how-to-read'
+      fullPath: '/how-to-read'
+      preLoaderRoute: typeof HowToReadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/legal': {
+      id: '/legal'
+      path: '/legal'
+      fullPath: '/legal'
+      preLoaderRoute: typeof LegalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/live': {
+      id: '/live'
+      path: '/live'
+      fullPath: '/live'
+      preLoaderRoute: typeof LiveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/master-report': {
+      id: '/master-report'
+      path: '/master-report'
+      fullPath: '/master-report'
+      preLoaderRoute: typeof MasterReportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/methodology': {
+      id: '/methodology'
+      path: '/methodology'
+      fullPath: '/methodology'
+      preLoaderRoute: typeof MethodologyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/military': {
+      id: '/military'
+      path: '/military'
+      fullPath: '/military'
+      preLoaderRoute: typeof MilitaryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ml-detections': {
+      id: '/ml-detections'
+      path: '/ml-detections'
+      fullPath: '/ml-detections'
+      preLoaderRoute: typeof MlDetectionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mosaic': {
+      id: '/mosaic'
+      path: '/mosaic'
+      fullPath: '/mosaic'
+      preLoaderRoute: typeof MosaicRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/operators': {
+      id: '/operators'
+      path: '/operators'
+      fullPath: '/operators'
+      preLoaderRoute: typeof OperatorsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/podcasts': {
+      id: '/podcasts'
+      path: '/podcasts'
+      fullPath: '/podcasts'
+      preLoaderRoute: typeof PodcastsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports': {
+      id: '/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof ReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rules': {
+      id: '/rules'
+      path: '/rules'
+      fullPath: '/rules'
+      preLoaderRoute: typeof RulesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/surveillance-grid': {
+      id: '/surveillance-grid'
+      path: '/surveillance-grid'
+      fullPath: '/surveillance-grid'
+      preLoaderRoute: typeof SurveillanceGridRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tail-search': {
+      id: '/tail-search'
+      path: '/tail-search'
+      fullPath: '/tail-search'
+      preLoaderRoute: typeof TailSearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/the-targeting-equation': {
+      id: '/the-targeting-equation'
+      path: '/the-targeting-equation'
+      fullPath: '/the-targeting-equation'
+      preLoaderRoute: typeof TheTargetingEquationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/threat-index': {
+      id: '/threat-index'
+      path: '/threat-index'
+      fullPath: '/threat-index'
+      preLoaderRoute: typeof ThreatIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/toolkit': {
+      id: '/toolkit'
+      path: '/toolkit'
+      fullPath: '/toolkit'
+      preLoaderRoute: typeof ToolkitRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/verify': {
+      id: '/verify'
+      path: '/verify'
+      fullPath: '/verify'
+      preLoaderRoute: typeof VerifyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/violations': {
+      id: '/violations'
+      path: '/violations'
+      fullPath: '/violations'
+      preLoaderRoute: typeof ViolationsRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/aircraft/': {
       id: '/aircraft/'
@@ -874,25 +860,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AircraftIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/toolkit/foia': {
-      id: '/toolkit/foia'
-      path: '/foia'
-      fullPath: '/toolkit/foia'
-      preLoaderRoute: typeof ToolkitFoiaRouteImport
-      parentRoute: typeof ToolkitRoute
-    }
-    '/county/$county': {
-      id: '/county/$county'
-      path: '/county/$county'
-      fullPath: '/county/$county'
-      preLoaderRoute: typeof CountyCountyRouteImport
+    '/aircraft/$id': {
+      id: '/aircraft/$id'
+      path: '/aircraft/$id'
+      fullPath: '/aircraft/$id'
+      preLoaderRoute: typeof AircraftIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/blog/weekly': {
-      id: '/blog/weekly'
-      path: '/weekly'
-      fullPath: '/blog/weekly'
-      preLoaderRoute: typeof BlogWeeklyRouteImport
+    '/blog/': {
+      id: '/blog/'
+      path: '/'
+      fullPath: '/blog/'
+      preLoaderRoute: typeof BlogIndexRouteImport
       parentRoute: typeof BlogRoute
     }
     '/blog/$slug': {
@@ -902,11 +881,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BlogSlugRouteImport
       parentRoute: typeof BlogRoute
     }
-    '/aircraft/$id': {
-      id: '/aircraft/$id'
-      path: '/aircraft/$id'
-      fullPath: '/aircraft/$id'
-      preLoaderRoute: typeof AircraftIdRouteImport
+    '/blog/weekly': {
+      id: '/blog/weekly'
+      path: '/weekly'
+      fullPath: '/blog/weekly'
+      preLoaderRoute: typeof BlogWeeklyRouteImport
+      parentRoute: typeof BlogRoute
+    }
+    '/county/$county': {
+      id: '/county/$county'
+      path: '/county/$county'
+      fullPath: '/county/$county'
+      preLoaderRoute: typeof CountyCountyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/toolkit/': {
+      id: '/toolkit/'
+      path: '/'
+      fullPath: '/toolkit/'
+      preLoaderRoute: typeof ToolkitIndexRouteImport
+      parentRoute: typeof ToolkitRoute
+    }
+    '/toolkit/foia': {
+      id: '/toolkit/foia'
+      path: '/foia'
+      fullPath: '/toolkit/foia'
+      preLoaderRoute: typeof ToolkitFoiaRouteImport
+      parentRoute: typeof ToolkitRoute
+    }
+    '/api/public/airspace-aircraft': {
+      id: '/api/public/airspace-aircraft'
+      path: '/api/public/airspace-aircraft'
+      fullPath: '/api/public/airspace-aircraft'
+      preLoaderRoute: typeof ApiPublicAirspaceAircraftRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/tts': {
@@ -916,13 +923,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicTtsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/airspace-aircraft': {
-      id: '/api/public/airspace-aircraft'
-      path: '/api/public/airspace-aircraft'
-      fullPath: '/api/public/airspace-aircraft'
-      preLoaderRoute: typeof ApiPublicAirspaceAircraftRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/public/export/': {
       id: '/api/public/export/'
       path: '/api/public/export'
@@ -930,18 +930,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicExportIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/scans/latest': {
-      id: '/api/public/scans/latest'
-      path: '/api/public/scans/latest'
-      fullPath: '/api/public/scans/latest'
-      preLoaderRoute: typeof ApiPublicScansLatestRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/public/scans/ingest': {
       id: '/api/public/scans/ingest'
       path: '/api/public/scans/ingest'
       fullPath: '/api/public/scans/ingest'
       preLoaderRoute: typeof ApiPublicScansIngestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/scans/latest': {
+      id: '/api/public/scans/latest'
+      path: '/api/public/scans/latest'
+      fullPath: '/api/public/scans/latest'
+      preLoaderRoute: typeof ApiPublicScansLatestRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
