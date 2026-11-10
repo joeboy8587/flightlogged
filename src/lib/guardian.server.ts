@@ -11,7 +11,7 @@ export async function loadGuardianRecords(aircraft?: string, county = "SJV"): Pr
   // A sample without a matching hypothesis is not a claim of no historical hypotheses.
   const key = normalizedHex(aircraft);
   const [missions, cycles, dark] = await Promise.all([
-    read(`WITH recent AS MATERIALIZED (
+    read(key ? `WITH recent AS MATERIALIZED (
       SELECT id, registration, icao_hex, county, captured_at FROM public.detections
       WHERE ($1 = '' OR upper(icao_hex) = $1 OR registration = $1)
       AND ($1 <> '' OR $2 = 'all' OR ($2 = 'SJV' AND upper(county) = ANY($3)) OR upper(county) = $2)
@@ -20,7 +20,13 @@ export async function loadGuardianRecords(aircraft?: string, county = "SJV"): Pr
       h.hypothesis_type, h.confidence_score, h.detection_count, h.status,
       h.reasoning_chain, h.disproof_criteria, h.sha256_hash
       FROM recent d JOIN public.mission_hypotheses h ON h.detection_id=d.id
-      ORDER BY h.updated_at DESC, h.id DESC LIMIT 20`, [key, county, ["KERN", "KINGS", "TULARE", "FRESNO"]], r => ({
+      ORDER BY h.updated_at DESC, h.id DESC LIMIT 20` : `WITH recent AS MATERIALIZED (
+        SELECT * FROM public.mission_hypotheses ORDER BY updated_at DESC,id DESC LIMIT 2000
+      ) SELECT h.id,d.registration,d.icao_hex,d.county,to_json(h.updated_at) AS at,
+        h.hypothesis_type,h.confidence_score,h.detection_count,h.status,h.reasoning_chain,h.disproof_criteria,h.sha256_hash
+        FROM recent h LEFT JOIN public.detections d ON d.id=h.detection_id
+        WHERE ($1='' AND ($2='all' OR ($2='SJV' AND upper(d.county)=ANY($3)) OR upper(d.county)=$2))
+        ORDER BY h.updated_at DESC,h.id DESC LIMIT 20`, [key, county, ["KERN", "KINGS", "TULARE", "FRESNO"]], r => ({
       id: String(r.id), aircraft: text(r.registration), icao: text(r.icao_hex), county: text(r.county), at: text(r.at), type: String(r.hypothesis_type), confidence: n(r.confidence_score), observations: n(r.detection_count), status: text(r.status), reasoning: text(r.reasoning_chain), disproof: text(r.disproof_criteria), hash: text(r.sha256_hash),
     })),
     read(`SELECT id, icao_hex, registration, to_json(last_seen_at) AS before,
@@ -33,7 +39,7 @@ export async function loadGuardianRecords(aircraft?: string, county = "SJV"): Pr
     key ? read(`SELECT icao_hex,day,brief_gap_count,min_gap_seconds,max_gap_seconds,to_json(updated_at) AS at
       FROM public.brief_dark_windows WHERE icao_hex=ANY($1) ORDER BY day DESC LIMIT 14`, [[key, key.toLowerCase()]], r => ({ icao: normalizedHex(r.icao_hex), day: String(r.day), count: Number(r.brief_gap_count), minSeconds: n(r.min_gap_seconds), maxSeconds: n(r.max_gap_seconds), at: text(r.at) })) : Promise.resolve({ rows: [], error: null }),
   ]);
-  return { missions, cycles, dark, readAt: new Date().toISOString(), scope: key ? `Aircraft ${key} · latest 500 observations checked for hypotheses; latest 20 gap records` : `Mission sample: ${county} · latest 500 observations; gaps: all monitored counties, latest 20 records` };
+  return { missions, cycles, dark, readAt: new Date().toISOString(), scope: key ? `Aircraft ${key} · latest 500 observations checked for hypotheses; latest 20 gap records` : `Mission sample: ${county} matches from latest 2,000 assessments; gaps: all monitored counties, latest 20 records` };
 }
 export async function loadClassifications(): Promise<SourceRows<ClassificationRecord>> {
   return read(`SELECT detection_id,registration,icao_hex,to_json(captured_at) AS at,rule_violated,
