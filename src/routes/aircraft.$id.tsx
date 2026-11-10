@@ -117,6 +117,7 @@ function AircraftDossierPage() {
       </section>
 
       <div className="max-w-[1100px] mx-auto px-4 py-10 space-y-12">
+        <GuardianRecordsPanel aircraft={data?.identity.icao ?? tail} />
         {isLoading && <p className="brutal-border p-6 font-mono">Reading the machine's records for {tail}…</p>}
         {isError && <p className="brutal-border p-6 bg-alert text-paper font-mono">Dossier query failed. Reload to retry.</p>}
         {!isLoading && !isError && !data && (
@@ -127,7 +128,6 @@ function AircraftDossierPage() {
 
         {data && (
           <>
-            <GuardianRecordsPanel aircraft={data.identity.icao ?? tail} />
             {/* IDENTITY */}
             <Section id="identity" kicker="FAA master registry + machine profile" title="Identity & registry">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
