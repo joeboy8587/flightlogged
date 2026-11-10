@@ -153,7 +153,7 @@ export const draftWeeklyBriefing = createServerFn({ method: "POST" }).handler(
 Hard rules:
 - Every number must be one of the exact values listed below. Do NOT invent, round, extrapolate, or convert. Do NOT use the word "million" unless a listed value is at least 1,000,000.
 - Do NOT allege criminal conduct against any specific person or entity. You may state that a pattern was observed and that rule X applies; the reader interprets.
-- Frame KCSO-specific rules only for these four tails: N912KC, N913KC, N597E, N911KC. Every other aircraft is measured against FAA CFR/USC only.
+- Frame KCSO-specific rules only for these tails: N912KC, N913KC, N597E, N911KC, N97E. Every other aircraft is measured against FAA CFR/USC only.
 - Structure with H2 sections: "What the machine saw", "Operators surfaced", "Anomaly signature", "Multi-county share", "What to verify". End with a short closer restating the firewall between ML output and human interpretation.
 
 Window rollup (past 7 days):

@@ -334,7 +334,7 @@ function SurveillanceGrid() {
               <p className="text-sm mb-3">
                 Any claim on this site that cites the Kern County Sheriff's Office <i>Air Support
                 Policies</i> manual applies exclusively to KCSO-operated tail numbers — currently
-                {" "}<b>N912KC, N913KC, N911KC, and N597E</b>. Policy citations against those
+                {" "}<b>N912KC, N913KC, N911KC, N597E, and N97E</b>. Policy citations against those
                 aircraft are the Sheriff's own published rules, not our interpretation.
               </p>
               <p className="text-sm">
