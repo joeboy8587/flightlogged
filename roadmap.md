@@ -1,9 +1,9 @@
 # Roadmap
 
 ## Current screen recovery
-- [ ] Restore Tail Search and CSV export using the linked My Neon connection; verify sibling live-data reads.
+- [x] Restore Tail Search and CSV export using the linked My Neon connection; N913KC returns records and a 1,000-row CSV; homepage counts read back successfully.
 - [x] Replace incompatible SSR query adapter; verify homepage and Live Feed render at desktop and the user's screen size without page errors.
-- [ ] Restore real live counts — blocked by legacy database access rejecting the rotated password; the linked Neon connection needs to replace that legacy access.
+- [x] Replace legacy database access with the linked Neon connection; real homepage counts are restored.
 
 ## Current approved database integrations
 - [x] Explain missing scan-stage artifact notice: observed detections are independent of authenticated stage summaries.
