@@ -1,5 +1,8 @@
 # Roadmap
 
+## Current screen recovery
+- [ ] Replace incompatible SSR query adapter and verify the homepage and Live Feed render with real data.
+
 ## Current approved database integrations
 - [x] Explain missing scan-stage artifact notice: observed detections are independent of authenticated stage summaries.
 - [x] Add user-identified N97E to KCSO aircraft matching and test policy eligibility.
