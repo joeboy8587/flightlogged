@@ -1,6 +1,7 @@
 # Roadmap
 
 ## Current screen recovery
+- [ ] Restore Tail Search and CSV export using the linked My Neon connection; verify sibling live-data reads.
 - [x] Replace incompatible SSR query adapter; verify homepage and Live Feed render at desktop and the user's screen size without page errors.
 - [ ] Restore real live counts — blocked by legacy database access rejecting the rotated password; the linked Neon connection needs to replace that legacy access.
 
