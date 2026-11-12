@@ -1,38 +1,27 @@
-import { neon } from "@neondatabase/serverless";
+import { neonQuery, neonExecute, neonUserError } from "./neon-gateway.server";
 
-// HTTP-based Neon driver: stateless and safe across Cloudflare Worker requests.
-// We intentionally create a fresh client per call to avoid the
-// "Cannot perform I/O on behalf of a different request" Workers error that
-// occurs when a connection (or any I/O object) is reused across requests.
-
-// In development, a missing or unreachable Neon URL can cause a low-level
-// "TypeError: fetch failed" that surfaces as a 500. To make failures clearer
-// and to allow the app to run without an active Neon connection during
-// local dev, this module will return a lightweight stubbed tag function when
-// the environment variable is not present. In production we still throw so
-// the problem is noticed.
-
-function makeStub(name: string) {
-  const fn = async (_strings: TemplateStringsArray, ..._params: any[]) => {
-    console.warn(`watchtower stub used for ${name}: NEON URL not set; returning empty result set`);
-    return [] as any[];
+// Preserve existing parameterized tag queries while using the linked connection.
+// Credentials are read by the gateway helper only when a handler executes SQL.
+export function parameterizedStatement(strings: readonly string[], params: unknown[]) {
+  return {
+    query: strings.reduce((sql, part, i) => sql + (i ? `$${i}` : "") + part, ""),
+    params,
   };
-  return fn as unknown as ((strings: TemplateStringsArray, ...params: any[]) => Promise<any[]>);
 }
 
 export function watchtower() {
-  const url = process.env.NEON_WATCHTOWER_URL;
-  if (!url) {
-    // In development, prefer a soft failure that returns empty results so pages can render.
-    if (process.env.NODE_ENV !== "production") return makeStub("watchtower");
-    throw new Error("NEON_WATCHTOWER_URL not set");
-  }
-  try {
-    return neon(url);
-  } catch (err) {
-    // Re-throw without leaking the connection URL (which contains the password).
-    throw new Error(`Failed to create Neon client for watchtower: ${String(err)}`);
-  }
+  return async (strings: TemplateStringsArray, ...params: unknown[]): Promise<any[]> => {
+    const statement = parameterizedStatement(strings, params);
+    const readOnly = /^\s*(SELECT|WITH|EXPLAIN)\b/i.test(statement.query)
+      && !/\b(INSERT|UPDATE|DELETE|CREATE|ALTER|DROP|TRUNCATE|GRANT|REVOKE)\b/i.test(statement.query);
+    try {
+      const result = await (readOnly ? neonQuery : neonExecute)(statement.query, statement.params);
+      return result.rows;
+    } catch (error) {
+      console.error("Linked Neon request failed", error);
+      throw new Error(neonUserError(error).message);
+    }
+  };
 }
 
 export function evidence() {
