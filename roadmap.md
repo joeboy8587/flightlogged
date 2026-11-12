@@ -1,7 +1,8 @@
 # Roadmap
 
 ## Current screen recovery
-- [ ] Replace incompatible SSR query adapter and verify the homepage and Live Feed render with real data.
+- [x] Replace incompatible SSR query adapter; verify homepage and Live Feed render at desktop and the user's screen size without page errors.
+- [ ] Restore real live counts — blocked by legacy database access rejecting the rotated password; the linked Neon connection needs to replace that legacy access.
 
 ## Current approved database integrations
 - [x] Explain missing scan-stage artifact notice: observed detections are independent of authenticated stage summaries.
