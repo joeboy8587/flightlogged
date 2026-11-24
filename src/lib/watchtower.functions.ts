@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { watchtower } from "./neon.server";
 import { KCSO_TAILS, KCSO_HEX_TO_TAIL } from "./kcso";
+import { selectTailProfile } from "./tail-identity";
 export { KCSO_TAILS } from "./kcso";
 
 // KCSO_* rules in violation_classifications are Kern County Sheriff's Office
@@ -2076,6 +2077,8 @@ export type TailSearchResult = {
   owner: string | null;
   model: string | null;
   total: number;
+  retainedTotal: number;
+  profileUpdatedAt: string | null;
   minAlt: number | null;
   avgAlt: number | null;
   maxAlt: number | null;
@@ -2098,22 +2101,32 @@ export const searchByTail = createServerFn({ method: "GET" })
     const tail = data.tail;
     const nless = tail.startsWith("N") ? tail.slice(1) : tail;
     const nform = tail.startsWith("N") ? tail : `N${tail}`;
+    const registryRows = await w`SELECT n_number, mode_s_code_hex, name, city, state
+      FROM faa_master
+      WHERE UPPER(TRIM(n_number)) = ${nless}
+         OR UPPER(TRIM(mode_s_code_hex)) = ${tail}
+      ORDER BY CASE WHEN UPPER(TRIM(mode_s_code_hex)) = ${tail} THEN 0 ELSE 1 END, n_number
+      LIMIT 1`;
+    const registry = registryRows[0];
+    const registryHex = registry?.mode_s_code_hex ? String(registry.mode_s_code_hex).trim().toUpperCase() : null;
     // Resolve the aircraft's canonical ICAO hex first — the `detections` table is
     // keyed by icao_hex and its `registration` column is sparsely populated, so
     // counting by registration alone under-counts by orders of magnitude.
     const profile = await w`SELECT p.icao_hex, p.observed_registration, p.registered_owner, p.aircraft_model,
                p.total_detections, p.min_altitude, p.avg_altitude, p.max_altitude,
-               p.night_pct, p.first_seen, p.last_seen,
-               m.name AS reg_name, m.city AS reg_city, m.state AS reg_state
+               p.night_pct, p.first_seen, p.last_seen, p.profile_updated_at
         FROM aircraft_profiles p
-        LEFT JOIN faa_master m ON m.mode_s_code_hex = UPPER(p.icao_hex)
-        WHERE UPPER(p.observed_registration) IN (${tail}, ${nform}, ${nless})
-           OR UPPER(p.icao_hex) = ${tail}
-           OR UPPER(m.n_number) = ${nless}
-           OR UPPER(m.mode_s_code_hex) = ${tail}
-        LIMIT 1`;
+        WHERE (${registryHex}::text IS NOT NULL AND p.icao_hex IN (${registryHex ?? ""}, ${registryHex?.toLowerCase() ?? ""}))
+           OR (${registryHex}::text IS NULL AND (
+             UPPER(p.observed_registration) IN (${tail}, ${nform}, ${nless})
+             OR p.icao_hex IN (${tail}, ${tail.toLowerCase()})
+           ))
+        ORDER BY p.total_detections DESC, p.icao_hex
+        LIMIT 20`;
     const pArr0 = profile as any[];
-    const canonIcao: string | null = pArr0[0]?.icao_hex ? String(pArr0[0].icao_hex).toUpperCase() : null;
+    const selected = selectTailProfile(pArr0, registryHex, tail);
+    const canonIcao: string | null = /^[A-F0-9]{6}$/.test(tail) ? tail
+      : registryHex ?? (selected?.icao_hex ? String(selected.icao_hex).trim().toUpperCase() : null);
     const [detStats, dets] = await Promise.all([
       w`SELECT COUNT(*)::bigint AS total,
                MIN(altitude_ft)::int AS min_alt,
@@ -2124,40 +2137,39 @@ export const searchByTail = createServerFn({ method: "GET" })
                MIN(captured_at) AS first_seen,
                MAX(captured_at) AS last_seen
         FROM detections
-        WHERE UPPER(registration) IN (${tail}, ${nform}, ${nless})
-           OR UPPER(icao_hex) = ${tail}
-           OR UPPER(icao_hex) = ${canonIcao ?? ""}`,
+        WHERE (${canonIcao}::text IS NOT NULL AND icao_hex IN (${canonIcao ?? ""}, ${canonIcao?.toLowerCase() ?? ""}))
+           OR (${canonIcao}::text IS NULL AND UPPER(registration) IN (${tail}, ${nform}, ${nless}))`,
       w`SELECT captured_at, altitude_ft, speed_kts, county, latitude, longitude, on_ground
         FROM detections
-        WHERE UPPER(registration) IN (${tail}, ${nform}, ${nless})
-           OR UPPER(icao_hex) = ${tail}
-           OR UPPER(icao_hex) = ${canonIcao ?? ""}
+        WHERE (${canonIcao}::text IS NOT NULL AND icao_hex IN (${canonIcao ?? ""}, ${canonIcao?.toLowerCase() ?? ""}))
+           OR (${canonIcao}::text IS NULL AND UPPER(registration) IN (${tail}, ${nform}, ${nless}))
         ORDER BY captured_at DESC
         LIMIT 1000`,
     ]);
-    const pArr = pArr0;
     const dArr = dets as any[];
     const live = (detStats as any[])[0] ?? {};
-    if (pArr.length === 0 && dArr.length === 0) return null;
-    const p = pArr[0] ?? {};
+    if (!selected && !registry && dArr.length === 0) return null;
+    const p = selected ?? {};
     const rawMin = live.min_alt == null ? null : Number(live.min_alt);
     return {
-      registration: p.observed_registration ?? dArr[0]?.registration ?? nform,
-      icao: p.icao_hex ?? null,
-      owner: p.registered_owner ?? null,
+      registration: registry?.n_number ? `N${String(registry.n_number).replace(/^N/i, "")}` : p.observed_registration ?? nform,
+      icao: canonIcao,
+      owner: registry?.name ?? p.registered_owner ?? null,
       model: p.aircraft_model ?? null,
       // Prefer the ML-maintained profile total (canonical); fall back to the
       // live COUNT only if the profile has no entry for this aircraft.
       total: p.total_detections != null ? Number(p.total_detections) : Number(live.total ?? dArr.length),
+      retainedTotal: Number(live.total ?? 0),
+      profileUpdatedAt: p.profile_updated_at ? new Date(p.profile_updated_at).toISOString() : null,
       minAlt: rawMin != null && rawMin < -100 ? null : rawMin,
       avgAlt: live.avg_alt != null ? Number(live.avg_alt) : null,
       maxAlt: live.max_alt != null ? Number(live.max_alt) : null,
       nightPct: live.night_pct != null ? Number(live.night_pct) : null,
       firstSeen: live.first_seen ? new Date(live.first_seen).toISOString() : null,
       lastSeen: live.last_seen ? new Date(live.last_seen).toISOString() : null,
-      identifiedName: p.reg_name ?? null,
-      registrantCity: p.reg_city ?? null,
-      registrantState: p.reg_state ?? null,
+      identifiedName: registry?.name ?? p.reg_name ?? null,
+      registrantCity: registry?.city ?? p.reg_city ?? null,
+      registrantState: registry?.state ?? p.reg_state ?? null,
       detections: dArr.map((d) => ({
         capturedAt: new Date(d.captured_at).toISOString(),
         altitude: d.altitude_ft,

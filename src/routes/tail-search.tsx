@@ -8,6 +8,7 @@ import { SiteBreadcrumbs } from "@/components/site-breadcrumbs";
 import { breadcrumbScript } from "@/lib/breadcrumbs";
 import { searchByTail, type TailSearchResult } from "@/lib/watchtower.functions";
 import { fmtPct, fmtClock, fmtDate } from "@/lib/format";
+import { Button } from "@/components/ui/button";
 
 const crumbs = [{ label: "Home", href: "/" }, { label: "Tail Search" }];
 
@@ -22,6 +23,8 @@ export const Route = createFileRoute("/tail-search")({
       { property: "og:title", content: "Tail Number Search — Architecture of Never" },
       { property: "og:description", content: "Search any aircraft by registration or ICAO hex. Export detections to CSV." },
       { property: "og:url", content: "https://advocacywatch.live/tail-search" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [{ rel: "canonical", href: "https://advocacywatch.live/tail-search" }],
     scripts: [breadcrumbScript(crumbs)],
@@ -74,7 +77,7 @@ function TailSearch() {
     if (!r) return;
     const header = ["captured_at", "altitude_ft", "speed_kts", "county", "latitude", "longitude", "on_ground"];
     const rows: (string | number | null)[][] = [
-      [`# tail=${r.registration} icao=${r.icao ?? ""} owner=${r.owner ?? ""} model=${r.model ?? ""} exported=${new Date().toISOString()}`],
+      [`# tail=${r.registration} icao=${r.icao ?? ""} owner=${r.owner ?? ""} model=${r.model ?? ""} profile_total=${r.total} retained_total=${r.retainedTotal} profile_updated=${r.profileUpdatedAt ?? ""} exported=${new Date().toISOString()}`],
       header,
       ...r.detections.map((d) => [d.capturedAt, d.altitude, d.speed, d.county, d.latitude, d.longitude, d.onGround ? "true" : "false"]),
     ];
@@ -103,13 +106,13 @@ function TailSearch() {
               className="brutal-border bg-paper text-ink px-4 py-3 font-mono text-lg flex-1 min-w-[260px]"
               aria-label="Tail number or ICAO hex"
             />
-            <button
+            <Button
               type="submit"
               disabled={m.isPending}
               className="label-stamp brutal-border bg-warning text-ink px-5 py-3 disabled:opacity-50"
             >
               {m.isPending ? "Searching…" : "Search →"}
-            </button>
+            </Button>
           </form>
         </div>
       </section>
@@ -127,26 +130,32 @@ function TailSearch() {
                   <div>
                     <div className="label-stamp text-alert">{r.icao ?? "—"}</div>
                     <h2 className="text-4xl">{r.registration}</h2>
-                    <p className="font-mono text-sm mt-1">{r.identifiedName ?? r.owner ?? "Unidentified owner"}</p>
+                    <p className="font-mono text-sm mt-1">{r.identifiedName ?? r.owner ?? "Registered owner not resolved in this lookup"}</p>
                     <p className="font-mono text-xs opacity-70">
                       {r.model ?? "—"} · {r.registrantCity ?? "—"}, {r.registrantState ?? "—"}
                     </p>
                   </div>
-                  <button
+                  <Button
                     type="button"
                     onClick={exportCsv}
                     className="label-stamp brutal-border bg-ink text-paper px-4 py-2 hover:bg-warning hover:text-ink"
                   >
                     Export CSV ({r.detections.length})
-                  </button>
+                  </Button>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mt-4 text-sm font-mono">
-                  <Stat label="Total detections" value={r.total.toLocaleString()} />
+                  <Stat label="ML profile detections" value={r.total.toLocaleString()} />
                   <Stat label="Min altitude" value={r.minAlt != null ? `${r.minAlt} ft` : "—"} />
                   <Stat label="Avg altitude" value={r.avgAlt != null ? `${Math.round(r.avgAlt)} ft` : "—"} />
                   <Stat label="Night share" value={fmtPct(r.nightPct)} />
                   <Stat label="Last seen" value={fmtDate(r.lastSeen)} />
                 </div>
+                <p className="mt-4 font-mono text-xs opacity-70">
+                  {r.retainedTotal.toLocaleString()} retained observations for aircraft code {r.icao ?? "not resolved"};
+                  latest {fmtDate(r.lastSeen)}. ML profile updated {fmtDate(r.profileUpdatedAt)}.
+                  {" "}The maintained profile total and retained observations cover different record sets;
+                  other aircraft codes sharing the observed tail are not merged into this result.
+                </p>
               </div>
 
               <div className="overflow-x-auto brutal-border-thick">
