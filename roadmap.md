@@ -2,6 +2,7 @@
 
 ## N912KC Tail Search correction
 - [x] Reconcile FAA identity, duplicate profiles, and detection count; verified N912KC sheriff identity, 414,340 maintained detections versus 13,539 retained observations, N913KC regression, and 1,000-row CSV without changing database records.
+- [ ] Sweep aircraft identity, count, and navigation paths across public screens and exports; apply FAA-first matching without modifying stored evidence or ML outputs.
 
 ## Current screen recovery
 - [x] Restore Tail Search and CSV export using the linked My Neon connection; N913KC returns records and a 1,000-row CSV; homepage counts read back successfully.

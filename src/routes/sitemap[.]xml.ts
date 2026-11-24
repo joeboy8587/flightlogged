@@ -10,7 +10,7 @@ const STATIC = [
 
 export const Route = createFileRoute("/sitemap.xml")({ server: { handlers: { GET: async () => {
   const dynamic = [{ path: "/aircraft/" }, ...COUNTY_SLUGS.map((county) => ({ path: `/county/${county}` }))];
-  try { const fleet = await loadFleet("score"); dynamic.push(...fleet.map((a) => ({ path: `/aircraft/${encodeURIComponent(a.registration ?? a.icao)}` }))); } catch (error) { console.error("sitemap dynamic aircraft lookup failed", error); }
+  try { const fleet = await loadFleet("score"); dynamic.push(...fleet.map((a) => ({ path: `/aircraft/${encodeURIComponent(a.icao.trim().toUpperCase())}` }))); } catch (error) { console.error("sitemap dynamic aircraft lookup failed", error); }
   const paths = [...STATIC.map(([path]) => ({ path })), ...dynamic].filter((x, i, all) => all.findIndex((y) => y.path === x.path) === i);
   const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${paths.map(({ path }) => `  <url><loc>${BASE_URL}${path}</loc></url>`).join("\n")}\n</urlset>`;
   return new Response(xml, { headers: { "Content-Type": "application/xml", "Cache-Control": "public, max-age=3600" } });

@@ -88,17 +88,17 @@ function FleetIndex() {
             <Link
               key={r.icao}
               to="/aircraft/$id"
-              params={{ id: r.registration ?? r.icao }}
+              params={{ id: r.icao }}
               className="brutal-border p-4 hover:bg-warning/40"
             >
               <div className="flex justify-between items-start gap-2">
                 <div className="font-display text-2xl">{r.registration ?? r.icao}</div>
                 {r.isMilitary && <span className="label-stamp bg-alert text-paper px-1 text-[10px]">MIL</span>}
               </div>
-              <div className="font-mono text-xs opacity-70 truncate">{r.owner ?? "Unidentified registrant"}</div>
+              <div className="font-mono text-xs opacity-70 truncate">{r.owner ?? "Registered owner not resolved"}</div>
               <div className="font-mono text-xs opacity-70 truncate">{r.model ?? "—"}</div>
               <div className="mt-3 grid grid-cols-3 gap-2 font-mono text-xs">
-                <div><div className="opacity-60">Reports</div><div className="font-display text-lg">{r.totalDetections?.toLocaleString() ?? "—"}</div></div>
+                <div><div className="opacity-60">ML profile reports</div><div className="font-display text-lg">{r.totalDetections?.toLocaleString() ?? "—"}</div></div>
                 <div><div className="opacity-60">Lowest</div><div className="font-display text-lg">{r.minAltitude ?? "—"}</div></div>
                 <div><div className="opacity-60">Score</div><div className="font-display text-lg">{r.profileScore ?? "—"}</div></div>
               </div>

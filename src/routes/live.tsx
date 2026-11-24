@@ -248,7 +248,7 @@ function Live() {
     const out: typeof lowFiltered = [];
     const seenKeys = new Set<string>();
     for (const r of lowFiltered) {
-      const key = (r.identifiedName || r.owner || r.registration || r.icao || "").toUpperCase();
+      const key = (r.identifiedName || r.owner || r.icao || r.registration || "").toUpperCase();
       if (seenKeys.has(key)) continue;
       seenKeys.add(key);
       out.push(r);
@@ -266,7 +266,7 @@ function Live() {
   const grouped = useMemo<Group[]>(() => {
     const out: Group[] = [];
     for (const r of lowFiltered) {
-      const tailKey = (r.registration || r.icao || "unknown").toUpperCase();
+      const tailKey = (r.icao || r.registration || "unknown").trim().toUpperCase();
       const last = out[out.length - 1];
       if (last && last.key === tailKey) {
         last.rows.push(r);
@@ -423,10 +423,10 @@ function Live() {
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-0 brutal-border-thick border-paper">
             {([
-              { label: "Detections", aoi: fmt(s.aoiTotalDetections), global: fmt(s.totalDetections) },
-              { label: "Unique aircraft", aoi: fmt(s.aoiUniqueAircraft), global: fmt(s.uniqueAircraft) },
+              { label: "Estimated detections", aoi: fmt(s.aoiTotalDetections), global: fmt(s.totalDetections) },
+              { label: "Estimated aircraft profiles", aoi: fmt(s.aoiUniqueAircraft), global: fmt(s.uniqueAircraft) },
               { label: "Lifetime AOI observation window", aoi: `${s.windowHours}h`, global: null as string | null },
-              { label: "Anomaly events", aoi: fmt(s.aoiAnomalyEvents), global: fmt(s.anomalyEvents), alert: true },
+              { label: "Estimated anomaly events", aoi: fmt(s.aoiAnomalyEvents), global: fmt(s.anomalyEvents), alert: true },
             ]).map((cell, i) => (
               <div key={cell.label} className={`p-5 ${i < 3 ? "sm:border-r border-paper/30" : ""} ${cell.alert ? "bg-warning text-ink" : ""}`}>
                 <div className="label-stamp opacity-70">{cell.label} <span className="text-alert">(AOI)</span></div>
@@ -439,8 +439,8 @@ function Live() {
           </div>
           <div className="grid sm:grid-cols-2 gap-0 brutal-border-thick border-paper border-t-0 -mt-[4px]">
             {[
-              ["Court-ready flight detections", fmt(s.flightDetections)],
-              ["Unified evidence events", fmt(s.unifiedEvents)],
+              ["Estimated detection records", fmt(s.flightDetections)],
+              ["Estimated classification records", fmt(s.unifiedEvents)],
             ].map(([label, val], i) => (
               <div key={String(label)} className={`p-5 ${i < 1 ? "sm:border-r border-paper/30" : ""}`}>
                 <div className="label-stamp opacity-70">{label}</div>
@@ -449,10 +449,10 @@ function Live() {
             ))}
           </div>
           <p className="mt-6 max-w-3xl text-sm opacity-80">
-            <strong className="text-warning">AOI headline / global context.</strong> The red numbers count
+            <strong className="text-warning">AOI headline / global context.</strong> The red numbers estimate
             detections inside our Area of Interest — the counties this project was built to watch. The grey
-            "/ monitored total" is every detection our receivers picked up, including LA-basin overflow.
-            Same table, same hashes, just two lenses. <strong className="text-warning">0% flagged during
+            "/ monitored total" uses database size estimates. AOI values apply historical county shares,
+            not exact current counts. Aircraft-profile estimates may include historical casing variants. <strong className="text-warning">0% flagged during
             baseline — by design.</strong> The system observes for 48 hours to learn what normal looks like
             before it identifies abnormal. After baseline, math chooses.
           </p>
@@ -677,7 +677,7 @@ function Live() {
                             <div>
                               <div className="label-stamp opacity-60 mb-1">What the system has logged on this tail</div>
                               <ul className="text-xs space-y-1">
-                                <li><strong>{r.totalDetections != null ? r.totalDetections.toLocaleString() : "—"}</strong> total detections logged by Watchtower for this aircraft.</li>
+                                <li><strong>{r.totalDetections != null ? r.totalDetections.toLocaleString() : "—"}</strong> ML profile detections for this aircraft, not the retained observation count.</li>
                                 {r.regViolationCount != null && r.regViolationCount > 0 && (
                                   <li><strong>{r.regViolationCount}</strong> prior registry-integrity flag{r.regViolationCount === 1 ? "" : "s"} recorded.</li>
                                 )}
@@ -700,7 +700,7 @@ function Live() {
                             </div>
                           )}
                           <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                            <Link to="/tail-search" search={{ tail: r.registration || r.icao }} className="label-stamp brutal-border px-2 py-1 hover:bg-warning">View tail profile →</Link>
+                            <Link to="/tail-search" search={{ tail: r.icao || r.registration || undefined }} className="label-stamp brutal-border px-2 py-1 hover:bg-warning">View tail profile →</Link>
                             <Link to="/coordination" className="label-stamp brutal-border px-2 py-1 hover:bg-warning">Coordination network →</Link>
                             <Link to="/methodology" className="label-stamp brutal-border px-2 py-1 hover:bg-warning">How scoring works →</Link>
                           </div>
@@ -816,7 +816,7 @@ function Live() {
                   <tr>
                     <th className="text-left p-3 label-stamp">Aircraft</th>
                     <th className="text-left p-3 label-stamp">Registered owner</th>
-                    <th className="text-right p-3 label-stamp">Detections</th>
+                    <th className="text-right p-3 label-stamp">Retained observations</th>
                     <th className="text-right p-3 label-stamp">Min alt</th>
                     <th className="text-right p-3 label-stamp">Avg alt</th>
                     <th className="text-left p-3 label-stamp">Counties seen</th>
@@ -845,7 +845,7 @@ function Live() {
       {/* REPEAT OFFENDERS */}
       <section>
         <div className="max-w-[1400px] mx-auto px-4 py-16">
-          <div className="label-stamp text-ink bg-warning inline-block px-2 py-1 mb-2">≥ 20 detections</div>
+          <div className="label-stamp text-ink bg-warning inline-block px-2 py-1 mb-2">≥ 20 ML profile detections</div>
           <h2 className="text-4xl sm:text-5xl mb-6">Top repeat aircraft in the airspace</h2>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {repeat.map((r) => (

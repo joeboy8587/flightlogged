@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { watchtower } from "./neon.server";
-import { KCSO_TAILS, KCSO_HEX_TO_TAIL } from "./kcso";
-import { selectTailProfile } from "./tail-identity";
+import { KCSO_TAILS, KCSO_HEX_TO_TAIL, isKcsoAircraft } from "./kcso";
+import { lookupRegistryIdentity, uniqueAircraftProfiles } from "./tail-identity";
 export { KCSO_TAILS } from "./kcso";
 
 // KCSO_* rules in violation_classifications are Kern County Sheriff's Office
@@ -80,6 +80,7 @@ export const getRuleMappingVersion = createServerFn({ method: "GET" }).handler(a
 
 // ---- FAA identity enrichment ----
 export type FaaIdentity = {
+  registration: string | null;
   name: string | null;
   typeRegistrant: string | null;
   city: string | null;
@@ -115,6 +116,7 @@ async function faaIdentityMap(
   const map = new Map<string, FaaIdentity>();
   for (const r of rows as any[]) {
     const ident: FaaIdentity = {
+      registration: r.n_number ? `N${String(r.n_number).replace(/^N/i, "")}` : null,
       name: r.name ?? null,
       typeRegistrant: r.type_registrant ?? null,
       city: r.city ?? null,
@@ -132,11 +134,7 @@ function lookupIdentity(
   registration: string | null | undefined,
   icao: string | null | undefined,
 ): FaaIdentity | null {
-  const r = normReg(registration);
-  if (r && map.has("REG:" + r)) return map.get("REG:" + r)!;
-  const h = normHex(icao);
-  if (h && map.has("HEX:" + h)) return map.get("HEX:" + h)!;
-  return null;
+  return lookupRegistryIdentity(map, registration, icao);
 }
 
 export type WatchSnapshot = {
@@ -309,17 +307,13 @@ export const getRecentLowAltitude = createServerFn({ method: "GET" }).handler(as
         WHERE UPPER(icao_hex) = ANY(${icaos}::text[])
         ORDER BY UPPER(icao_hex), total_detections DESC NULLS LAST`,
       icaos.length === 0 && registrations.length === 0 ? [] : w`
-        SELECT mode_s_code_hex, registration, name, type_registrant, city, state, mfr_mdl_code
+        SELECT mode_s_code_hex, n_number, registration, name, type_registrant, city, state, mfr_mdl_code
         FROM faa_master
         WHERE UPPER(mode_s_code_hex) = ANY(${icaos}::text[])
            OR UPPER(registration) = ANY(${registrations}::text[])`,
     ]);
     const profileByIcao = new Map((profiles as any[]).map((p) => [String(p.icao_hex).toUpperCase(), p]));
     const registryByIcao = new Map((registry as any[]).map((m) => [String(m.mode_s_code_hex).toUpperCase(), m]));
-    const registryByReg = new Map((registry as any[]).map((m) => [String(m.registration).toUpperCase(), m]));
-
-    const kcsoTails: readonly string[] = KCSO_TAILS;
-    const isKcso = (reg: string | null | undefined) => !!reg && kcsoTails.includes(String(reg).trim().toUpperCase());
     const isKcsoRule = (...values: Array<string | null | undefined>) => values.some((value) => {
       const text = String(value ?? "").toUpperCase();
       return text.startsWith("KCSO_") || text.includes("KCSO") || text.includes("KERN COUNTY SHERIFF") || text.includes("AIR SUPPORT UNIT OPERATIONS MANUAL");
@@ -338,12 +332,12 @@ export const getRecentLowAltitude = createServerFn({ method: "GET" }).handler(as
   // batch job, not a page render.
   const coordMap = new Map<string, string[]>();
 
-  const matchViolation = (alt: number | null, registration: string | null | undefined) => {
+  const matchViolation = (alt: number | null, registration: string | null | undefined, icao: string) => {
     if (alt == null) return null;
     let best: any = null;
     for (const b of baselines) {
       if (isKcsoRule(b.rule_name, b.rule_source)) {
-        if (!isKcso(registration) || !isKcsoB301(b.rule_name, b.rule_source)) continue;
+        if (!isKcsoAircraft(registration, icao) || !isKcsoB301(b.rule_name, b.rule_source)) continue;
       } else if (!isGeneralMinimumAltitude(b.rule_name, b.rule_source)) {
         continue;
       }
@@ -358,11 +352,11 @@ export const getRecentLowAltitude = createServerFn({ method: "GET" }).handler(as
 
   const out: LowAltDescent[] = (rows as any[]).map((r: any) => {
     const profile = profileByIcao.get(String(r.icao_hex ?? "").toUpperCase()) as any;
-    const faa = (registryByIcao.get(String(r.icao_hex ?? "").toUpperCase())
-      ?? registryByReg.get(String(r.registration ?? "").toUpperCase())) as any;
+    const faa = registryByIcao.get(String(r.icao_hex ?? "").toUpperCase()) as any;
     r = {
       ...r,
-      registered_owner: profile?.registered_owner ?? faa?.name ?? null,
+      registration: faa?.n_number ? `N${String(faa.n_number).replace(/^N/i, "")}` : r.registration,
+      registered_owner: faa?.name ?? profile?.registered_owner ?? null,
       reg_name: faa?.name ?? profile?.registered_owner ?? null,
       aircraft_model: profile?.aircraft_model ?? faa?.mfr_mdl_code ?? null,
       total_detections: profile?.total_detections ?? null,
@@ -413,7 +407,7 @@ export const getRecentLowAltitude = createServerFn({ method: "GET" }).handler(as
         // until Part 137 operating-certificate status is confirmed. Prevents
         // citing routine crop-dusting or aerial-application runs as violations.
         const agLikely = isAg(ownerName);
-        const v = agLikely ? null : matchViolation(r.altitude_ft, r.registration);
+        const v = agLikely ? null : matchViolation(r.altitude_ft, r.registration, r.icao_hex);
         return v
           ? {
               violationRule: v.rule_name as string,
@@ -585,14 +579,14 @@ export const getRepeatOffenders = createServerFn({ method: "GET" }).handler(asyn
   const idMap = await faaIdentityMap(
     rows.map((r: any) => ({ registration: r.observed_registration, icao: r.icao_hex })),
   );
-  return rows.map((r: any) => {
+  return uniqueAircraftProfiles(rows as any[]).map((r: any) => {
     const id = lookupIdentity(idMap, r.observed_registration, r.icao_hex);
     const rawMin = r.min_altitude == null ? null : Number(r.min_altitude);
     const anomaly = rawMin != null && rawMin < -100;
     return {
     icao: r.icao_hex,
-    registration: r.observed_registration,
-    owner: r.registered_owner,
+    registration: id?.registration ?? r.observed_registration,
+    owner: id?.name ?? r.registered_owner,
     model: r.aircraft_model,
     totalDetections: r.total_detections,
     minAltitude: anomaly ? null : rawMin,
@@ -702,9 +696,9 @@ export const getCanonicalOperators = createServerFn({ method: "GET" }).handler(a
            p.confirmed_coord_partners,
            p.tactical_role,
            p.integrity_failure_rate,
-           COALESCE(m.name, p.registered_owner) AS faa_name
-    FROM aircraft_profiles p
-    LEFT JOIN faa_master m ON m.mode_s_code_hex = UPPER(p.icao_hex)
+           m.name AS faa_name, m.n_number AS faa_number
+    FROM (SELECT DISTINCT ON (UPPER(icao_hex)) * FROM aircraft_profiles ORDER BY UPPER(icao_hex), total_detections DESC NULLS LAST) p
+    LEFT JOIN LATERAL (SELECT name, n_number FROM faa_master fm WHERE UPPER(fm.mode_s_code_hex) = UPPER(p.icao_hex) ORDER BY fm.n_number LIMIT 1) m ON true
     WHERE p.total_detections IS NOT NULL
     ORDER BY p.total_detections DESC NULLS LAST
     LIMIT 500
@@ -714,12 +708,12 @@ export const getCanonicalOperators = createServerFn({ method: "GET" }).handler(a
   const KCSO_RX = /\b(KERN COUNTY|KCSO|KERN SHERIFF|SHERIFF.+KERN|KCSI AERIAL|BFL AVIATION|BEST EQUIPMENT LEASING|CHRISTIANSEN AVIATION|JERK ASSETS|KILO ALFA|ALLIED POTATO|7-GS AVIATION)\b/i;
   const XP_RX = /\bXP ?(SERVICES|CALI|HOLDINGS)?\b/i;
   return (rows as any[]).map((r) => {
-    const nameBlob = `${r.faa_name ?? ""} ${r.registered_owner ?? ""}`;
+    const nameBlob = String(r.faa_name ?? r.registered_owner ?? "");
     const icao = String(r.icao_hex ?? "").toUpperCase();
     const isMilHex = /^AE[0-9A-F]{4}$/.test(icao);
     const partners = Array.isArray(r.confirmed_coord_partners) ? r.confirmed_coord_partners.length : 0;
     return {
-      registration: r.observed_registration ?? r.icao_hex,
+      registration: r.faa_number ? `N${String(r.faa_number).replace(/^N/i, "")}` : r.observed_registration ?? r.icao_hex,
       icao24: r.icao_hex ?? null,
       faaName: r.faa_name ?? null,
       operatorResolved: r.registered_owner ?? null,
@@ -1093,17 +1087,15 @@ export const getActiveKcsoAircraft = createServerFn({ method: "GET" }).handler(
   async (): Promise<KcsoActive[]> => {
     try {
       const w = watchtower();
-      const tails = KCSO_TAILS as readonly string[];
       const hexes = KCSO_ICAO_HEX as readonly string[];
       const rows = (await w`
-        SELECT DISTINCT ON (COALESCE(NULLIF(UPPER(d.registration), ''), UPPER(d.icao_hex)))
+        SELECT DISTINCT ON (UPPER(d.icao_hex))
                d.icao_hex, d.registration, d.captured_at, d.altitude_ft,
                d.speed_kts, d.county, d.on_ground
         FROM detections d
         WHERE d.captured_at >= NOW() - INTERVAL '2 hours'
-          AND (UPPER(d.registration) = ANY(${tails})
-               OR LOWER(d.icao_hex) = ANY(${hexes}))
-        ORDER BY COALESCE(NULLIF(UPPER(d.registration), ''), UPPER(d.icao_hex)),
+          AND LOWER(d.icao_hex) = ANY(${hexes})
+        ORDER BY UPPER(d.icao_hex),
                  d.captured_at DESC
       `) as any[];
       const now = Date.now();
@@ -1112,8 +1104,8 @@ export const getActiveKcsoAircraft = createServerFn({ method: "GET" }).handler(
         const regRaw = String(r.registration ?? "").trim().toUpperCase();
         const hexRaw = String(r.icao_hex ?? "").trim().toLowerCase();
         // Prefer registration; otherwise map known hex → tail.
-        const reg = regRaw
-          || KCSO_HEX_TO_TAIL[hexRaw.toUpperCase()]
+        const reg = KCSO_HEX_TO_TAIL[hexRaw.toUpperCase()]
+          || regRaw
           || hexRaw.toUpperCase();
         return {
           registration: reg,
@@ -1141,7 +1133,7 @@ export const getKernAlerts = createServerFn({ method: "GET" }).handler(async ():
         SELECT d.icao_hex, d.registration, d.captured_at, d.altitude_ft, d.speed_kts, d.county,
                p.registered_owner, p.aircraft_model
         FROM detections d
-        LEFT JOIN aircraft_profiles p ON p.icao_hex = d.icao_hex
+        LEFT JOIN LATERAL (SELECT registered_owner, aircraft_model FROM aircraft_profiles ap WHERE ap.icao_hex IN (UPPER(d.icao_hex), LOWER(d.icao_hex)) ORDER BY ap.total_detections DESC NULLS LAST LIMIT 1) p ON true
         WHERE d.county ILIKE '%kern%'
           AND d.captured_at >= NOW() - INTERVAL '24 hours'
           AND d.altitude_ft IS NOT NULL
@@ -1164,13 +1156,15 @@ export const getKernAlerts = createServerFn({ method: "GET" }).handler(async ():
     ]);
     const med = (base as any[])[0]?.med != null ? Number((base as any[])[0].med) : null;
     const sd = (base as any[])[0]?.sd != null ? Number((base as any[])[0].sd) : null;
+    const identities = await faaIdentityMap((rows as any[]).map(r => ({ icao: r.icao_hex })));
     return (rows as any[]).map((r) => {
+      const identity = lookupIdentity(identities, r.registration, r.icao_hex);
       const alt = r.altitude_ft != null ? Number(r.altitude_ft) : null;
       const z = alt != null && med != null && sd && sd > 0 ? Math.round(((med - alt) / sd) * 10) / 10 : null;
       return {
         icao: r.icao_hex,
-        registration: r.registration,
-        owner: r.registered_owner,
+        registration: identity?.registration ?? r.registration,
+        owner: identity?.name ?? r.registered_owner,
         model: r.aircraft_model,
         capturedAt: new Date(r.captured_at).toISOString(),
         altitude: alt,
@@ -1261,7 +1255,7 @@ export const getMlAnomalies = createServerFn({ method: "GET" }).handler(async ()
     return {
     id: String(r.id),
     detectedAt: r.detected_at ? new Date(r.detected_at).toISOString() : new Date(0).toISOString(),
-    registration: r.aircraft_registration,
+    registration: id?.registration ?? r.aircraft_registration,
     icao24: r.icao24,
     callsign: null,
     anomalyType: r.anomaly_type,
@@ -1406,7 +1400,7 @@ export type LocalAgencyAircraft = {
 export const getLocalAgencyAircraft = createServerFn({ method: "GET" }).handler(async (): Promise<LocalAgencyAircraft[]> => {
   const w = watchtower();
   const rows = await w`
-    SELECT d.icao_hex, d.registration, m.name, m.city, m.state,
+    SELECT UPPER(d.icao_hex) AS icao_hex, 'N' || m.n_number AS registration, m.name, m.city, m.state,
            COUNT(*)::int AS detections,
            MIN(d.altitude_ft) AS min_alt,
            ROUND(AVG(d.altitude_ft)::numeric, 0)::int AS avg_alt,
@@ -1414,12 +1408,12 @@ export const getLocalAgencyAircraft = createServerFn({ method: "GET" }).handler(
            MIN(d.captured_at) AS first_seen,
            MAX(d.captured_at) AS last_seen
     FROM detections d
-    JOIN faa_master m ON m.mode_s_code_hex = UPPER(d.icao_hex)
+    JOIN (SELECT DISTINCT ON (UPPER(mode_s_code_hex)) * FROM faa_master ORDER BY UPPER(mode_s_code_hex), n_number) m ON UPPER(m.mode_s_code_hex) = UPPER(d.icao_hex)
     WHERE (m.name ILIKE '%kern county%'
         OR m.name ILIKE '%bakersfield%'
         OR m.city ILIKE '%bakersfield%')
       AND (d.altitude_ft IS NULL OR d.altitude_ft >= -100)
-    GROUP BY d.icao_hex, d.registration, m.name, m.city, m.state
+    GROUP BY UPPER(d.icao_hex), m.n_number, m.name, m.city, m.state
     ORDER BY detections DESC
     LIMIT 25
   `;
@@ -1514,7 +1508,7 @@ export const getBehavioralCoordination = createServerFn({ method: "GET" }).handl
   async (): Promise<BehavioralCoordination> => {
     const w = watchtower();
     const rows = await w`
-      SELECT d.icao_hex, d.registration,
+      SELECT UPPER(d.icao_hex) AS icao_hex, COALESCE('N' || m.n_number, MAX(d.registration)) AS registration,
              m.name AS owner, m.type_registrant, m.city, m.state,
              COUNT(*)::int AS detections,
              PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY d.altitude_ft) AS median_alt,
@@ -1524,12 +1518,12 @@ export const getBehavioralCoordination = createServerFn({ method: "GET" }).handl
              MAX(d.captured_at) AS last_seen,
              MAX(ap.night_pct) AS night_pct
       FROM detections d
-      LEFT JOIN faa_master m ON m.mode_s_code_hex = UPPER(d.icao_hex)
-      LEFT JOIN aircraft_profiles ap ON UPPER(ap.icao_hex) = UPPER(d.icao_hex)
+      LEFT JOIN (SELECT DISTINCT ON (UPPER(mode_s_code_hex)) * FROM faa_master ORDER BY UPPER(mode_s_code_hex), n_number) m ON UPPER(m.mode_s_code_hex) = UPPER(d.icao_hex)
+      LEFT JOIN (SELECT DISTINCT ON (UPPER(icao_hex)) * FROM aircraft_profiles ORDER BY UPPER(icao_hex), total_detections DESC NULLS LAST) ap ON UPPER(ap.icao_hex) = UPPER(d.icao_hex)
       WHERE d.altitude_ft IS NOT NULL
         AND d.altitude_ft >= -100
         AND d.on_ground = false
-      GROUP BY d.icao_hex, d.registration, m.name, m.type_registrant, m.city, m.state
+      GROUP BY UPPER(d.icao_hex), m.n_number, m.name, m.type_registrant, m.city, m.state
       HAVING COUNT(*) >= 10
       ORDER BY COUNT(*) DESC
       LIMIT 300
@@ -1814,7 +1808,9 @@ export const getForeignAircraft = createServerFn({ method: "GET" }).handler(
     `;
     const aircraft: ForeignAircraft[] = [];
     const countryAgg = new Map<string, { code: string; aircraft: number; detections: number }>();
-    for (const r of rows as any[]) {
+    const { enrichProfileIdentities } = await import("./aircraft-identity.server");
+    const identifiedForeign = await enrichProfileIdentities(uniqueAircraftProfiles(rows as any[]));
+    for (const r of identifiedForeign) {
       const cls = classifyForeign(r.observed_registration);
       if (!cls) continue;
       const rawMin = r.min_altitude == null ? null : Number(r.min_altitude);
@@ -1912,14 +1908,16 @@ export const getUnmappedMilitarySuspects = createServerFn({ method: "GET" }).han
       `;
       const MIL_NAME_RX = /\b(NAVY|ARMY|AIR FORCE|USAF|MARINE|USMC|COAST GUARD|USCG|NATIONAL GUARD|DEFENSE|DEFENCE|MOD\b|RAF|RAAF|ROKAF|JASDF|LUFTWAFFE|IDF|MILITARY)\b/i;
       const out: UnmappedMilSuspect[] = [];
-      for (const r of rows as any[]) {
+      const { enrichProfileIdentities } = await import("./aircraft-identity.server");
+      const identifiedSuspects = await enrichProfileIdentities(uniqueAircraftProfiles(rows as any[]));
+      for (const r of identifiedSuspects) {
         const reg = r.observed_registration as string | null;
         // Skip rows where registration resolves to a normal civil country.
         const civil = classifyForeign(reg);
         if (civil && civil.country !== "Foreign (unmapped)") continue;
 
         const hexMatch = classifyMilHex(r.icao_hex);
-        const nameBlob = `${r.registered_owner ?? ""} ${r.reg_name ?? ""}`;
+        const nameBlob = String(r.reg_name ?? r.registered_owner ?? "");
         const nameMatch = MIL_NAME_RX.test(nameBlob);
         if (!hexMatch && !nameMatch) continue;
 
@@ -1931,7 +1929,7 @@ export const getUnmappedMilitarySuspects = createServerFn({ method: "GET" }).han
         out.push({
           icao: r.icao_hex,
           registration: reg,
-          owner: r.registered_owner ?? r.reg_name ?? null,
+          owner: r.reg_name ?? r.registered_owner ?? null,
           model: r.aircraft_model ?? null,
           totalDetections: Number(r.total_detections ?? 0),
           minAltitude: rawMin != null && rawMin < -100 ? null : rawMin,
@@ -2077,6 +2075,7 @@ export type TailSearchResult = {
   owner: string | null;
   model: string | null;
   total: number;
+  profileTotal: number | null;
   retainedTotal: number;
   profileUpdatedAt: string | null;
   minAlt: number | null;
@@ -2101,32 +2100,10 @@ export const searchByTail = createServerFn({ method: "GET" })
     const tail = data.tail;
     const nless = tail.startsWith("N") ? tail.slice(1) : tail;
     const nform = tail.startsWith("N") ? tail : `N${tail}`;
-    const registryRows = await w`SELECT n_number, mode_s_code_hex, name, city, state
-      FROM faa_master
-      WHERE UPPER(TRIM(n_number)) = ${nless}
-         OR UPPER(TRIM(mode_s_code_hex)) = ${tail}
-      ORDER BY CASE WHEN UPPER(TRIM(mode_s_code_hex)) = ${tail} THEN 0 ELSE 1 END, n_number
-      LIMIT 1`;
-    const registry = registryRows[0];
-    const registryHex = registry?.mode_s_code_hex ? String(registry.mode_s_code_hex).trim().toUpperCase() : null;
-    // Resolve the aircraft's canonical ICAO hex first — the `detections` table is
-    // keyed by icao_hex and its `registration` column is sparsely populated, so
-    // counting by registration alone under-counts by orders of magnitude.
-    const profile = await w`SELECT p.icao_hex, p.observed_registration, p.registered_owner, p.aircraft_model,
-               p.total_detections, p.min_altitude, p.avg_altitude, p.max_altitude,
-               p.night_pct, p.first_seen, p.last_seen, p.profile_updated_at
-        FROM aircraft_profiles p
-        WHERE (${registryHex}::text IS NOT NULL AND p.icao_hex IN (${registryHex ?? ""}, ${registryHex?.toLowerCase() ?? ""}))
-           OR (${registryHex}::text IS NULL AND (
-             UPPER(p.observed_registration) IN (${tail}, ${nform}, ${nless})
-             OR p.icao_hex IN (${tail}, ${tail.toLowerCase()})
-           ))
-        ORDER BY p.total_detections DESC, p.icao_hex
-        LIMIT 20`;
-    const pArr0 = profile as any[];
-    const selected = selectTailProfile(pArr0, registryHex, tail);
-    const canonIcao: string | null = /^[A-F0-9]{6}$/.test(tail) ? tail
-      : registryHex ?? (selected?.icao_hex ? String(selected.icao_hex).trim().toUpperCase() : null);
+    const { resolveAircraftIdentity } = await import("./aircraft-identity.server");
+    const resolved = await resolveAircraftIdentity(tail);
+    const { profile: selected, registry, icao: canonIcao } = resolved;
+    if (!canonIcao) return null; // Never aggregate unrelated hexes under an unresolved tail.
     const [detStats, dets] = await Promise.all([
       w`SELECT COUNT(*)::bigint AS total,
                MIN(altitude_ft)::int AS min_alt,
@@ -2137,12 +2114,10 @@ export const searchByTail = createServerFn({ method: "GET" })
                MIN(captured_at) AS first_seen,
                MAX(captured_at) AS last_seen
         FROM detections
-        WHERE (${canonIcao}::text IS NOT NULL AND icao_hex IN (${canonIcao ?? ""}, ${canonIcao?.toLowerCase() ?? ""}))
-           OR (${canonIcao}::text IS NULL AND UPPER(registration) IN (${tail}, ${nform}, ${nless}))`,
+        WHERE icao_hex IN (${canonIcao}, ${canonIcao.toLowerCase()})`,
       w`SELECT captured_at, altitude_ft, speed_kts, county, latitude, longitude, on_ground
         FROM detections
-        WHERE (${canonIcao}::text IS NOT NULL AND icao_hex IN (${canonIcao ?? ""}, ${canonIcao?.toLowerCase() ?? ""}))
-           OR (${canonIcao}::text IS NULL AND UPPER(registration) IN (${tail}, ${nform}, ${nless}))
+        WHERE icao_hex IN (${canonIcao}, ${canonIcao.toLowerCase()})
         ORDER BY captured_at DESC
         LIMIT 1000`,
     ]);
@@ -2152,13 +2127,14 @@ export const searchByTail = createServerFn({ method: "GET" })
     const p = selected ?? {};
     const rawMin = live.min_alt == null ? null : Number(live.min_alt);
     return {
-      registration: registry?.n_number ? `N${String(registry.n_number).replace(/^N/i, "")}` : p.observed_registration ?? nform,
+      registration: resolved.registration ?? canonIcao,
       icao: canonIcao,
       owner: registry?.name ?? p.registered_owner ?? null,
       model: p.aircraft_model ?? null,
       // Prefer the ML-maintained profile total (canonical); fall back to the
       // live COUNT only if the profile has no entry for this aircraft.
       total: p.total_detections != null ? Number(p.total_detections) : Number(live.total ?? dArr.length),
+      profileTotal: p.total_detections != null ? Number(p.total_detections) : null,
       retainedTotal: Number(live.total ?? 0),
       profileUpdatedAt: p.profile_updated_at ? new Date(p.profile_updated_at).toISOString() : null,
       minAlt: rawMin != null && rawMin < -100 ? null : rawMin,
@@ -2192,6 +2168,8 @@ export type MilitaryAircraft = {
   model: string | null;
   branch: string;
   totalDetections: number;
+  profileDetections: number | null;
+  retainedDetections: number;
   minAltitude: number | null;
   avgAltitude: number | null;
   nightPct: number | null;
@@ -2243,7 +2221,7 @@ export const getMilitaryAircraft = createServerFn({ method: "GET" }).handler(
         FROM aircraft_profiles p
         LEFT JOIN faa_master m ON m.mode_s_code_hex = UPPER(p.icao_hex)
         WHERE UPPER(p.icao_hex) LIKE 'AE%'
-           OR UPPER(COALESCE(p.registered_owner, m.name, '')) ~ '(NAVY|ARMY|AIR FORCE|USAF|MARINE CORPS|USMC|COAST GUARD|USCG|NATIONAL GUARD|DEPARTMENT OF DEFENSE|DEPT OF DEFENSE)'
+           OR UPPER(COALESCE(m.name, p.registered_owner, '')) ~ '(NAVY|ARMY|AIR FORCE|USAF|MARINE CORPS|USMC|COAST GUARD|USCG|NATIONAL GUARD|DEPARTMENT OF DEFENSE|DEPT OF DEFENSE)'
       ),
       all_mil AS (
         SELECT icao_hex FROM det_mil
@@ -2251,10 +2229,11 @@ export const getMilitaryAircraft = createServerFn({ method: "GET" }).handler(
         SELECT icao_hex FROM profile_mil
       )
       SELECT al.icao_hex,
-             COALESCE(p.observed_registration, d.d_reg) AS observed_registration,
-             COALESCE(p.registered_owner, m.name) AS registered_owner,
+             COALESCE('N' || m.n_number, p.observed_registration, d.d_reg) AS observed_registration,
+             COALESCE(m.name, p.registered_owner) AS registered_owner,
              p.aircraft_model,
-             COALESCE(p.total_detections, d.d_count, 0) AS total_detections,
+             COALESCE(p.total_detections, 0) AS total_detections,
+             p.total_detections AS profile_detections, COALESCE(d.d_count, 0) AS retained_detections,
              COALESCE(p.min_altitude, d.d_min_alt) AS min_altitude,
              COALESCE(p.avg_altitude, d.d_avg_alt) AS avg_altitude,
              p.night_pct,
@@ -2263,8 +2242,8 @@ export const getMilitaryAircraft = createServerFn({ method: "GET" }).handler(
              m.name AS reg_name
       FROM all_mil al
       LEFT JOIN det_mil d ON d.icao_hex = al.icao_hex
-      LEFT JOIN aircraft_profiles p ON UPPER(p.icao_hex) = al.icao_hex
-      LEFT JOIN faa_master m ON m.mode_s_code_hex = UPPER(al.icao_hex)
+      LEFT JOIN LATERAL (SELECT * FROM aircraft_profiles ap WHERE ap.icao_hex IN (al.icao_hex, LOWER(al.icao_hex)) ORDER BY ap.total_detections DESC NULLS LAST LIMIT 1) p ON true
+      LEFT JOIN LATERAL (SELECT * FROM faa_master fm WHERE UPPER(fm.mode_s_code_hex) = al.icao_hex ORDER BY fm.n_number LIMIT 1) m ON true
       ORDER BY total_detections DESC NULLS LAST
       LIMIT 500
     `;
@@ -2272,9 +2251,9 @@ export const getMilitaryAircraft = createServerFn({ method: "GET" }).handler(
     const countyMap = new Map<string, string[]>();
     if (icaos.length > 0) {
       const cRows = await w`
-        SELECT icao_hex, ARRAY_AGG(DISTINCT county) FILTER (WHERE county IS NOT NULL) AS counties
+        SELECT UPPER(icao_hex) AS icao_hex, ARRAY_AGG(DISTINCT county) FILTER (WHERE county IS NOT NULL) AS counties
         FROM detections WHERE UPPER(icao_hex) = ANY(${icaos}::text[])
-        GROUP BY icao_hex
+        GROUP BY UPPER(icao_hex)
       `;
       for (const r of cRows as any[]) {
         countyMap.set(String(r.icao_hex).toUpperCase(), (r.counties ?? []).filter(Boolean));
@@ -2294,6 +2273,8 @@ export const getMilitaryAircraft = createServerFn({ method: "GET" }).handler(
         model: r.aircraft_model,
         branch,
         totalDetections: total,
+        profileDetections: r.profile_detections == null ? null : Number(r.profile_detections),
+        retainedDetections: Number(r.retained_detections ?? 0),
         minAltitude: rawMin != null && rawMin < -100 ? null : rawMin,
         avgAltitude: r.avg_altitude != null ? Number(r.avg_altitude) : null,
         nightPct: r.night_pct != null ? Number(r.night_pct) : null,
@@ -2358,7 +2339,7 @@ export const getDeadMansCurveStats = createServerFn({ method: "GET" }).handler(
       const [agg, slow, top] = await Promise.all([
       w`
         SELECT COUNT(*)::int AS c,
-               COUNT(DISTINCT icao_hex)::int AS u,
+               COUNT(DISTINCT UPPER(icao_hex))::int AS u,
                MIN(captured_at) AS first_seen,
                MAX(captured_at) AS last_seen
         FROM detections
@@ -2378,7 +2359,7 @@ export const getDeadMansCurveStats = createServerFn({ method: "GET" }).handler(
           AND speed_kts < 60
       `,
       w`
-        SELECT icao_hex,
+        SELECT UPPER(icao_hex) AS icao_hex,
                MAX(registration) AS registration,
                COUNT(*)::int AS c,
                MIN(altitude_ft)::int AS min_alt
@@ -2387,7 +2368,7 @@ export const getDeadMansCurveStats = createServerFn({ method: "GET" }).handler(
           AND altitude_ft <= 500
           AND altitude_ft >= 0
           AND on_ground = false
-        GROUP BY icao_hex
+        GROUP BY UPPER(icao_hex)
         ORDER BY c DESC
         LIMIT 5
       `,
@@ -2515,7 +2496,11 @@ export const getConvergenceEvent = createServerFn({ method: "GET" }).handler(
       ]);
       const icaosRaw = pickArrayField(row, ["icaos", "icao_hexes", "icao24s"]);
       const tails = tailsRaw.map((x) => (typeof x === "string" ? x : x?.registration ?? x?.tail ?? x?.icao_hex ?? "")).filter(Boolean);
-      const icaos = icaosRaw.map((x) => String(x)).filter(Boolean);
+      let icaos = [...new Set(icaosRaw.map((x) => String(x).trim().toUpperCase()).filter(s => /^[A-F0-9]{6}$/.test(s)))];
+      if (!icaos.length && tails.length) {
+        const regRows = await w`SELECT mode_s_code_hex FROM faa_master WHERE UPPER(n_number) = ANY(${tails.map((t: string) => t.toUpperCase().replace(/^N/, ""))}) LIMIT 40`;
+        icaos = [...new Set(regRows.map(r => String(r.mode_s_code_hex ?? "").trim().toUpperCase()).filter(Boolean))];
+      }
 
       const tEvent = pickStr(row, ["event_time", "occurred_at", "captured_at", "window_start", "start_time", "created_at"]);
       // Re-derive primary county from participants' actual detections rather than
@@ -2528,7 +2513,6 @@ export const getConvergenceEvent = createServerFn({ method: "GET" }).handler(
           new Set(
             [
               ...icaos.map((s) => String(s).toUpperCase()),
-              ...tails.map((s) => String(s).toUpperCase()),
             ].filter(Boolean),
           ),
         );
@@ -2540,8 +2524,7 @@ export const getConvergenceEvent = createServerFn({ method: "GET" }).handler(
             const cRows = await w`
               SELECT county, COUNT(*)::int AS c
               FROM detections
-              WHERE (UPPER(icao_hex) = ANY(${icaoSet}::text[])
-                  OR UPPER(registration) = ANY(${icaoSet}::text[]))
+              WHERE UPPER(icao_hex) = ANY(${icaoSet}::text[])
                 AND captured_at BETWEEN ${start}::timestamptz AND ${end}::timestamptz
                 AND county IS NOT NULL
               GROUP BY county
@@ -2863,12 +2846,10 @@ export const getEntityCentroids = createServerFn({ method: "GET" })
   const county = data.county ?? "all";
   try {
     const rows = await w`
-      SELECT p.icao_hex, p.registered_owner, p.total_detections,
+      SELECT UPPER(d.icao_hex) AS icao_hex, COUNT(*)::int AS total_detections,
              AVG(d.latitude)::float AS lat, AVG(d.longitude)::float AS lon
-      FROM aircraft_profiles p
-      JOIN detections d ON d.icao_hex = p.icao_hex
-      WHERE p.registered_owner IS NOT NULL
-        AND d.latitude BETWEEN ${MOSAIC_BOUNDS.minLat} AND ${MOSAIC_BOUNDS.maxLat}
+      FROM detections d
+      WHERE d.latitude BETWEEN ${MOSAIC_BOUNDS.minLat} AND ${MOSAIC_BOUNDS.maxLat}
         AND d.longitude BETWEEN ${MOSAIC_BOUNDS.minLon} AND ${MOSAIC_BOUNDS.maxLon}
         AND (${county} = 'all' OR CASE
           WHEN d.county ILIKE '%kern%' THEN 'kern'
@@ -2877,9 +2858,11 @@ export const getEntityCentroids = createServerFn({ method: "GET" })
           WHEN d.county ILIKE '%fresno%' THEN 'fresno'
           WHEN d.county ILIKE '%san bernardino%' OR d.county ILIKE '%san_bernardino%' OR d.county ILIKE '%sanbernardino%' THEN 'san_bernardino'
           ELSE 'other' END = ${county})
-      GROUP BY p.icao_hex, p.registered_owner, p.total_detections
-      ORDER BY p.total_detections DESC NULLS LAST
+      GROUP BY UPPER(d.icao_hex)
+      ORDER BY total_detections DESC NULLS LAST
       LIMIT 200`;
+    const { enrichProfileIdentities } = await import("./aircraft-identity.server");
+    const identifiedEntities = await enrichProfileIdentities(rows as any[]);
     // Bucket aircraft into named entities by owner regex.
     const buckets: { name: string; rx: RegExp; color: string }[] = [
       { name: "KCSO",          rx: /KERN COUNTY|SHERIFF/i,                   color: "#1d4ed8" },
@@ -2892,7 +2875,7 @@ export const getEntityCentroids = createServerFn({ method: "GET" })
       { name: "MILITARY",      rx: /AIR FORCE|ARMY|NAVY|MARINE|DEPT OF DEF|U S DEPT|DOD/i, color: "#475569" },
     ];
     const acc = new Map<string, { latSum: number; lonSum: number; pings: number; aircraft: number; color: string }>();
-    for (const r of rows as any[]) {
+    for (const r of identifiedEntities) {
       const owner = String(r.registered_owner ?? "");
       const b = buckets.find((x) => x.rx.test(owner));
       if (!b) continue;
@@ -3007,7 +2990,7 @@ export const getAdsbIntegrityFailures = createServerFn({ method: "GET" }).handle
     const w = watchtower();
     try {
       const rows = await w`
-        SELECT icao_hex,
+        SELECT UPPER(icao_hex) AS icao_hex,
                MAX(registration)  AS registration,
                MIN(altitude_ft)::int AS min_alt,
                COUNT(*)::int       AS detections,
@@ -3015,7 +2998,7 @@ export const getAdsbIntegrityFailures = createServerFn({ method: "GET" }).handle
         FROM detections
         WHERE altitude_ft < -100
           AND COALESCE(speed_kts, 0) > 30
-        GROUP BY icao_hex
+        GROUP BY UPPER(icao_hex)
         ORDER BY detections DESC, min_alt ASC
         LIMIT 20
       `;
@@ -3026,7 +3009,7 @@ export const getAdsbIntegrityFailures = createServerFn({ method: "GET" }).handle
         const id = lookupIdentity(idMap, r.registration, r.icao_hex);
         return {
           icao: r.icao_hex,
-          registration: r.registration ?? null,
+          registration: id?.registration ?? r.registration ?? null,
           owner: id?.name ?? null,
           minAltitude: r.min_alt != null ? Number(r.min_alt) : null,
           detections: Number(r.detections ?? 0),

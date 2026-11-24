@@ -121,12 +121,12 @@ function Operators() {
         <div className="max-w-[1400px] mx-auto px-4 py-12">
           <div className="label-stamp text-warning mb-4">Public FAA registry · Entity-resolved</div>
           <h1 className="text-5xl sm:text-7xl mb-4">
-            {canonicalDetections.toLocaleString()} detections across {counts.total} resolved operators. {counts.shell} shell companies. {counts.agency} law enforcement. {counts.military} military.
+            {canonicalDetections.toLocaleString()} estimated retained detections; {counts.total} profiled aircraft records. {counts.shell} shell companies. {counts.agency} law enforcement. {counts.military} military.
           </h1>
           <p className="max-w-3xl text-sm opacity-80">
             The machine resolved <strong>{counts.total}</strong> operators from the public FAA registry,
             joined them to the <strong>{canonicalDetections.toLocaleString()}</strong> detections in the
-            current snapshot (<code>SELECT COUNT(*) FROM detections</code>), and
+            current snapshot (database size estimate, not an exact count), and
             auto-flagged shell companies, law enforcement, military, and medical cover. The public record
             named them. We just display it. No human picked this list.
           </p>
@@ -190,9 +190,9 @@ function Operators() {
                   <tr><td colSpan={9} className="p-6 text-center">No operators match this filter.</td></tr>
                 )}
                 {rows.map((o) => (
-                  <tr key={o.registration} className="border-t border-ink/20 hover:bg-warning/30">
+                  <tr key={o.icao24 ?? o.registration} className="border-t border-ink/20 hover:bg-warning/30">
                     <td className="p-3"><TailBadge registration={o.registration} icao={o.icao24} /></td>
-                    <td className="p-3">{o.operatorResolved || o.faaName || "—"}</td>
+                    <td className="p-3">{o.faaName || o.operatorResolved || "Registered owner not resolved"}</td>
                     <td className="p-3">{o.aircraftModel || "—"}</td>
                     <td className="p-3">
                       <FlagChips
@@ -214,7 +214,7 @@ function Operators() {
                     <td className="p-3 whitespace-nowrap text-xs">{fmtDate(o.lastSeen)}</td>
                     <td className="p-3">
                       <ShareRow
-                        text={`${o.operatorResolved || o.faaName || o.registration} (${o.registration}) — ${o.occurrences.toLocaleString()} detections in the current window.${o.kcso ? " Flagged: law enforcement." : ""}${o.military ? " Flagged: military." : ""}${isShell(o) ? " Registered as anonymous LLC / shell." : ""} Source: Watchtower / The Architecture of Never — https://advocacywatch.live/operators`}
+                        text={`${o.faaName || o.operatorResolved || o.registration} (${o.registration}) — ${o.occurrences.toLocaleString()} maintained ML profile detections.${o.kcso ? " Flagged: law enforcement." : ""}${o.military ? " Flagged: military." : ""}${isShell(o) ? " Registered as anonymous LLC / shell." : ""} Source: Watchtower / The Architecture of Never — https://advocacywatch.live/operators`}
                       />
                     </td>
                   </tr>

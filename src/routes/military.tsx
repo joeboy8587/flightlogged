@@ -99,7 +99,7 @@ function MilitaryPage() {
   }
 
   const exportCsv = () => {
-    const header = ["registration", "icao", "branch", "owner", "model", "total_detections", "min_altitude_ft", "avg_altitude_ft", "night_pct", "counties", "first_seen", "last_seen"];
+    const header = ["registration", "icao", "branch", "owner", "model", "profile_detections", "retained_detections", "min_altitude_ft", "avg_altitude_ft", "night_pct", "counties", "first_seen", "last_seen"];
     downloadCsv(
       `military-${branch === "all" ? "all" : branch.replace(/\W+/g, "_")}.csv`,
       [
@@ -107,7 +107,7 @@ function MilitaryPage() {
         header,
         ...rows.map((a) => [
           a.registration, a.icao, a.branch, a.owner, a.model,
-          a.totalDetections, a.minAltitude, a.avgAltitude != null ? Math.round(a.avgAltitude) : null,
+          a.profileDetections, a.retainedDetections, a.minAltitude, a.avgAltitude != null ? Math.round(a.avgAltitude) : null,
           a.nightPct != null ? a.nightPct.toFixed(3) : null,
           (a.countiesSeen ?? []).join("|"),
           a.firstSeen, a.lastSeen,
@@ -142,7 +142,7 @@ function MilitaryPage() {
           <div className="label-stamp bg-paper text-ink inline-block px-2 py-0.5 mb-3">The count</div>
           <p className="text-xl sm:text-2xl font-medium leading-snug max-w-4xl">
             <strong className="bg-ink text-warning px-1">{fmt(data.totalAircraft)}</strong> military-flagged airframes observed.{" "}
-            <strong className="bg-ink text-warning px-1">{fmt(data.totalDetections)}</strong> detections.{" "}
+            <strong className="bg-ink text-warning px-1">{fmt(data.totalDetections)}</strong> ML profile detections.{" "}
             <strong className="bg-ink text-warning px-1">{fmt(lowAlt)}</strong> averaging under 5,000 ft.{" "}
             <strong className="bg-ink text-warning px-1">{fmt(nightHeavy)}</strong> operating ≥50% at night.
           </p>
@@ -150,9 +150,9 @@ function MilitaryPage() {
             Where is the FAA waiver? Where is the joint-operations memorandum? Document, then ask.
           </p>
           <p className="mt-3 text-xs opacity-80 font-mono">
-            Counts here use the broader sensor view (detections + profiles, ICAO AE-range or branch-keyword match).
-            The <Link to="/operators" className="underline">Operators</Link> page applies the same classifier to
-            canonical operator profiles — military totals are reconciled across both pages.
+            Counts here sum one maintained profile per aircraft code (ICAO AE-range or registry-owner keyword match).
+            Retained observations are shown separately for each aircraft; aircraft without a profile are not added to the profile total.
+            The <Link to="/operators" className="underline">Operators</Link> directory is a bounded profile sample.
           </p>
         </div>
       </section>
@@ -261,7 +261,7 @@ function MilitaryPage() {
                       {a.registration ? (
                         <Link
                           to="/tail-search"
-                          search={{ tail: a.registration }}
+                          search={{ tail: a.icao }}
                           className="underline hover:bg-warning"
                         >
                           {a.registration}
@@ -279,7 +279,7 @@ function MilitaryPage() {
                     <td className="p-3">{a.icao}</td>
                     <td className="p-3"><span className="label-stamp bg-alert text-paper px-2 py-0.5">{a.branch}</span></td>
                     <td className="p-3">{a.owner ?? a.model ?? "—"}</td>
-                    <td className="p-3 text-right font-bold">{fmt(a.totalDetections)}</td>
+                    <td className="p-3 text-right font-bold">{a.profileDetections == null ? "—" : fmt(a.profileDetections)}<div className="text-xs opacity-60">{fmt(a.retainedDetections)} retained</div></td>
                     <td className="p-3 text-right">{a.minAltitude != null ? fmt(a.minAltitude) : "—"}</td>
                     <td className="p-3 text-right">{a.avgAltitude != null ? fmt(Math.round(a.avgAltitude)) : "—"}</td>
                     <td className="p-3 text-right">{fmtPct(a.nightPct)}</td>

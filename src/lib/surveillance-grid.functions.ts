@@ -41,24 +41,31 @@ const safe = async <T,>(p: Promise<T>, fallback: T): Promise<T> => {
 export const getSurveillanceGridVerification = createServerFn({ method: "GET" }).handler(
   async (): Promise<SurveillanceGridVerification> => {
     const w = watchtower();
+    const { resolveAircraftIdentity } = await import("./aircraft-identity.server");
+    const [n913Identity, n912Identity, n989Identity] = await Promise.all([
+      safe(resolveAircraftIdentity("N913KC"), null), safe(resolveAircraftIdentity("N912KC"), null), safe(resolveAircraftIdentity("N989RR"), null),
+    ]);
+    const n913Hex = n913Identity?.icao ?? "";
+    const n912Hex = n912Identity?.icao ?? "";
+    const n989Hex = n989Identity?.icao ?? "";
     const [
       n913Profile, n913Low, n913Viol, n913Conv,
       n912Viol, n989, totals, totVio, totConv,
       monthly, aero, shell, stmpd,
     ] = await Promise.all([
-      safe(w`SELECT total_detections, min_altitude FROM aircraft_profiles WHERE icao_hex='aca2b4' LIMIT 1` as Promise<any[]>, [] as any[]),
-      safe(w`SELECT COUNT(*)::int AS c FROM detections WHERE icao_hex='aca2b4' AND altitude_ft < 500 AND altitude_ft >= 0` as Promise<any[]>, [] as any[]),
-      safe(w`SELECT COUNT(*)::int AS c FROM violation_classifications WHERE UPPER(registration)='N913KC'` as Promise<any[]>, [] as any[]),
-      safe(w`SELECT COUNT(*)::int AS c FROM convergence_events WHERE 'aca2b4'=ANY(unique_icao_hexes)` as Promise<any[]>, [] as any[]),
-      safe(w`SELECT COUNT(*)::int AS c FROM violation_classifications WHERE UPPER(registration)='N912KC'` as Promise<any[]>, [] as any[]),
-      safe(w`SELECT MIN(altitude_ft)::int AS min, COUNT(*)::int AS c FROM detections d JOIN aircraft_profiles p ON p.icao_hex=d.icao_hex WHERE UPPER(p.observed_registration)='N989RR' AND altitude_ft > 0` as Promise<any[]>, [] as any[]),
-      safe(w`SELECT COUNT(*)::int AS c, COUNT(DISTINCT icao_hex)::int AS craft FROM detections` as Promise<any[]>, [] as any[]),
-      safe(w`SELECT COUNT(*)::int AS c, COUNT(DISTINCT registration)::int AS craft FROM violation_classifications` as Promise<any[]>, [] as any[]),
+      Promise.resolve(n913Identity?.profile ? [n913Identity.profile] : []),
+      n913Hex ? safe(w`SELECT COUNT(*)::int AS c FROM detections WHERE icao_hex IN (${n913Hex}, ${n913Hex.toLowerCase()}) AND altitude_ft < 500 AND altitude_ft >= 0` as Promise<any[]>, [] as any[]) : Promise.resolve([]),
+      n913Hex ? safe(w`SELECT COUNT(*)::int AS c FROM violation_classifications WHERE icao_hex IN (${n913Hex}, ${n913Hex.toLowerCase()})` as Promise<any[]>, [] as any[]) : Promise.resolve([]),
+      n913Hex ? safe(w`SELECT COUNT(*)::int AS c FROM convergence_events WHERE unique_icao_hexes && ARRAY[${n913Hex}, ${n913Hex.toLowerCase()}]::text[]` as Promise<any[]>, [] as any[]) : Promise.resolve([]),
+      n912Hex ? safe(w`SELECT COUNT(*)::int AS c FROM violation_classifications WHERE icao_hex IN (${n912Hex}, ${n912Hex.toLowerCase()})` as Promise<any[]>, [] as any[]) : Promise.resolve([]),
+      n989Hex ? safe(w`SELECT MIN(altitude_ft)::int AS min, COUNT(*)::int AS c FROM detections WHERE icao_hex IN (${n989Hex}, ${n989Hex.toLowerCase()}) AND altitude_ft > 0` as Promise<any[]>, [] as any[]) : Promise.resolve([]),
+      safe(w`SELECT COUNT(*)::int AS c, COUNT(DISTINCT UPPER(icao_hex))::int AS craft FROM detections` as Promise<any[]>, [] as any[]),
+      safe(w`SELECT COUNT(*)::int AS c, COUNT(DISTINCT UPPER(icao_hex))::int AS craft FROM violation_classifications` as Promise<any[]>, [] as any[]),
       safe(w`SELECT COUNT(*)::int AS c FROM convergence_events` as Promise<any[]>, [] as any[]),
       safe(w`SELECT DATE_TRUNC('month', captured_at) AS mo, COUNT(*)::int AS c FROM violation_classifications GROUP BY 1 ORDER BY 1 DESC LIMIT 3` as Promise<any[]>, [] as any[]),
-      safe(w`SELECT COUNT(*)::int AS aircraft, SUM(p.total_detections)::bigint AS det FROM aircraft_profiles p JOIN faa_master m ON m.mode_s_code_hex=UPPER(p.icao_hex) WHERE UPPER(m.name) LIKE 'AERO EQUITIES%'` as Promise<any[]>, [] as any[]),
-      safe(w`SELECT COUNT(DISTINCT p.icao_hex)::int AS c FROM aircraft_profiles p JOIN faa_master m ON m.mode_s_code_hex=UPPER(p.icao_hex) WHERE UPPER(m.name) LIKE '%LLC%'` as Promise<any[]>, [] as any[]),
-      safe(w`SELECT detected_at, aircraft_count, county FROM convergence_events WHERE 'aca2b4'=ANY(unique_icao_hexes) AND 'ae5c77'=ANY(unique_icao_hexes) ORDER BY detected_at DESC LIMIT 1` as Promise<any[]>, [] as any[]),
+      safe(w`SELECT COUNT(*)::int AS aircraft, SUM(p.total_detections)::bigint AS det FROM (SELECT DISTINCT ON (UPPER(icao_hex)) * FROM aircraft_profiles ORDER BY UPPER(icao_hex),total_detections DESC NULLS LAST) p WHERE EXISTS (SELECT 1 FROM faa_master m WHERE UPPER(m.mode_s_code_hex)=UPPER(p.icao_hex) AND UPPER(m.name) LIKE 'AERO EQUITIES%')` as Promise<any[]>, [] as any[]),
+      safe(w`SELECT COUNT(DISTINCT UPPER(p.icao_hex))::int AS c FROM aircraft_profiles p WHERE EXISTS (SELECT 1 FROM faa_master m WHERE UPPER(m.mode_s_code_hex)=UPPER(p.icao_hex) AND UPPER(m.name) LIKE '%LLC%')` as Promise<any[]>, [] as any[]),
+      n913Hex ? safe(w`SELECT detected_at, aircraft_count, county FROM convergence_events WHERE unique_icao_hexes && ARRAY[${n913Hex}, ${n913Hex.toLowerCase()}]::text[] AND unique_icao_hexes && ARRAY['AE5C77','ae5c77']::text[] ORDER BY detected_at DESC LIMIT 1` as Promise<any[]>, [] as any[]) : Promise.resolve([]),
     ]);
 
     const aeroRow = aero[0];

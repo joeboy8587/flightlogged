@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { isKcsoAircraft, KCSO_TAILS, KCSO_HEX_TO_TAIL } from "./kcso";
 describe("KCSO aircraft policy scope", () => {
+  it("identifies N912KC by its FAA code, not another hex carrying its tail", () => {
+    expect(KCSO_HEX_TO_TAIL.AC9EFD).toBe("N912KC");
+    expect(isKcsoAircraft(null, "ac9efd")).toBe(true);
+    expect(isKcsoAircraft("N912KC", "AC9AFD")).toBe(false);
+    expect(isKcsoAircraft("N912KC", "AC9EF5")).toBe(false);
+    expect(isKcsoAircraft("N912KC", "AD9EFD")).toBe(false);
+  });
   it("includes N97E and its FAA registry hex", () => {
     expect(KCSO_TAILS).toContain("N97E");
     expect(isKcsoAircraft(" n97e ")).toBe(true);

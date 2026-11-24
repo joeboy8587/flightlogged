@@ -89,8 +89,8 @@ function Methodology() {
   const { data: objAoi } = useSuspenseQuery(objectivityAoiQO);
   const { data: dismissals } = useSuspenseQuery(dismissalsQO);
   const { data: ruleVer } = useSuspenseQuery(ruleVerQO);
-  const det = s.totalDetections.toLocaleString();
-  const ac = s.uniqueAircraft.toLocaleString();
+  const det = "approximately " + s.totalDetections.toLocaleString();
+  const ac = "approximately " + s.uniqueAircraft.toLocaleString();
   return (
     <div className="min-h-screen bg-paper text-ink">
       <SiteHeader />

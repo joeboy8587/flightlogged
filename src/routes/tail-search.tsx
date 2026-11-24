@@ -77,7 +77,7 @@ function TailSearch() {
     if (!r) return;
     const header = ["captured_at", "altitude_ft", "speed_kts", "county", "latitude", "longitude", "on_ground"];
     const rows: (string | number | null)[][] = [
-      [`# tail=${r.registration} icao=${r.icao ?? ""} owner=${r.owner ?? ""} model=${r.model ?? ""} profile_total=${r.total} retained_total=${r.retainedTotal} profile_updated=${r.profileUpdatedAt ?? ""} exported=${new Date().toISOString()}`],
+      [`# tail=${r.registration} icao=${r.icao ?? ""} owner=${r.owner ?? ""} model=${r.model ?? ""} profile_total=${r.profileTotal ?? "not available"} retained_total=${r.retainedTotal} profile_updated=${r.profileUpdatedAt ?? ""} exported=${new Date().toISOString()}`],
       header,
       ...r.detections.map((d) => [d.capturedAt, d.altitude, d.speed, d.county, d.latitude, d.longitude, d.onGround ? "true" : "false"]),
     ];
@@ -121,7 +121,7 @@ function TailSearch() {
         <div className="max-w-[1100px] mx-auto px-4 py-10">
           {m.isError && <p className="brutal-border p-4 bg-alert text-paper">Search failed. Try again.</p>}
           {m.isSuccess && !r && (
-            <p className="brutal-border p-4 bg-warning">No records for <strong>{q}</strong>. Verify the tail number or hex.</p>
+            <p className="brutal-border p-4 bg-warning">No single aircraft identity resolved for <strong>{q}</strong>. Verify the tail or use its six-character aircraft code.</p>
           )}
           {r && (
             <>
@@ -144,7 +144,7 @@ function TailSearch() {
                   </Button>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mt-4 text-sm font-mono">
-                  <Stat label="ML profile detections" value={r.total.toLocaleString()} />
+                  <Stat label={r.profileTotal == null ? "Retained observations" : "ML profile detections"} value={r.total.toLocaleString()} />
                   <Stat label="Min altitude" value={r.minAlt != null ? `${r.minAlt} ft` : "—"} />
                   <Stat label="Avg altitude" value={r.avgAlt != null ? `${Math.round(r.avgAlt)} ft` : "—"} />
                   <Stat label="Night share" value={fmtPct(r.nightPct)} />

@@ -1,5 +1,6 @@
 import { watchtower } from "./neon.server";
 import { tailForms } from "./aircraft";
+import { resolveAircraftIdentity, enrichProfileIdentities } from "./aircraft-identity.server";
 
 /** ---- Types returned to the UI (plain DTOs only) ---- */
 export type DossierIdentity = {
@@ -25,6 +26,7 @@ export type DossierIdentity = {
   firstSeen: string | null;
   lastSeen: string | null;
   totalDetections: number | null;
+  profileUpdatedAt: string | null;
   minAltitude: number | null;
   avgAltitude: number | null;
   maxAltitude: number | null;
@@ -132,50 +134,27 @@ export async function loadDossier(input: string): Promise<AircraftDossier | null
 
   const w = watchtower();
 
-  const idRows = (await w`
-    SELECT p.*, c.operator_resolved, c.kcso_flag, c.medical_flag, c.faa_registrant_name,
-           m.name AS m_name, m.city AS m_city, m.state AS m_state, m.county AS m_county,
-           m.year_mfr, m.type_registrant, m.cert_issue_date, m.expiration_date,
-           m.status_code, m.serial_number, m.eng_mfr_mdl, m.registration AS m_reg
-      FROM aircraft_profiles p
-      LEFT JOIN canonical_operator_profiles c ON UPPER(c.icao_hex) = UPPER(p.icao_hex)
-      LEFT JOIN faa_master m ON UPPER(m.mode_s_code_hex) = UPPER(p.icao_hex)
-     WHERE UPPER(p.icao_hex) = ${raw}
-        OR UPPER(p.observed_registration) IN (${raw}, ${nform}, ${nless})
-     ORDER BY p.total_detections DESC NULLS LAST
-     LIMIT 1`) as any[];
-
-  let base = idRows[0];
-  if (!base) {
-    // No ML profile: fall back to the FAA registry so the page still resolves.
-    const faa = (await w`
-      SELECT n_number, registration, name, city, state, county, year_mfr, type_registrant,
-             cert_issue_date, expiration_date, status_code, serial_number, eng_mfr_mdl,
-             mode_s_code_hex
-        FROM faa_master
-       WHERE UPPER(n_number) IN (${nless}, ${raw})
-          OR UPPER(registration) IN (${raw}, ${nform})
-          OR UPPER(mode_s_code_hex) = ${raw}
-       LIMIT 1`) as any[];
-    if (!faa[0]) { CACHE.set(raw, { at: Date.now(), value: null }); return null; }
-    base = {
-      icao_hex: faa[0].mode_s_code_hex, observed_registration: faa[0].registration ?? `N${faa[0].n_number}`,
-      m_name: faa[0].name, m_city: faa[0].city, m_state: faa[0].state, m_county: faa[0].county,
-      year_mfr: faa[0].year_mfr, type_registrant: faa[0].type_registrant,
-      cert_issue_date: faa[0].cert_issue_date, expiration_date: faa[0].expiration_date,
-      status_code: faa[0].status_code, serial_number: faa[0].serial_number, eng_mfr_mdl: faa[0].eng_mfr_mdl,
-    };
-  }
-
-  const icao = base.icao_hex ? String(base.icao_hex).toUpperCase() : raw;
-  const reg = base.observed_registration ? String(base.observed_registration).toUpperCase() : nform;
-  const regForms = [reg, reg.startsWith("N") ? reg.slice(1) : `N${reg}`, raw, nform, nless];
+  const resolved = await resolveAircraftIdentity(raw);
+  if (!resolved.profile && !resolved.registry) { CACHE.set(raw, { at: Date.now(), value: null }); return null; }
+  const icao = resolved.icao ?? raw;
+  const registry = resolved.registry ?? {};
+  const operators = await w`SELECT operator_resolved, kcso_flag, medical_flag, faa_registrant_name
+    FROM canonical_operator_profiles WHERE icao_hex IN (${icao}, ${icao.toLowerCase()}) LIMIT 1`;
+  const base = { ...resolved.profile, ...operators[0],
+    m_name: registry.name, m_city: registry.city, m_state: registry.state, m_county: registry.county,
+    year_mfr: registry.year_mfr, type_registrant: registry.type_registrant,
+    cert_issue_date: registry.cert_issue_date, expiration_date: registry.expiration_date,
+    status_code: registry.status_code, serial_number: registry.serial_number, eng_mfr_mdl: registry.eng_mfr_mdl,
+  };
+  const reg = resolved.registration;
+  // Tail-only historical ledgers may be consulted only for a registry-resolved identity.
+  const regForms = resolved.registry && reg ? [reg, reg.replace(/^N/i, "")] : [];
 
   const [deep, expl, vGroups, vRows, sRows, aGroups, aRows, ens, reasons, spoof, corr, wtpr, peers] = await Promise.all([
     w`SELECT behavioral_cluster, profile_score, drift_score, stability_score, model_version,
              window_start, window_end, updated_at, top_anomaly_dimensions, feature_vector,
              array_length(profile_embedding, 1) AS dims
-        FROM aircraft_deep_profiles WHERE UPPER(icao_hex) = ${icao} LIMIT 1`,
+        FROM aircraft_deep_profiles WHERE UPPER(icao_hex) = ${icao} ORDER BY updated_at DESC NULLS LAST LIMIT 1`,
     w`SELECT explanation FROM profiler_explanations WHERE UPPER(icao_hex) = ${icao}
        ORDER BY created_at DESC LIMIT 1`,
     w`SELECT rule_violated, COUNT(*)::int AS c, MIN(altitude_ft)::int AS min_alt,
@@ -218,11 +197,11 @@ export async function loadDossier(input: string): Promise<AircraftDossier | null
         FROM spoofing_sources WHERE UPPER(icao_hex) = ${icao} LIMIT 1`,
     w`SELECT zone_name, network_role, pattern, zone_detections, min_altitude, last_seen
         FROM corridor_aircraft
-       WHERE UPPER(icao_hex) = ${icao} OR UPPER(registration) = ANY(${regForms})
+       WHERE UPPER(icao_hex) = ${icao} OR (NULLIF(TRIM(icao_hex), '') IS NULL AND UPPER(registration) = ANY(${regForms}))
        ORDER BY zone_detections DESC NULLS LAST LIMIT 10`,
     w`SELECT wtpr, anomaly_type, legal_status, court_ready, sha256, captured_at
         FROM wtpr_registry
-       WHERE UPPER(icao_hex) = ${icao} OR UPPER(registration) = ANY(${regForms})
+       WHERE UPPER(icao_hex) = ${icao} OR (NULLIF(TRIM(icao_hex), '') IS NULL AND UPPER(registration) = ANY(${regForms}))
        ORDER BY created_at DESC LIMIT 15`,
     w`SELECT d.icao_hex, d.profile_score, p.observed_registration, p.registered_owner
         FROM aircraft_deep_profiles d
@@ -237,13 +216,15 @@ export async function loadDossier(input: string): Promise<AircraftDossier | null
   let handoffs: DossierHandoff[] = partners.map((p) => ({ partner: p, partnerIcao: null, partnerOwner: null }));
   if (partners.length) {
     const pRows = (await w`
-      SELECT icao_hex, observed_registration, registered_owner
-        FROM aircraft_profiles
-       WHERE UPPER(observed_registration) = ANY(${partners.map((p) => p.toUpperCase())})
+      SELECT mode_s_code_hex AS icao_hex, 'N' || n_number AS observed_registration, name AS registered_owner
+        FROM faa_master
+       WHERE UPPER(n_number) = ANY(${partners.map((p) => p.replace(/^N/i, ""))})
+          OR UPPER(mode_s_code_hex) = ANY(${partners})
+       ORDER BY n_number
        LIMIT 24`) as any[];
     const byReg = new Map(pRows.map((r) => [String(r.observed_registration ?? "").toUpperCase(), r]));
     handoffs = partners.map((p) => {
-      const r = byReg.get(p.toUpperCase());
+      const r = byReg.get(p.toUpperCase()) ?? pRows.find(row => String(row.icao_hex).toUpperCase() === p.toUpperCase());
       return { partner: p, partnerIcao: str(r?.icao_hex), partnerOwner: str(r?.registered_owner) };
     });
   }
@@ -264,9 +245,10 @@ export async function loadDossier(input: string): Promise<AircraftDossier | null
          WHERE d.embedding_vector IS NOT NULL AND UPPER(d.icao_hex) <> ${icao}
          ORDER BY d.embedding_vector <=> ${v}::vector
          LIMIT 24`) as any[];
+      const identifiedNeighbors = await enrichProfileIdentities(nn);
       neighbors = Array.from(
         new Map(
-          nn.map((r) => {
+          identifiedNeighbors.map((r) => {
             const dist = num(r.dist);
             return [
               String(r.icao_hex).toUpperCase(),
@@ -294,7 +276,7 @@ export async function loadDossier(input: string): Promise<AircraftDossier | null
              active_days, is_active, last_matched_at, sha256_hash,
              array_length(aircraft_icao_hexes, 1) AS fleet
         FROM learned_patterns
-       WHERE aircraft_icao_hexes && ARRAY[${icao}]::text[]
+       WHERE aircraft_icao_hexes && ARRAY[${icao}, ${icao.toLowerCase()}]::text[]
        ORDER BY confidence DESC NULLS LAST, evidence_count DESC NULLS LAST
        LIMIT 12`) as any[];
     patterns = pRows.map((r) => ({
@@ -315,6 +297,7 @@ export async function loadDossier(input: string): Promise<AircraftDossier | null
 
   const d0 = (deep as any[])[0];
   const e0 = (ens as any[])[0] ?? {};
+  const identifiedPeers = await enrichProfileIdentities(peers as any[]);
 
   const value: AircraftDossier = {
     query: raw,
@@ -322,7 +305,7 @@ export async function loadDossier(input: string): Promise<AircraftDossier | null
       icao,
       registration: reg,
       callsigns: arr(base.observed_callsigns).slice(0, 12),
-      owner: str(base.registered_owner ?? base.faa_registrant_name ?? base.m_name),
+      owner: str(base.m_name ?? base.registered_owner ?? base.faa_registrant_name),
       operatorResolved: str(base.operator_resolved),
       model: str(base.aircraft_model),
       manufacturerYear: num(base.year_mfr),
@@ -341,6 +324,7 @@ export async function loadDossier(input: string): Promise<AircraftDossier | null
       firstSeen: str(base.first_seen),
       lastSeen: str(base.last_seen),
       totalDetections: num(base.total_detections),
+      profileUpdatedAt: str(base.profile_updated_at),
       minAltitude: num(base.min_altitude),
       avgAltitude: num(base.avg_altitude),
       maxAltitude: num(base.max_altitude),
@@ -433,7 +417,7 @@ export async function loadDossier(input: string): Promise<AircraftDossier | null
     })),
     peers: Array.from(
       new Map(
-        (peers as any[]).map((r) => [
+        identifiedPeers.map((r) => [
           String(r.icao_hex).toUpperCase(),
           {
             icao: String(r.icao_hex).toUpperCase(),
@@ -472,7 +456,7 @@ export async function loadFleet(sort: "score" | "detections" | "lowest"): Promis
                p.total_detections, p.min_altitude, p.anomaly_score, p.last_seen,
                p.is_military, p.tactical_role, d.behavioral_cluster, d.profile_score
           FROM aircraft_deep_profiles d
-          JOIN aircraft_profiles p ON UPPER(p.icao_hex) = UPPER(d.icao_hex)
+          JOIN LATERAL (SELECT * FROM aircraft_profiles ap WHERE ap.icao_hex IN (UPPER(d.icao_hex), LOWER(d.icao_hex)) ORDER BY ap.total_detections DESC NULLS LAST LIMIT 1) p ON true
          WHERE p.total_detections IS NOT NULL
          ORDER BY p.total_detections DESC NULLS LAST LIMIT 60`
     : sort === "lowest"
@@ -480,17 +464,18 @@ export async function loadFleet(sort: "score" | "detections" | "lowest"): Promis
                p.total_detections, p.min_altitude, p.anomaly_score, p.last_seen,
                p.is_military, p.tactical_role, d.behavioral_cluster, d.profile_score
           FROM aircraft_deep_profiles d
-          JOIN aircraft_profiles p ON UPPER(p.icao_hex) = UPPER(d.icao_hex)
+          JOIN LATERAL (SELECT * FROM aircraft_profiles ap WHERE ap.icao_hex IN (UPPER(d.icao_hex), LOWER(d.icao_hex)) ORDER BY ap.total_detections DESC NULLS LAST LIMIT 1) p ON true
          WHERE p.total_detections IS NOT NULL AND p.min_altitude IS NOT NULL AND p.min_altitude > -50
          ORDER BY p.min_altitude ASC LIMIT 60`
     : w`SELECT p.icao_hex, p.observed_registration, p.registered_owner, p.aircraft_model,
                p.total_detections, p.min_altitude, p.anomaly_score, p.last_seen,
                p.is_military, p.tactical_role, d.behavioral_cluster, d.profile_score
           FROM aircraft_deep_profiles d
-          JOIN aircraft_profiles p ON UPPER(p.icao_hex) = UPPER(d.icao_hex)
+          JOIN LATERAL (SELECT * FROM aircraft_profiles ap WHERE ap.icao_hex IN (UPPER(d.icao_hex), LOWER(d.icao_hex)) ORDER BY ap.total_detections DESC NULLS LAST LIMIT 1) p ON true
          WHERE p.total_detections IS NOT NULL
          ORDER BY d.profile_score DESC NULLS LAST, p.total_detections DESC NULLS LAST LIMIT 60`)) as any[];
-  const out: FleetRow[] = rows.map((r) => ({
+  const identifiedRows = await enrichProfileIdentities(rows);
+  const out: FleetRow[] = identifiedRows.map((r) => ({
     icao: String(r.icao_hex).toUpperCase(),
     registration: str(r.observed_registration),
     owner: str(r.registered_owner),

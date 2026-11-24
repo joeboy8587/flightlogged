@@ -39,8 +39,8 @@ function About() {
           <p className="text-lg max-w-3xl">
             We are the first civilian-led, AI-assisted airspace accountability organization.
             Most advocacy orgs spend years building what we have running right now at{" "}
-            <strong>{s.totalDetections.toLocaleString()}</strong> detections across{" "}
-            <strong>{s.uniqueAircraft.toLocaleString()}</strong> aircraft — and counting.
+            <strong>{s.totalDetections.toLocaleString()}</strong> estimated detection records across{" "}
+            <strong>{s.uniqueAircraft.toLocaleString()}</strong> estimated aircraft profiles (including historical casing variants).
             We didn't wait. The machine is watching. The machine is learning. And in time, it will have earned the right to speak.
           </p>
         </div>

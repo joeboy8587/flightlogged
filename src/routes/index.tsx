@@ -70,16 +70,16 @@ function Home() {
     })
     .sort((a, b) => (a.altitude ?? 99999) - (b.altitude ?? 99999))
     .filter((r) => {
-      if (seenIcao.has(r.icao)) return false;
-      seenIcao.add(r.icao);
+      if (seenIcao.has(r.icao.trim().toUpperCase())) return false;
+      seenIcao.add(r.icao.trim().toUpperCase());
       return true;
     })
     .slice(0, 3);
   const stats = [
-    { label: "Detections logged", value: fmt(s.totalDetections), accent: false },
-    { label: "Unique aircraft", value: fmt(s.uniqueAircraft), accent: false },
-    { label: "Anomaly events", value: fmt(s.anomalyEvents), accent: true },
-    { label: "Court-ready detections", value: fmt(s.flightDetections), accent: true },
+    { label: "Estimated detections", value: fmt(s.totalDetections), accent: false },
+    { label: "Estimated aircraft profiles", value: fmt(s.uniqueAircraft), accent: false },
+    { label: "Estimated anomaly events", value: fmt(s.anomalyEvents), accent: true },
+    { label: "Estimated detection records", value: fmt(s.flightDetections), accent: true },
   ];
   return (
     <div className="min-h-screen bg-paper text-ink">

@@ -59,7 +59,7 @@ export function UndergroundClub() {
                 return (
                 <tr key={r.icao} className="border-t border-ink/20">
                   <td className="p-3 font-bold">
-                    <Link to="/tail-search" search={{ tail }} className="underline hover:bg-warning">
+                    <Link to="/tail-search" search={{ tail: r.icao || tail }} className="underline hover:bg-warning">
                       {tail}
                     </Link>
                   </td>

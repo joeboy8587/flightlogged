@@ -10,7 +10,7 @@ export const getAircraftDossier = createServerFn({ method: "GET" })
     const { loadDossier } = await import("./aircraft.server");
     const dossier = await loadDossier(data.tail);
     if (!dossier) return null;
-    return { ...dossier, identity: { ...dossier.identity, kcsoFlag: dossier.identity.kcsoFlag || isKcsoAircraft(dossier.identity.registration, dossier.identity.icao) } };
+    return { ...dossier, identity: { ...dossier.identity, kcsoFlag: isKcsoAircraft(dossier.identity.registration, dossier.identity.icao) } };
   });
 
 export const getFleetDirectory = createServerFn({ method: "GET" })

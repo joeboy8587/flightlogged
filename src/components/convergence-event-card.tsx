@@ -79,7 +79,7 @@ export function ConvergenceEventCard() {
           <div className="brutal-border-thick border-paper p-4 bg-ink">
             <div className="label-stamp text-warning mb-2">Tails / ICAOs in the convergence</div>
             <div className="flex flex-wrap gap-2 font-mono text-xs">
-              {(data.tails.length > 0 ? data.tails : data.icaos).map((t) => (
+              {(data.icaos.length > 0 ? data.icaos : data.tails).map((t) => (
                 <Link
                   key={t}
                   to="/tail-search"

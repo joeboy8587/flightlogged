@@ -163,7 +163,7 @@ function ForeignPage() {
                       <td className="p-3 font-bold">
                         <Link
                           to="/tail-search"
-                          search={{ tail: a.registration ?? a.icao }}
+                          search={{ tail: a.icao ?? a.registration }}
                           className="underline hover:bg-warning"
                         >
                           {a.registration ?? a.icao}
@@ -197,10 +197,10 @@ function ForeignPage() {
       {/* COUNTRY BREAKDOWN */}
       <section className="border-b-4 border-ink">
         <div className="max-w-[1400px] mx-auto px-4 py-10">
-          <h2 className="text-3xl mb-4">By country of registration</h2>
+          <h2 className="text-3xl mb-4">By observed registration prefix</h2>
           <div className="overflow-x-auto brutal-border-thick">
             <table className="w-full text-sm">
-              <caption className="sr-only">Foreign aircraft observations grouped by country of registration.</caption>
+              <caption className="sr-only">Aircraft profiles grouped by observed registration prefix; not independently verified foreign registration.</caption>
               <thead className="bg-ink text-paper">
                 <tr>
                   <th className="text-left p-3 label-stamp">Country</th>
@@ -296,7 +296,7 @@ function ForeignPage() {
                     <td className="p-3 whitespace-nowrap text-xs">{a.lastSeen ? new Date(a.lastSeen).toLocaleDateString() : "—"}</td>
                     <td className="p-3">
                       <ShareRow
-                        text={`Foreign-registered ${a.registration} (${a.country}) — ${fmt(a.totalDetections)} detections in U.S. airspace. Avg altitude ${a.avgAltitude != null ? Math.round(a.avgAltitude) + " ft" : "n/a"}. Source: The Architecture of Never — https://advocacywatch.live/foreign`}
+                        text={`Observed foreign prefix ${a.registration} (${a.country}) — ${fmt(a.totalDetections)} ML profile detections. Avg altitude ${a.avgAltitude != null ? Math.round(a.avgAltitude) + " ft" : "n/a"}. Source: The Architecture of Never — https://advocacywatch.live/foreign`}
                       />
                     </td>
                   </tr>

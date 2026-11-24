@@ -1,7 +1,7 @@
 # Architecture rules
 - All Neon queries, including legacy tagged queries, use the linked connector gateway from server-only helpers, never direct database clients or retired connection URLs; credentials stay inside request handlers.
 - Share KCSO policy eligibility through the client-safe aircraft list so feeds and dossiers agree.
-- Tail Search resolves registration through FAA identity before observed-tail aliases, keeps different hexes separate, and distinguishes maintained profile totals from retained detection counts.
+- Aircraft views share FAA-first identity resolution, keep explicit hex navigation and ambiguous observed tails separate, select rather than sum case-variant profiles, and distinguish maintained totals from retained observations.
 - Public case-file responses expose only aggregate inventory until explicit per-record publication approval exists; active and verified are not publication permission.
 - Machine record panels return independent per-source errors and bounded samples so a missing source cannot blank the page or masquerade as zero findings.
 - Use the supported router-ssr-query integration with a per-request QueryClient and the existing root provider; the legacy router-with-query adapter calls removed SSR APIs and blanks pages.

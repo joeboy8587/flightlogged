@@ -73,7 +73,7 @@ export function DeadMansCurveTiles() {
                     <span className="opacity-50">{(i + 1).toString().padStart(2, "0")}.</span>{" "}
                     <Link
                       to="/tail-search"
-                      search={{ tail: t.registration || t.icao }}
+                      search={{ tail: t.icao || t.registration || undefined }}
                       className="font-bold underline hover:bg-warning"
                     >
                       {t.registration || t.icao}

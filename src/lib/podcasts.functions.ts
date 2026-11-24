@@ -31,7 +31,7 @@ async function snapshotForScript() {
     settle(
       w`SELECT
         (SELECT COUNT(*)::int FROM detections) AS detections,
-        (SELECT COUNT(DISTINCT icao_hex)::int FROM detections) AS aircraft,
+        (SELECT COUNT(DISTINCT UPPER(TRIM(icao_hex)))::int FROM detections) AS aircraft,
         (SELECT COUNT(*)::int FROM anomaly_events) AS anomalies,
         (SELECT COUNT(*)::int FROM violation_classifications) AS violations,
         (SELECT MAX(captured_at) FROM detections) AS last_seen`,
@@ -39,17 +39,17 @@ async function snapshotForScript() {
     ),
     settle(
       w`WITH raw_aircraft AS (
-            SELECT icao_hex, COUNT(*)::int AS raw_detections
+            SELECT UPPER(TRIM(icao_hex)) AS icao_hex, COUNT(*)::int AS raw_detections
             FROM detections
             WHERE icao_hex IS NOT NULL
-            GROUP BY icao_hex
+            GROUP BY UPPER(TRIM(icao_hex))
           ), resolved AS (
-            SELECT COALESCE(NULLIF(TRIM(m.name), ''), NULLIF(TRIM(p.registered_owner), ''), p.observed_registration, r.icao_hex) AS canonical_name,
+            SELECT COALESCE(NULLIF(UPPER(TRIM(m.name)), ''), NULLIF(UPPER(TRIM(p.registered_owner)), ''), 'Aircraft ' || r.icao_hex) AS canonical_name,
                    r.icao_hex,
                    r.raw_detections
             FROM raw_aircraft r
-            LEFT JOIN aircraft_profiles p ON p.icao_hex = r.icao_hex
-            LEFT JOIN faa_master m ON m.mode_s_code_hex = UPPER(r.icao_hex)
+            LEFT JOIN LATERAL (SELECT registered_owner FROM aircraft_profiles ap WHERE ap.icao_hex IN (r.icao_hex, LOWER(r.icao_hex)) ORDER BY ap.total_detections DESC NULLS LAST LIMIT 1) p ON true
+            LEFT JOIN LATERAL (SELECT name FROM faa_master fm WHERE UPPER(fm.mode_s_code_hex) = r.icao_hex ORDER BY fm.n_number LIMIT 1) m ON true
           )
           SELECT canonical_name,
                  SUM(raw_detections)::int AS total_detections,

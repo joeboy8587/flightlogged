@@ -9,6 +9,7 @@ import { featureLabel, ruleLabel, ruleStatute, DOSSIER_SECTIONS } from "@/lib/ai
 import { fmtClock, fmtDate, fmtPct } from "@/lib/format";
 import { normalizeSeverity } from "@/lib/counties";
 import { GuardianRecordsPanel } from "@/components/guardian-records";
+import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/aircraft/$id")({
   head: ({ params }) => {
@@ -83,7 +84,7 @@ function AircraftDossierPage() {
           <p className="font-mono text-sm opacity-80 mt-2">
             {data ? (
               <>
-                {data.identity.icao} · {data.identity.owner ?? "Unidentified registrant"}
+                {data.identity.icao} · {data.identity.owner ?? "Registered owner not resolved"}
                 {data.identity.model ? ` · ${data.identity.model}` : ""}
               </>
             ) : isLoading ? "Assembling dossier…" : "—"}
@@ -100,11 +101,11 @@ function AircraftDossierPage() {
           )}
           {data && (
             <div className="mt-5 flex flex-wrap gap-2">
-              <button type="button" onClick={() => downloadDossierCsv(data)} className="label-stamp brutal-border bg-warning text-ink px-4 py-2">
+              <Button type="button" onClick={() => downloadDossierCsv(data)} className="label-stamp brutal-border bg-warning text-ink px-4 py-2">
                 Export dossier CSV
-              </button>
-              <Link to="/tail-search" search={{ tail: data.identity.registration ?? tail }} className="label-stamp brutal-border px-4 py-2 hover:bg-warning hover:text-ink">
-                Every detection →
+              </Button>
+              <Link to="/tail-search" search={{ tail: data.identity.icao ?? data.identity.registration ?? tail }} className="label-stamp brutal-border px-4 py-2 hover:bg-warning hover:text-ink">
+                Retained detections →
               </Link>
             </div>
           )}
@@ -131,7 +132,7 @@ function AircraftDossierPage() {
             {/* IDENTITY */}
             <Section id="identity" kicker="FAA master registry + machine profile" title="Identity & registry">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <Stat label="Total detections" value={data.identity.totalDetections?.toLocaleString() ?? "—"} />
+                <Stat label="ML profile detections" value={data.identity.totalDetections?.toLocaleString() ?? "—"} />
                 <Stat label="Lowest altitude" value={data.identity.minAltitude != null ? `${data.identity.minAltitude} ft` : "—"} />
                 <Stat label="Average altitude" value={data.identity.avgAltitude != null ? `${Math.round(data.identity.avgAltitude)} ft` : "—"} />
                 <Stat label="Average speed" value={data.identity.avgSpeed != null ? `${Math.round(data.identity.avgSpeed)} kts` : "—"} />
@@ -155,6 +156,7 @@ function AircraftDossierPage() {
                 <Row k="Last seen" v={data.identity.lastSeen ? fmtClock(data.identity.lastSeen) : null} />
                 <Row k="Observed callsigns" v={data.identity.callsigns.join(", ") || null} />
                 <Row k="Profile hash" v={data.identity.sha256} mono />
+                <Row k="ML profile updated" v={fmtDate(data.identity.profileUpdatedAt)} />
               </dl>
             </Section>
 
@@ -330,7 +332,7 @@ function AircraftDossierPage() {
                   {data.handoffs.length === 0 && <p className="font-mono text-sm">No confirmed partners.</p>}
                   <div className="flex flex-wrap gap-2">
                     {data.handoffs.map((h, i) => (
-                      <Link key={`${h.partner}-${i}`} to="/aircraft/$id" params={{ id: h.partner }} className="brutal-border px-2 py-1 font-mono text-xs hover:bg-warning">
+                      <Link key={`${h.partner}-${i}`} to="/aircraft/$id" params={{ id: h.partnerIcao ?? h.partner }} className="brutal-border px-2 py-1 font-mono text-xs hover:bg-warning">
                         {h.partner}
                         {h.partnerOwner && <span className="opacity-60"> · {h.partnerOwner.slice(0, 22)}</span>}
                       </Link>
@@ -355,7 +357,7 @@ function AircraftDossierPage() {
                   <div className="label-stamp mb-2">Same behavioural cluster</div>
                   <div className="flex flex-wrap gap-2">
                     {data.peers.map((p, i) => (
-                      <Link key={`${p.icao}-${i}`} to="/aircraft/$id" params={{ id: p.registration ?? p.icao }} className="brutal-border px-2 py-1 font-mono text-xs hover:bg-warning">
+                      <Link key={`${p.icao}-${i}`} to="/aircraft/$id" params={{ id: p.icao }} className="brutal-border px-2 py-1 font-mono text-xs hover:bg-warning">
                         {p.registration ?? p.icao}
                         {p.profileScore != null && <span className="opacity-60"> · {p.profileScore}</span>}
                       </Link>
@@ -369,7 +371,7 @@ function AircraftDossierPage() {
                   <ul className="grid gap-1 sm:grid-cols-2">
                     {data.neighbors.map((p) => (
                       <li key={p.icao} className="brutal-border px-3 py-2 font-mono text-xs">
-                        <Link to="/aircraft/$id" params={{ id: p.registration ?? p.icao }} className="underline">
+                        <Link to="/aircraft/$id" params={{ id: p.icao }} className="underline">
                           {p.registration ?? p.icao}
                         </Link>
                         <span className="opacity-70">

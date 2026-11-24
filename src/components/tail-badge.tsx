@@ -14,7 +14,7 @@ export function TailBadge({
   link?: boolean;
 }) {
   const label = registration?.trim() || icao?.trim() || "—";
-  const tail = registration?.trim() || icao?.trim() || "";
+  const tail = icao?.trim() || registration?.trim() || "";
   const node = <span className="font-mono font-bold">{label}</span>;
   if (!link || !tail) return node;
   return (

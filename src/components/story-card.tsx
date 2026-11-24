@@ -90,7 +90,7 @@ export function StoryCard({ row, headline }: StoryCardProps) {
         </span>
         <Link
           to="/tail-search"
-          search={{ tail }}
+          search={{ tail: row.icao || tail }}
           className="label-stamp brutal-border bg-ink text-paper px-3 py-1.5 text-[11px] hover:bg-warning hover:text-ink whitespace-nowrap"
         >
           Verify this →
