@@ -1,0 +1,83 @@
+.tracker-map {
+  height: min(64vh, 660px);
+  min-height: 440px;
+  width: 100%;
+  background: var(--muted);
+  z-index: 0;
+}
+
+.tracker-map .leaflet-tile-pane {
+  filter: grayscale(1) contrast(0.92);
+}
+
+.tracker-map .leaflet-control-attribution {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 9px;
+}
+
+.tracker-map .leaflet-control-zoom a,
+.tracker-map .leaflet-control-scale-line {
+  background: var(--paper);
+  color: var(--ink);
+  border-color: var(--ink);
+  border-radius: 0;
+}
+
+.tracker-aircraft-marker {
+  align-items: center;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  color: var(--ink);
+  display: flex;
+  height: 32px;
+  justify-content: center;
+  width: 32px;
+}
+
+.tracker-aircraft-marker.is-kcso {
+  background: var(--warning);
+  border-width: 3px;
+}
+
+.tracker-aircraft-marker.is-selected {
+  background: var(--alert);
+  color: var(--paper);
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.tracker-aircraft-marker svg {
+  display: block;
+  height: 21px;
+  transform-origin: center;
+  width: 21px;
+}
+
+.tracker-map .tracker-tooltip {
+  background: var(--ink);
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  color: var(--paper);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 5px 7px;
+}
+
+.tracker-map .tracker-tooltip::before {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .tracker-map {
+    height: 58vh;
+    min-height: 390px;
+  }
+
+  .tracker-aircraft-marker {
+    height: 28px;
+    width: 28px;
+  }
+}

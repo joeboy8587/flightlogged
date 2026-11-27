@@ -40,6 +40,7 @@ import { Route as TailSearchRouteImport } from './routes/tail-search'
 import { Route as TheTargetingEquationRouteImport } from './routes/the-targeting-equation'
 import { Route as ThreatIndexRouteImport } from './routes/threat-index'
 import { Route as ToolkitRouteImport } from './routes/toolkit'
+import { Route as TrackerRouteImport } from './routes/tracker'
 import { Route as VerifyRouteImport } from './routes/verify'
 import { Route as ViolationsRouteImport } from './routes/violations'
 import { Route as AircraftIndexRouteImport } from './routes/aircraft.index'
@@ -211,6 +212,11 @@ const ToolkitRoute = ToolkitRouteImport.update({
   path: '/toolkit',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TrackerRoute = TrackerRouteImport.update({
+  id: '/tracker',
+  path: '/tracker',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const VerifyRoute = VerifyRouteImport.update({
   id: '/verify',
   path: '/verify',
@@ -320,6 +326,7 @@ export interface FileRoutesByFullPath {
   '/the-targeting-equation': typeof TheTargetingEquationRoute
   '/threat-index': typeof ThreatIndexRoute
   '/toolkit': typeof ToolkitRouteWithChildren
+  '/tracker': typeof TrackerRoute
   '/verify': typeof VerifyRoute
   '/violations': typeof ViolationsRoute
   '/aircraft/$id': typeof AircraftIdRoute
@@ -366,6 +373,7 @@ export interface FileRoutesByTo {
   '/tail-search': typeof TailSearchRoute
   '/the-targeting-equation': typeof TheTargetingEquationRoute
   '/threat-index': typeof ThreatIndexRoute
+  '/tracker': typeof TrackerRoute
   '/verify': typeof VerifyRoute
   '/violations': typeof ViolationsRoute
   '/aircraft/$id': typeof AircraftIdRoute
@@ -415,6 +423,7 @@ export interface FileRoutesById {
   '/the-targeting-equation': typeof TheTargetingEquationRoute
   '/threat-index': typeof ThreatIndexRoute
   '/toolkit': typeof ToolkitRouteWithChildren
+  '/tracker': typeof TrackerRoute
   '/verify': typeof VerifyRoute
   '/violations': typeof ViolationsRoute
   '/aircraft/$id': typeof AircraftIdRoute
@@ -465,6 +474,7 @@ export interface FileRouteTypes {
     | '/the-targeting-equation'
     | '/threat-index'
     | '/toolkit'
+    | '/tracker'
     | '/verify'
     | '/violations'
     | '/aircraft/$id'
@@ -511,6 +521,7 @@ export interface FileRouteTypes {
     | '/tail-search'
     | '/the-targeting-equation'
     | '/threat-index'
+    | '/tracker'
     | '/verify'
     | '/violations'
     | '/aircraft/$id'
@@ -559,6 +570,7 @@ export interface FileRouteTypes {
     | '/the-targeting-equation'
     | '/threat-index'
     | '/toolkit'
+    | '/tracker'
     | '/verify'
     | '/violations'
     | '/aircraft/$id'
@@ -608,6 +620,7 @@ export interface RootRouteChildren {
   TheTargetingEquationRoute: typeof TheTargetingEquationRoute
   ThreatIndexRoute: typeof ThreatIndexRoute
   ToolkitRoute: typeof ToolkitRouteWithChildren
+  TrackerRoute: typeof TrackerRoute
   VerifyRoute: typeof VerifyRoute
   ViolationsRoute: typeof ViolationsRoute
   AircraftIdRoute: typeof AircraftIdRoute
@@ -839,6 +852,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ToolkitRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tracker': {
+      id: '/tracker'
+      path: '/tracker'
+      fullPath: '/tracker'
+      preLoaderRoute: typeof TrackerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/verify': {
       id: '/verify'
       path: '/verify'
@@ -1006,6 +1026,7 @@ const rootRouteChildren: RootRouteChildren = {
   TheTargetingEquationRoute: TheTargetingEquationRoute,
   ThreatIndexRoute: ThreatIndexRoute,
   ToolkitRoute: ToolkitRouteWithChildren,
+  TrackerRoute: TrackerRoute,
   VerifyRoute: VerifyRoute,
   ViolationsRoute: ViolationsRoute,
   AircraftIdRoute: AircraftIdRoute,

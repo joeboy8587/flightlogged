@@ -12,6 +12,7 @@ const NAV = [
   { to: "/accountability", label: "Accountability" },
   { to: "/surveillance-grid", label: "Surveillance Grid" },
   { to: "/live", label: "Live Feed" },
+  { to: "/tracker", label: "Airspace Tracker" },
   { to: "/mosaic", label: "Mosaic" },
   { to: "/findings", label: "Findings" },
   { to: "/violations", label: "Violations" },
